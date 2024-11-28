@@ -1,0 +1,50 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
+name: KekikAkademi PyPI Yükleyici
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "setup.py"
+
+jobs:
+  PyPIYukleyici:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.12.6"]
+
+    steps:
+      - name : Depo Kontrolü
+        uses : actions/checkout@v4.2.2
+
+      - name : Python ${{ matrix.python-version }} Sürümü Yükleniyor
+        uses : actions/setup-python@v5.3.0
+        with :
+          python-version: ${{ matrix.python-version }}
+
+      - name : Python Sürümünü Göster
+        run  : python -c "import sys; print(sys.version)"
+
+      - name : Gereksinimleri Yükle
+        run  : |
+          python -m pip install --upgrade pip
+          pip install -U setuptools wheel twine
+
+      - name : Kütüphaneyi PyPI'ye Yükle
+        env  :
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run  : |
+          python setup.py bdist_wheel sdist
+          twine check dist/*
+          python -m twine upload dist/*
+          rm -rf build/
+          rm -rf dist/
+          rm -rf -- *.egg-info/
