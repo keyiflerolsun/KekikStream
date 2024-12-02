@@ -1,6 +1,5 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from Kekik.cli        import konsol
 from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
@@ -60,10 +59,11 @@ class Dizilla(PluginBase):
         rating      = veri.get("aggregateRating", {}).get("ratingValue")
         actors      = [actor.get("name") for actor in veri.get("actor", []) if actor.get("name")]
 
-        episodes = []
-        for sezon in veri.get("containsSeason"):
+        bolumler = []
+        sezonlar = veri.get("containsSeason") if isinstance(veri.get("containsSeason"), list) else [veri.get("containsSeason")]
+        for sezon in sezonlar:
             for bolum in sezon.get("episode"):
-                episodes.append(Episode(
+                bolumler.append(Episode(
                     season  = sezon.get("seasonNumber"),
                     episode = bolum.get("episodeNumber"),
                     title   = bolum.get("name"),
@@ -78,16 +78,18 @@ class Dizilla(PluginBase):
             tags        = tags,
             rating      = rating,
             year        = year,
-            episodes    = episodes,
+            episodes    = bolumler,
             actors      = actors
         )
 
     async def load_links(self, url: str) -> list[str]:
-        konsol.print(url)
         istek  = await self.oturum.get(url)
         secici = Selector(istek.text)
 
-        iframes = []
-        # TODO: iframeleri getir kanks
+        iframes = [self.fix_url(secici.css("div#playerLsDizilla iframe::attr(src)").get())]
+        for alternatif in secici.css("a[href*='player']"):
+            alt_istek  = await self.oturum.get(self.fix_url(alternatif.css("::attr(href)").get()))
+            alt_secici = Selector(alt_istek.text)
+            iframes.append(self.fix_url(alt_secici.css("div#playerLsDizilla iframe::attr(src)").get()))
 
         return iframes

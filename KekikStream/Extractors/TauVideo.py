@@ -21,12 +21,14 @@ class TauVideo(ExtractorBase):
         if "urls" not in api_data:
             raise ValueError("API yanıtında 'urls' bulunamadı.")
 
-        return [
-            ExtractResult(
-                name      = f"{self.name} - {video['label']}",
-                url       = video["url"],
-                referer   = referer or self.main_url,
-                subtitles = []
-            )
-                for video in api_data["urls"]
-        ]
+        results = [
+                ExtractResult(
+                    name      = f"{self.name} - {video['label']}",
+                    url       = video["url"],
+                    referer   = referer or self.main_url,
+                    subtitles = []
+                )
+                    for video in api_data["urls"]
+            ]
+
+        return results[0] if len(results) == 1 else results

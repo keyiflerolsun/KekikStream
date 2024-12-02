@@ -56,4 +56,4 @@ class Sobreatsesuyp(ExtractorBase):
         if not all_results:
             raise ValueError("No videos found in response.")
 
-        return all_results
+        return all_results[0] if len(all_results) == 1 else all_results

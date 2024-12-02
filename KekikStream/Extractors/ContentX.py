@@ -15,7 +15,7 @@ class ContentX(ExtractorBase):
         istek.raise_for_status()
         i_source = istek.text
 
-        i_extract = re.search(r"window\.openPlayer\('([^']+)'\)", i_source)
+        i_extract = re.search(r"window\.openPlayer\('([^']+)'", i_source)
         if not i_extract:
             raise ValueError("i_extract is null")
         i_extract_value = i_extract[1]
@@ -77,4 +77,4 @@ class ContentX(ExtractorBase):
                 )
             )
 
-        return results
+        return results[0] if len(results) == 1 else results

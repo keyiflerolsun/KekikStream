@@ -132,10 +132,14 @@ class KekikStream:
             else:
                 url = secilen_sonuc
 
+            medya_bilgi = None
             for _ in range(3):
                 with suppress(Exception):
                    medya_bilgi = await self.suanki_eklenti.load_item(url)
                    break
+                if not medya_bilgi:
+                    konsol.print("[bold red]Medya bilgileri yüklenemedi![/bold red]")
+                    return await self.sonuc_bulunamadi()
 
         except Exception as hata:
             konsol.log(secilen_sonuc)
