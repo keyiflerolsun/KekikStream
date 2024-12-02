@@ -31,3 +31,12 @@ class ExtractorBase(ABC):
 
     async def close(self):
         await self.oturum.aclose()
+
+    def fix_url(self, url: str) -> str:
+        if not url:
+            return ""
+
+        if url.startswith("http") or url.startswith("{\""):
+            return url
+
+        return f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
