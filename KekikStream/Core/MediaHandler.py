@@ -13,10 +13,12 @@ class MediaHandler:
         self.title   = title
 
     def play_with_vlc(self, extract_data: ExtractResult):
+        if subprocess.check_output(['uname', '-o']).strip() == b'Android':
+            return self.play_with_android_mxplayer(extract_data)
+
         try:
             if "Cookie" in self.headers or extract_data.subtitles:
-                self.play_with_mpv(extract_data)
-                return
+                return self.play_with_mpv(extract_data)
 
             vlc_command = ["vlc", "--quiet"]
 
@@ -76,4 +78,18 @@ class MediaHandler:
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
         except FileNotFoundError:
             konsol.print("[red]mpv bulunamadı! mpv kurulu olduğundan emin olun.[/red]")
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+
+    def play_with_android_mxplayer(self, extract_data: ExtractResult):
+        try:
+            android_command = [
+                "am", "start", "-a", "android.intent.action.VIEW",
+                "-d", f"{extract_data.url}",
+                "-n", "com.mxtech.videoplayer.ad/com.mxtech.videoplayer.ad.ActivityScreen"
+            ]
+
+            with open(os.devnull, "w") as devnull:
+                subprocess.run(android_command, stdout=devnull, stderr=devnull, check=True)
+        except Exception as hata:
+            konsol.print(f"[red]Android MX Player oynatma hatası: {hata}[/red]")
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
