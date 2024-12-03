@@ -1,0 +1,10 @@
+setuptools
+wheel
+
+Kekik
+httpx
+cloudscraper
+parsel
+
+pydantic
+InquirerPy
