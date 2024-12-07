@@ -61,6 +61,8 @@ class MainUrlGuncelleyici:
 
     def guncelle(self):
         """Tüm plugin dosyalarını kontrol eder ve gerekirse main_url günceller."""
+        guncelleme_var = False
+
         for dosya_yolu in self.eklentiler:
             eklenti_adi = dosya_yolu.split("/")[-1].replace(".py", "")
     
@@ -91,9 +93,11 @@ class MainUrlGuncelleyici:
                 yeni_satir = f"{prefix}{tirnak}{yeni_url}{son_tirnak}"
                 self._main_url_guncelle(dosya_yolu, eski_satir, yeni_satir)
                 konsol.log(f"{eski_url} -> {yeni_url}")
+                guncelleme_var = True
 
-        # setup.py sürümünü güncelle
-        self._setup_surum_guncelle()
+        if guncelleme_var:
+            # setup.py sürümünü güncelle
+            self._setup_surum_guncelle()
 
     def _rectv_ver(self):
         istek = self.oturum.post(
