@@ -10,7 +10,7 @@ import re
 
 class RecTV(PluginBase):
     name     = "RecTV"
-    main_url = "https://yan.rectv2024.com"
+    main_url = "https://m.arectv3.xyz"
 
     sw_key   = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
     oturum   = AsyncClient(http2=True)
