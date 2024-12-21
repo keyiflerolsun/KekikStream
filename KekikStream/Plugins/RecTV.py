@@ -10,7 +10,7 @@ import re
 
 class RecTV(PluginBase):
     name     = "RecTV"
-    main_url = "https://m.prectv4.sbs"
+    main_url = "https://m.prectv7.sbs"
 
     sw_key  = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
     http2   = AsyncClient(http2=True)
