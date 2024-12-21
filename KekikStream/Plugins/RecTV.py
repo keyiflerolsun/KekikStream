@@ -12,12 +12,12 @@ class RecTV(PluginBase):
     name     = "RecTV"
     main_url = "https://m.prectv4.sbs"
 
-    sw_key   = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
-    oturum   = AsyncClient(http2=True)
-    oturum.headers.update({"user-agent": "okhttp/4.12.0"})
+    sw_key  = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
+    http2   = AsyncClient(http2=True)
+    http2.headers.update({"user-agent": "okhttp/4.12.0"})
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek     = await self.oturum.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
+        istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
         kanallar  = sorted(kanallar, key=lambda sozluk: sozluk["title"])
@@ -39,7 +39,7 @@ class RecTV(PluginBase):
 
         match veri.get("type"):
             case "serie":
-                dizi_istek = await self.oturum.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
+                dizi_istek = await self.http2.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
                 dizi_veri  = dizi_istek.json()
 
                 episodes = []
