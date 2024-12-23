@@ -16,7 +16,7 @@ class MainUrlGuncelleyici:
         return sorted([
             os.path.join(plugins_dizini, dosya)
                 for dosya in os.listdir(plugins_dizini)
-                    if dosya.endswith(".py")
+                    if dosya.endswith(".py") and not dosya.startswith("__")
         ])
 
     def _main_url_bul(self, dosya_yolu):
