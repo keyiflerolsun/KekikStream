@@ -180,7 +180,7 @@ class KekikStream:
         if not haritalama:
             secilen_link = await self.arayuz_yonetici.select_from_list(
                 message = "Doğrudan oynatmak için bir bağlantı seçin:",
-                choices = [{"name": self.suanki_eklenti.name, "value": link} for link in baglantilar]
+                choices = [{"name": value["name"], "value": key} for key, value in self.suanki_eklenti._data.items()]
             )
             if secilen_link:
                 await self.medya_oynat(secilen_link)
