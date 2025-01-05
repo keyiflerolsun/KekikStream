@@ -3,7 +3,7 @@
 from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
 from Kekik.Sifreleme  import CryptoJS
 from parsel           import Selector
-import re, urllib.parse, base64
+import re, urllib.parse, base64, contextlib, asyncio
 
 class DiziBox(PluginBase):
     name     = "DiziBox"
@@ -95,14 +95,19 @@ class DiziBox(PluginBase):
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
             self.oturum.headers.update({"Referer": referer})
-            istek  = await self.oturum.get(iframe_link)
+            while True:
+                await asyncio.sleep(.3)
+                with contextlib.suppress(Exception):
+                    istek  = await self.oturum.get(iframe_link)
 
-            if atob_data := re.search(r"unescape\(\"(.*)\"\)", istek.text):
-                decoded_atob = urllib.parse.unquote(atob_data[1])
-                str_atob     = base64.b64decode(decoded_atob).decode("utf-8")
+                    if atob_data := re.search(r"unescape\(\"(.*)\"\)", istek.text):
+                        decoded_atob = urllib.parse.unquote(atob_data[1])
+                        str_atob     = base64.b64decode(decoded_atob).decode("utf-8")
 
-            if iframe := Selector(str_atob).css("div#Player iframe::attr(src)").get():
-                results.append(iframe)
+                    if iframe := Selector(str_atob).css("div#Player iframe::attr(src)").get():
+                        results.append(iframe)
+
+                    break
 
         elif "/player/haydi.php" in iframe_link:
             okru_url = base64.b64decode(iframe_link.split("?v=")[-1]).decode("utf-8")

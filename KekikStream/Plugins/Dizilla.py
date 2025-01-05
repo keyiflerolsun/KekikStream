@@ -3,6 +3,7 @@
 from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
+from urllib.parse     import urlparse, urlunparse
 
 class Dizilla(PluginBase):
     name     = "Dizilla"
@@ -43,6 +44,16 @@ class Dizilla(PluginBase):
                 for veri in arama_veri
         ]
 
+    async def url_base_degis(self, eski_url:str, yeni_base:str) -> str:
+        parsed_url       = urlparse(eski_url)
+        parsed_yeni_base = urlparse(yeni_base)
+        yeni_url         = parsed_url._replace(
+            scheme = parsed_yeni_base.scheme,
+            netloc = parsed_yeni_base.netloc
+        )
+
+        return urlunparse(yeni_url)
+
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.oturum.get(url)
         secici = Selector(istek.text)
@@ -67,7 +78,7 @@ class Dizilla(PluginBase):
                     season  = sezon.get("seasonNumber"),
                     episode = bolum.get("episodeNumber"),
                     title   = bolum.get("name"),
-                    url     = bolum.get("url"),
+                    url     = await self.url_base_degis(bolum.get("url"), self.main_url),
                 ))
 
         return SeriesInfo(
