@@ -90,12 +90,11 @@ class SineWix(PluginBase):
         org_title = veri.get("title")
         alt_title = veri.get("original_name") or ""
         title     = f"{org_title} - {alt_title}" if (alt_title and org_title != alt_title)  else org_title
-        title     = f"{self.name} | {title}"
 
         for video in veri.get("videos"):
             video_link = video.get("link").split("_blank\">")[-1]
             self._data[video_link] = {
-                "name"      : title,
+                "name"      : f"{self.name} | {title}",
                 "referer"   : self.main_url,
                 "subtitles" : []
             }
