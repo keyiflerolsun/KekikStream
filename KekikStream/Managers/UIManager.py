@@ -40,7 +40,7 @@ class UIManager:
             if key == "episodes":
                 continue
 
-            if value:
+            if isinstance(value, str):
                 if '",' in value:
                     continue
 
