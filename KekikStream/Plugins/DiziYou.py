@@ -71,7 +71,8 @@ class DiziYou(PluginBase):
         istek  = await self.oturum.get(url)
         secici = Selector(istek.text)
 
-        item_id = secici.css("iframe#diziyouPlayer::attr(src)").get().split("/")[-1].replace(".html", "")
+        item_title = secici.css("div.title h1::text").get().strip()
+        item_id    = secici.css("iframe#diziyouPlayer::attr(src)").get().split("/")[-1].replace(".html", "")
 
         subtitles   = []
         stream_urls = []
@@ -112,7 +113,8 @@ class DiziYou(PluginBase):
 
         for stream in stream_urls:
             self._data[stream.get("url")] = {
-                "name"      : f"{self.name} | {stream.get('dil')}",
+                "name"      : f"{self.name} | {stream.get('dil')} | {item_title}",
+                "ext_name"  : f"{self.name} | {stream.get('dil')}",
                 "referer"   : url,
                 "subtitles" : subtitles
             }

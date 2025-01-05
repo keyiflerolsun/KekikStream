@@ -95,6 +95,7 @@ class SineWix(PluginBase):
             video_link = video.get("link").split("_blank\">")[-1]
             self._data[video_link] = {
                 "name"      : f"{self.name} | {title}",
+                "ext_name"  : self.name,
                 "referer"   : self.main_url,
                 "subtitles" : []
             }
