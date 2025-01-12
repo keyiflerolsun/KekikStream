@@ -13,6 +13,9 @@ class MediaHandler:
         self.title   = title
 
     def play_media(self, extract_data: ExtractResult):
+        if self.headers.get("User-Agent") == "googleusercontent":
+            return self.play_with_ytdlp(extract_data)
+
         if subprocess.check_output(['uname', '-o']).strip() == b'Android':
             return self.play_with_android_mxplayer(extract_data)
 
@@ -76,6 +79,37 @@ class MediaHandler:
         except FileNotFoundError:
             konsol.print("[red]mpv bulunamadı! mpv kurulu olduğundan emin olun.[/red]")
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+
+    def play_with_ytdlp(self, extract_data: ExtractResult):
+        try:
+            ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings", "--downloader", "ffmpeg", "--hls-use-mpegts"]
+
+            for key, value in self.headers.items():
+                ytdlp_command.extend(["--add-header", f"{key}: {value}"])
+
+            ytdlp_command.extend([
+                "-o", "-",
+                extract_data.url
+            ])
+
+            mpv_command = ["mpv", "--really-quiet", "-"]
+
+            if self.title:
+                mpv_command.append(f"--force-media-title={self.title}")
+
+            mpv_command.extend(
+                f"--sub-file={subtitle.url}" for subtitle in extract_data.subtitles
+            )
+
+            with subprocess.Popen(ytdlp_command, stdout=subprocess.PIPE) as ytdlp_proc:
+                subprocess.run(mpv_command, stdin=ytdlp_proc.stdout, check=True)
+
+        except subprocess.CalledProcessError as hata:
+            print(f"[red]Oynatma hatası: {hata}[/red]")
+            print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+        except FileNotFoundError:
+            print("[red]yt-dlp veya mpv bulunamadı! Kurulumlarından emin olun.[/red]")
+            print({"title": self.title, "url": extract_data.url, "headers": self.headers})
 
     def play_with_android_mxplayer(self, extract_data: ExtractResult):
         paketler = [

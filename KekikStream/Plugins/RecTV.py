@@ -10,7 +10,7 @@ import re
 
 class RecTV(PluginBase):
     name     = "RecTV"
-    main_url = "https://m.prectv8.sbs"
+    main_url = "https://b.prectv14.sbs"
 
     sw_key  = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
     http2   = AsyncClient(http2=True)
@@ -97,13 +97,15 @@ class RecTV(PluginBase):
                     continue
 
                 self._data[video_link] = {
+                    "ext_name"  : self.name,
                     "name"      : veri.get("title"),
                     "referer"   : "https://twitter.com/",
                     "subtitles" : []
                 }
                 videolar.append(video_link)
 
-            return videolar
+        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
+        return videolar
 
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)
