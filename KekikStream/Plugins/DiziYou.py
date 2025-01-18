@@ -6,7 +6,7 @@ import re
 
 class DiziYou(PluginBase):
     name     = "DiziYou"
-    main_url = "https://www.diziyou.co"
+    main_url = "https://www.diziyou.live"
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.oturum.get(f"{self.main_url}/?s={query}")
