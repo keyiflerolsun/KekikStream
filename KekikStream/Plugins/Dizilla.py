@@ -7,7 +7,7 @@ from urllib.parse     import urlparse, urlunparse
 
 class Dizilla(PluginBase):
     name     = "Dizilla"
-    main_url = "https://dizilla10.com"
+    main_url = "https://dizilla11.com"
 
     async def search(self, query: str) -> list[SearchResult]:
         ilk_istek  = await self.oturum.get(self.main_url)
