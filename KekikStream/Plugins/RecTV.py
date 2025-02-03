@@ -17,6 +17,8 @@ class RecTV(PluginBase):
     http2.headers.update({"user-agent": "okhttp/4.12.0"})
 
     async def search(self, query: str) -> list[SearchResult]:
+        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
+
         istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
@@ -48,7 +50,7 @@ class RecTV(PluginBase):
                         ep_model = Episode(
                             season  = int(re.search(r"(\d+)\.S", season.get("title")).group(1)) if re.search(r"(\d+)\.S", season.get("title")) else 1,
                             episode = int(re.search(r"Bölüm (\d+)", episode.get("title")).group(1)) if re.search(r"Bölüm (\d+)", episode.get("title")) else 1,
-                            title   = episode.get("title"),
+                            title   = season.get("title"),
                             url     = self.fix_url(episode.get("sources")[0].get("url")),
                         )
 
@@ -105,7 +107,6 @@ class RecTV(PluginBase):
                 }
                 videolar.append(video_link)
 
-        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
         return videolar
 
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
