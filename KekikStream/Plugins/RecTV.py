@@ -55,6 +55,7 @@ class RecTV(PluginBase):
                         episodes.append(ep_model)
 
                         self._data[ep_model.url] = {
+                            "ext_name"  : self.name,
                             "name"      : f"{veri.get('title')} | {ep_model.season}. Sezon {ep_model.episode}. Bölüm - {ep_model.title}",
                             "referer"   : "https://twitter.com/",
                             "subtitles" : []
