@@ -6,6 +6,7 @@ import subprocess, os
 
 class MediaHandler:
     def __init__(self, title: str = "KekikStream", headers: dict = None):
+        # Varsayılan HTTP başlıklarını ayarla
         if headers is None:
             headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"}
 
@@ -13,12 +14,15 @@ class MediaHandler:
         self.title   = title
 
     def play_media(self, extract_data: ExtractResult):
+        # Google Drive gibi özel durumlar için yt-dlp kullan
         if self.headers.get("User-Agent") == "googleusercontent":
             return self.play_with_ytdlp(extract_data)
 
+        # İşletim sistemine göre oynatıcı seç
         if subprocess.check_output(['uname', '-o']).strip() == b'Android':
             return self.play_with_android_mxplayer(extract_data)
 
+        # Cookie veya alt yazılar varsa mpv kullan
         if "Cookie" in self.headers or extract_data.subtitles:
             return self.play_with_mpv(extract_data)
 
