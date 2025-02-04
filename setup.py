@@ -6,7 +6,7 @@ from io         import open
 setup(
     # ? Genel Bilgiler
     name         = "KekikStream",
-    version      = "0.8.1",
+    version      = "0.8.2",
     url          = "https://github.com/keyiflerolsun/KekikStream",
     description  = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir bıdı bıdı",
     keywords     = ["KekikStream", "KekikAkademi", "keyiflerolsun"],

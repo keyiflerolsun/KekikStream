@@ -5,12 +5,15 @@ from httpx            import AsyncClient, Timeout
 from cloudscraper     import CloudScraper
 from typing           import Optional
 from .ExtractorModels import ExtractResult
+from urllib.parse     import urljoin
 
 class ExtractorBase(ABC):
+    # Çıkarıcının temel özellikleri
     name     = "Extractor"
     main_url = ""
 
     def __init__(self):
+        # HTTP istekleri için oturum oluştur
         self.oturum = AsyncClient(
             headers = {
                 "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)",
@@ -18,21 +21,24 @@ class ExtractorBase(ABC):
             },
             timeout = Timeout(10.0)
         )
+        # CloudFlare korumalı siteler için scraper ayarla
         self.cloudscraper  = CloudScraper()
 
     def can_handle_url(self, url: str) -> bool:
-        """URL'nin bu extractor tarafından işlenip işlenemeyeceğini kontrol eder."""
+        # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
         return self.main_url in url
 
     @abstractmethod
     async def extract(self, url: str, referer: Optional[str] = None) -> ExtractResult:
-        """Bir URL'den medya bilgilerini çıkarır."""
+        # Alt sınıflar tarafından uygulanacak medya çıkarma fonksiyonu
         pass
 
     async def close(self):
+        # HTTP oturumunu güvenli bir şekilde kapat
         await self.oturum.aclose()
 
     def fix_url(self, url: str) -> str:
+        # Eksik URL'leri düzelt ve tam URL formatına çevir
         if not url:
             return ""
 
