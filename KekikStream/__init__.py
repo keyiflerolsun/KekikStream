@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from .CLI       import konsol, cikis_yap, hata_yakala, pypi_kontrol_guncelle
-from .Managers  import PluginManager, ExtractorManager, UIManager, MediaManager
-from .Core      import PluginBase, ExtractorBase, SeriesInfo
+from .Core      import PluginManager, ExtractorManager, UIManager, MediaManager, PluginBase, ExtractorBase, SeriesInfo
 from asyncio    import run
 from contextlib import suppress
 

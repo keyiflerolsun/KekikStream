@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..Core import PluginLoader, PluginBase
+from .PluginLoader import PluginLoader
+from .PluginBase   import PluginBase
 
 class PluginManager:
     def __init__(self, plugin_dir="Plugins"):

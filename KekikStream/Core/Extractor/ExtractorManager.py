@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..Core import ExtractorLoader, ExtractorBase
+from .ExtractorLoader import ExtractorLoader
+from .ExtractorBase   import ExtractorBase
 
 class ExtractorManager:
     def __init__(self, extractor_dir="Extractors"):

@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core                 import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo
-from KekikStream.Core.ExtractorModels import ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 
 class SineWix(PluginBase):
     name     = "SineWix"

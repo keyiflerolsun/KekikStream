@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..CLI      import konsol
+from ...CLI     import konsol
 from rich.panel import Panel
 from rich.table import Table
 from InquirerPy import inquirer

@@ -1,10 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.CLI                  import konsol
-from KekikStream.Core                 import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo
-from KekikStream.Core.ExtractorModels import ExtractResult, Subtitle
-from httpx                            import AsyncClient
-from json                             import dumps, loads
+from KekikStream.CLI  import konsol
+from KekikStream.Core import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
+from httpx            import AsyncClient
+from json             import dumps, loads
 import re
 
 
