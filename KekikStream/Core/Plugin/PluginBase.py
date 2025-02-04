@@ -1,11 +1,11 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from abc           import ABC, abstractmethod
-from httpx         import AsyncClient, Timeout
-from cloudscraper  import CloudScraper
-from .PluginModels import SearchResult, MovieInfo
-from .MediaHandler import MediaHandler
-from urllib.parse  import urljoin
+from abc                  import ABC, abstractmethod
+from httpx                import AsyncClient, Timeout
+from cloudscraper         import CloudScraper
+from .PluginModels        import SearchResult, MovieInfo
+from ..Media.MediaHandler import MediaHandler
+from urllib.parse         import urljoin
 import re
 
 class PluginBase(ABC):

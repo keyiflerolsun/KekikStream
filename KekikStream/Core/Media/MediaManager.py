@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..Core import MediaHandler
+from .MediaHandler import MediaHandler
 
 class MediaManager:
     def __init__(self):

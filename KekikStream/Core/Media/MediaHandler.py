@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..CLI            import konsol
-from .ExtractorModels import ExtractResult
+from ...CLI                      import konsol
+from ..Extractor.ExtractorModels import ExtractResult
 import subprocess, os
 
 class MediaHandler:

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..CLI       import konsol, cikis_yap
+from ...CLI      import konsol, cikis_yap
 from .PluginBase import PluginBase
 from pathlib     import Path
 import os, importlib.util, traceback
@@ -8,9 +8,9 @@ import os, importlib.util, traceback
 class PluginLoader:
     def __init__(self, plugins_dir: str):
         self.local_plugins_dir  = Path(plugins_dir).resolve()
-        self.global_plugins_dir = Path(__file__).parent.parent / plugins_dir
+        self.global_plugins_dir = Path(__file__).parent.parent.parent / plugins_dir
         if not self.local_plugins_dir.exists() and not self.global_plugins_dir.exists():
-            konsol.log(f"[red][!] Extractor dizini bulunamadı: {self.plugins_dir}[/red]")
+            konsol.log(f"[red][!] Extractor dizini bulunamadı: {plugins_dir}[/red]")
             cikis_yap(False)
 
     def load_all(self) -> dict[str, PluginBase]:

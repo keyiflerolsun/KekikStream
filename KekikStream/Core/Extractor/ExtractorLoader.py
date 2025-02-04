@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..CLI          import konsol, cikis_yap
+from ...CLI         import konsol, cikis_yap
 from .ExtractorBase import ExtractorBase
 from pathlib        import Path
 import os, importlib.util
@@ -8,7 +8,7 @@ import os, importlib.util
 class ExtractorLoader:
     def __init__(self, extractors_dir: str):
         self.local_extractors_dir  = Path(extractors_dir)
-        self.global_extractors_dir = Path(__file__).parent.parent / extractors_dir
+        self.global_extractors_dir = Path(__file__).parent.parent.parent / extractors_dir
         if not self.local_extractors_dir.exists() and not self.global_extractors_dir.exists():
             konsol.log(f"[red][!] Extractor dizini bulunamadı: {self.global_extractors_dir}[/red]")
             cikis_yap(False)
