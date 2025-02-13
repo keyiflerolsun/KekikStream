@@ -174,28 +174,21 @@ class Shorten(PluginBase):
         episodes = []
         for episode in veri.get("episodes"):
             episode["name"] = veri["title"] + f" | {episode.get('number')}. Bölüm"
+            episode["subtitles"] = [subtitle for subtitle in episode["subtitles"] if subtitle.get("code").lower() in ["tr", "en"]]
 
             ep_model = Episode(
                 season  = 1,
                 episode = episode.get("number"),
                 title   = f"{episode.get('number')}. Bölüm",
-                url     = json.dumps(episode),
+                url     = json.dumps(episode, indent=2, ensure_ascii=False, sort_keys=False),
             )
 
             episodes.append(ep_model)
-            subtitles = [
-                Subtitle(
-                    name = subtitle.get("language"),
-                    url  = subtitle.get("url"),
-                )
-                    for subtitle in episode.get("subtitles")
-            ]
-
             self._data[ep_model.url] = {
                 "ext_name"  : self.name,
                 "name"      : f"{ep_model.title}",
                 "referer"   : "https://shorten.com/tr",
-                "subtitles" : subtitles
+                "subtitles" : []
             }
 
         return SeriesInfo(
