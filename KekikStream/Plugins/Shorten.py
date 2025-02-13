@@ -104,6 +104,23 @@ class Shorten(PluginBase):
             } for veri in veriler.get("episodes")
         ]
 
+    async def hls_decode_video(self, token):
+        token = base64.b64decode(token).decode("utf-8")
+        token = json.loads(token).get("GetPlayInfoToken")
+
+        istek = self.cloudscraper.get(
+            url     = f"https://vod.byteplusapi.com/?{token}",
+            headers = {
+                "User-Agent"   : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                "Content-Type" : "application/json",
+                "Origin"       : "https://vod.byteplusapi.com",
+                "Referer"      : "https://shorten.com/",
+            }
+        )
+
+        veriler = istek.json()
+        return veriler["Result"]["PlayInfoList"][-1]["MainPlayUrl"]
+
     async def bolumler(self, slug):
         if not self.token:
             await self.__giris()
@@ -125,12 +142,10 @@ class Shorten(PluginBase):
                     del sub[sil]
                 sub["url"] = f"https://cdn.shorten.watch/{sub['url']}"
 
-            token = base64.b64decode(video["hashHls"]).decode("utf-8")
-            token = json.loads(token).get("GetPlayInfoToken")
             veriler["data"]["episodes"][index] = {
                 "number"    : copy.get("number"),
                 "image"     : copy.get("cover_image"),
-                "hls"       : f"https://api.ramsan.tr/shorten/m3u/proxy/?{token}",
+                "hls"       : video["hashHls"],
                 "subtitles" : copy.get("subtitles")
             }
 
@@ -158,7 +173,7 @@ class Shorten(PluginBase):
 
         episodes = []
         for episode in veri.get("episodes"):
-            episode["name"] = veri["title"]
+            episode["name"] = veri["title"] + f" | {episode.get('number')}. Bölüm"
 
             ep_model = Episode(
                 season  = 1,
@@ -201,7 +216,7 @@ class Shorten(PluginBase):
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         veri = json.loads(url)
         name = veri.get("name")
-        url = veri.get("hls")
+        url  = await self.hls_decode_video(veri.get("hls"))
         subtitles = [
             Subtitle(
                 name = subtitle.get("language"),
