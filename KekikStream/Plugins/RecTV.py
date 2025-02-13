@@ -111,4 +111,7 @@ class RecTV(PluginBase):
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)
         self.media_handler.title = name
+        if self.name not in self.media_handler.title:
+            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
+
         self.media_handler.play_media(extract_result)
