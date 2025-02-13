@@ -175,6 +175,7 @@ class Shorten(PluginBase):
         for episode in veri.get("episodes"):
             episode["name"] = veri["title"] + f" | {episode.get('number')}. Bölüm"
             episode["subtitles"] = [subtitle for subtitle in episode["subtitles"] if subtitle.get("code").lower() in ["tr", "en"]]
+            episode["subtitles"].reverse()
 
             ep_model = Episode(
                 season  = 1,
