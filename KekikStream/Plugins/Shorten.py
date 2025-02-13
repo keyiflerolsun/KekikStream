@@ -65,13 +65,13 @@ async def extract_next_f_push_data(source_code):
 
 class Shorten(PluginBase):
     name     = "Shorten"
-    main_url = "http://localhost:8080"
+    main_url = "https://shorten.com"
     token    = None
 
     async def __giris(self):
-        await self.oturum.get("https://shorten.com/tr", follow_redirects=True)
+        await self.oturum.get(f"{self.main_url}/tr", follow_redirects=True)
 
-        self.token = await self.oturum.get("https://shorten.com/api/session")
+        self.token = await self.oturum.get(f"{self.main_url}/api/session")
         self.token = self.token.json().get("token")
 
         self.oturum.headers.update({"Authorization": f"Bearer {self.token}"})
@@ -94,7 +94,7 @@ class Shorten(PluginBase):
         if not self.token:
             await self.__giris()
 
-        istek   = await self.oturum.get(f"https://shorten.com/tr/series/{slug}", follow_redirects=True)
+        istek   = await self.oturum.get(f"{self.main_url}/tr/series/{slug}", follow_redirects=True)
         veriler = await extract_next_f_push_data(istek.text)
         veriler = veriler["8"][-1]["children"][-2][-1]["children"][-1]["data"]
         return [
@@ -114,7 +114,7 @@ class Shorten(PluginBase):
                 "User-Agent"   : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
                 "Content-Type" : "application/json",
                 "Origin"       : "https://vod.byteplusapi.com",
-                "Referer"      : "https://shorten.com/",
+                "Referer"      : f"{self.main_url}/",
             }
         )
 
@@ -128,7 +128,7 @@ class Shorten(PluginBase):
         raw_req       = await self.raw_bolumler(slug)
         number, _hash = raw_req[0].values()
 
-        istek   = await self.oturum.get(f"https://shorten.com/tr/series/{slug}/episode-{number}-{_hash}", follow_redirects=True)
+        istek   = await self.oturum.get(f"{self.main_url}/tr/series/{slug}/episode-{number}-{_hash}", follow_redirects=True)
         veriler = await extract_next_f_push_data(istek.text)
         veriler = veriler["b"][3]["children"][1][3]["children"][3]["children"][3]["children"][-1]
 
@@ -188,7 +188,7 @@ class Shorten(PluginBase):
             self._data[ep_model.url] = {
                 "ext_name"  : self.name,
                 "name"      : f"{ep_model.title}",
-                "referer"   : "https://shorten.com/tr",
+                "referer"   : f"{self.main_url}/tr",
                 "subtitles" : []
             }
 

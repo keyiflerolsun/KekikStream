@@ -14,6 +14,10 @@ class MediaHandler:
         self.title   = title
 
     def play_media(self, extract_data: ExtractResult):
+        # Referer varsa headers'a ekle
+        if extract_data.referer:
+            self.headers.update({"Referer": extract_data.referer})
+
         # Google Drive gibi özel durumlar için yt-dlp kullan
         if self.headers.get("User-Agent") == "googleusercontent":
             return self.play_with_ytdlp(extract_data)

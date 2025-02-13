@@ -133,7 +133,15 @@ class KekikStream:
                 if sonuclar:
                     # Sonuçları listeye ekle
                     tum_sonuclar.extend(
-                        [{"plugin": eklenti_adi, "title": sonuc.title, "url": sonuc.url, "poster": sonuc.poster} for sonuc in sonuclar]
+                        [
+                            {
+                                "plugin" : eklenti_adi,
+                                "title"  : sonuc.title,
+                                "url"    : sonuc.url,
+                                "poster" : sonuc.poster
+                            }
+                                for sonuc in sonuclar
+                        ]
                     )
             except Exception as hata:
                 konsol.print(f"[bold red]{eklenti_adi} » hata oluştu: {hata}[/bold red]")
@@ -197,6 +205,7 @@ class KekikStream:
 
         # Eğer medya bilgisi dizi ise bölüm seçimi yapılır
         if isinstance(medya_bilgi, SeriesInfo):
+            self.dizi = True
             await self.dizi_bolum_secimi(medya_bilgi)
         else:
             baglantilar = await self.suanki_eklenti.load_links(medya_bilgi.url)
@@ -206,7 +215,6 @@ class KekikStream:
         """
         Dizi içeriği için bölüm seçimi yapar ve seçilen bölümün bağlantılarını yükler.
         """
-        self.dizi = True
         secilen_bolum = await self.arayuz_yonetici.select_from_fuzzy(
             message = "İzlemek istediğiniz bölümü seçin:",
             choices = [
