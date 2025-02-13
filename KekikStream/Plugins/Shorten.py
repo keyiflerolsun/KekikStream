@@ -179,7 +179,7 @@ class Shorten(PluginBase):
             ep_model = Episode(
                 season  = 1,
                 episode = episode.get("number"),
-                title   = f"{episode.get('number')}. Bölüm",
+                title   = "",
                 url     = json.dumps(episode, indent=2, ensure_ascii=False, sort_keys=False),
             )
 

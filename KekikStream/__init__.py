@@ -13,6 +13,7 @@ class KekikStream:
         self.arayuz_yonetici            = UIManager()
         self.medya_yonetici             = MediaManager()
         self.suanki_eklenti: PluginBase = None
+        self.secilen_sonuc              = None
 
     async def baslat(self):
         # Konsolu temizle ve başlık göster
@@ -137,6 +138,7 @@ class KekikStream:
         )
 
     async def sonuc_detaylari_goster(self, secilen_sonuc):
+        self.secilen_sonuc = secilen_sonuc
         try:
             # Seçilen sonucun detaylarını al
             if isinstance(secilen_sonuc, dict) and "plugin" in secilen_sonuc:
@@ -170,7 +172,7 @@ class KekikStream:
             secilen_bolum = await self.arayuz_yonetici.select_from_fuzzy(
                 message = "İzlemek istediğiniz bölümü seçin:",
                 choices = [
-                    {"name": f"{bolum.season}. Sezon {bolum.episode}. Bölüm - {bolum.title}", "value": bolum.url}
+                    {"name": f"{bolum.season}. Sezon {bolum.episode}. Bölüm{f' - {bolum.title}' if bolum.title else ''}", "value": bolum.url}
                         for bolum in medya_bilgi.episodes
                 ]
             )
@@ -206,7 +208,10 @@ class KekikStream:
             )
             if secilen_link:
                 await self.medya_oynat(secilen_link)
-            return
+
+            self.arayuz_yonetici.clear_console()
+            konsol.rule(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
+            return await self.sonuc_detaylari_goster(self.secilen_sonuc)
 
         # Kullanıcı seçenekleri
         secim = await self.arayuz_yonetici.select_from_list(
