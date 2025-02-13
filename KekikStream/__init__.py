@@ -211,6 +211,7 @@ class KekikStream:
             self.dizi = True
             await self.dizi_bolum_secimi(medya_bilgi)
         else:
+            self.dizi   = False
             baglantilar = await self.suanki_eklenti.load_links(medya_bilgi.url)
             await self.baglanti_secenekleri_goster(baglantilar)
 

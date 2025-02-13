@@ -18,8 +18,12 @@ class MediaHandler:
         if extract_data.referer:
             self.headers.update({"Referer": extract_data.referer})
 
+        # ExtractResult'tan gelen headers'ları ekle
+        if extract_data.headers:
+            self.headers.update(extract_data.headers)
+
         # Google Drive gibi özel durumlar için yt-dlp kullan
-        if self.headers.get("User-Agent") == "googleusercontent":
+        if self.headers.get("User-Agent") in ["googleusercontent", "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"]:
             return self.play_with_ytdlp(extract_data)
 
         # İşletim sistemine göre oynatıcı seç
@@ -90,7 +94,7 @@ class MediaHandler:
 
     def play_with_ytdlp(self, extract_data: ExtractResult):
         try:
-            ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings", "--downloader", "ffmpeg", "--hls-use-mpegts"]
+            ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings"]
 
             for key, value in self.headers.items():
                 ytdlp_command.extend(["--add-header", f"{key}: {value}"])
