@@ -113,8 +113,8 @@ class DiziYou(PluginBase):
 
         for stream in stream_urls:
             self._data[stream.get("url")] = {
-                "name"      : f"{self.name} | {stream.get('dil')} | {item_title}",
                 "ext_name"  : f"{self.name} | {stream.get('dil')}",
+                "name"      : f"{self.name} | {stream.get('dil')} | {item_title}",
                 "referer"   : url,
                 "subtitles" : subtitles
             }

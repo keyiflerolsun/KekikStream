@@ -62,6 +62,7 @@ class SineWix(PluginBase):
                         episodes.append(ep_model)
 
                         self._data[ep_model.url] = {
+                            "ext_name"  : self.name,
                             "name"      : f"{ep_model.season}. Sezon {ep_model.episode}. Bölüm - {ep_model.title}",
                             "referer"   : self.main_url,
                             "subtitles" : []
@@ -93,8 +94,8 @@ class SineWix(PluginBase):
         for video in veri.get("videos"):
             video_link = video.get("link").split("_blank\">")[-1]
             self._data[video_link] = {
-                "name"      : f"{self.name} | {title}",
                 "ext_name"  : self.name,
+                "name"      : f"{self.name} | {title}",
                 "referer"   : self.main_url,
                 "subtitles" : []
             }
