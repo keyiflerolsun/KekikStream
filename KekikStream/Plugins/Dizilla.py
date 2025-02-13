@@ -77,7 +77,7 @@ class Dizilla(PluginBase):
                 bolumler.append(Episode(
                     season  = sezon.get("seasonNumber"),
                     episode = bolum.get("episodeNumber"),
-                    title   = bolum.get("name"),
+                    title   = "",
                     url     = await self.url_base_degis(bolum.get("url"), self.main_url),
                 ))
 

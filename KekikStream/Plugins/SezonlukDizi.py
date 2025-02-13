@@ -82,7 +82,7 @@ class SezonlukDizi(PluginBase):
         links = []
         for dil, label in [("1", "AltYazı"), ("0", "Dublaj")]:
             dil_istek = await self.oturum.post(
-                url     = f"{self.main_url}/ajax/dataAlternatif2.asp",
+                url     = f"{self.main_url}/ajax/dataAlternatif22.asp",
                 headers = {"X-Requested-With": "XMLHttpRequest"},
                 data    = {"bid": bid, "dil": dil},
             )
@@ -95,7 +95,7 @@ class SezonlukDizi(PluginBase):
             if dil_json.get("status") == "success":
                 for veri in dil_json.get("data", []):
                     veri_response = await self.oturum.post(
-                        url     = f"{self.main_url}/ajax/dataEmbed.asp",
+                        url     = f"{self.main_url}/ajax/dataEmbed22.asp",
                         headers = {"X-Requested-With": "XMLHttpRequest"},
                         data    = {"id": veri.get("id")},
                     )

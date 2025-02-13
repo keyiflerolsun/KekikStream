@@ -127,6 +127,9 @@ class KekikStream:
                 konsol.print(f"[yellow][!] {eklenti_adi} geçerli bir PluginBase değil, atlanıyor...[/yellow]")
                 continue
 
+            if eklenti_adi in ["Shorten"]:
+                continue
+
             konsol.log(f"[yellow][~] {eklenti_adi:<19} aranıyor...[/]")
             try:
                 sonuclar = await eklenti.search(sorgu)

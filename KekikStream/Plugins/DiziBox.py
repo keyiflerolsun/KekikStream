@@ -57,7 +57,7 @@ class DiziBox(PluginBase):
                     episodes.append(Episode(
                         season  = ep_season,
                         episode = ep_episode,
-                        title   = ep_title.strip(),
+                        title   = "",
                         url     = ep_href,
                     ))
 
@@ -89,8 +89,12 @@ class DiziBox(PluginBase):
 
             crypt_data = re.search(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", istek.text)[1]
             crypt_pass = re.search(r"\",\"(.*)\"\);", istek.text)[1]
+            decode     = CryptoJS.decrypt(crypt_pass, crypt_data)
 
-            results.append(CryptoJS.decrypt(crypt_pass, crypt_data))
+            if video_match := re.search(r"file: '(.*)',", decode):
+                results.append(video_match[1])
+            else:
+                results.append(decode)
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
