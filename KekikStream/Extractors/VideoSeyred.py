@@ -1,17 +1,24 @@
 # ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import json
+import json, re
 
 class VideoSeyred(ExtractorBase):
     name     = "VideoSeyred"
     main_url = "https://videoseyred.in"
 
     async def extract(self, url, referer=None) -> ExtractResult:
+        print(url)
         if referer:
             self.oturum.headers.update({"Referer": referer})
 
         video_id  = url.split("embed/")[1].split("?")[0]
+        if len(video_id) > 10:
+            kontrol = await self.oturum.get(url)
+            kontrol.raise_for_status()
+
+            video_id = re.search(r"playlist\/(.*)\.json", kontrol.text)[1]
+
         video_url = f"{self.main_url}/playlist/{video_id}.json"
 
         response = await self.oturum.get(video_url)

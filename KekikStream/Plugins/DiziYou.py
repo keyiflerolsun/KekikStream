@@ -71,7 +71,8 @@ class DiziYou(PluginBase):
         istek  = await self.oturum.get(url)
         secici = Selector(istek.text)
 
-        item_title = secici.css("div.title h1::text").get().strip()
+        item_title = secici.css("div.title h1::text").get()
+        ep_name    = secici.css("div#bolum-ismi::text").get().strip()
         item_id    = secici.css("iframe#diziyouPlayer::attr(src)").get().split("/")[-1].replace(".html", "")
 
         subtitles   = []
@@ -114,7 +115,7 @@ class DiziYou(PluginBase):
         for stream in stream_urls:
             self._data[stream.get("url")] = {
                 "ext_name"  : f"{self.name} | {stream.get('dil')}",
-                "name"      : f"{self.name} | {stream.get('dil')} | {item_title}",
+                "name"      : f"{self.name} | {stream.get('dil')} | {item_title} - {ep_name}",
                 "referer"   : url,
                 "subtitles" : subtitles
             }
@@ -124,4 +125,7 @@ class DiziYou(PluginBase):
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)
         self.media_handler.title = name
+        if self.name not in self.media_handler.title:
+            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
+
         self.media_handler.play_media(extract_result)
