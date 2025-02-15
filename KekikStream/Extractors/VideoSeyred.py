@@ -8,7 +8,6 @@ class VideoSeyred(ExtractorBase):
     main_url = "https://videoseyred.in"
 
     async def extract(self, url, referer=None) -> ExtractResult:
-        print(url)
         if referer:
             self.oturum.headers.update({"Referer": referer})
 
