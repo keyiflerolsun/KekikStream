@@ -18,7 +18,7 @@ class KekikStream:
         self.secilen_sonuc              = None
         self.dizi                       = False
 
-    def _temizle_ve_baslik_goster(self, baslik: str):
+    async def _temizle_ve_baslik_goster(self, baslik: str):
         """
         Konsolu temizler ve verilen başlıkla bir kural (separator) gösterir.
         """
@@ -29,7 +29,7 @@ class KekikStream:
         """
         Uygulamayı başlatır: konsolu temizler, başlığı gösterir ve eklenti seçimiyle devam eder.
         """
-        self._temizle_ve_baslik_goster("[bold cyan]KekikStream Başlatılıyor[/bold cyan]")
+        await self._temizle_ve_baslik_goster("[bold cyan]KekikStream Başlatılıyor[/bold cyan]")
         # Eklenti kontrolü
         if not self.eklentiler_yonetici.get_plugin_names():
             return konsol.print("[bold red]Hiçbir eklenti bulunamadı![/bold red]")
@@ -41,7 +41,7 @@ class KekikStream:
             await self.eklentiler_yonetici.close_plugins()
 
     async def bi_bolum_daha(self):
-        self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
+        await self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
         return await self.sonuc_detaylari_goster(self.secilen_sonuc)
 
     async def icerik_bitti(self):
@@ -83,7 +83,7 @@ class KekikStream:
         """
         Seçilen eklentiyle arama yapar; kullanıcıdan sorgu alır, sonuçları listeler ve seçim sonrası detayları gösterir.
         """
-        self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} Eklentisinde Arama Yapın[/bold cyan]")
+        await self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} Eklentisinde Arama Yapın[/bold cyan]")
 
         # Kullanıcıdan sorgu al ve ara
         sorgu    = await self.arayuz_yonetici.prompt_text("Arama sorgusu girin:")
@@ -110,7 +110,7 @@ class KekikStream:
         """
         Tüm eklentilerde arama yapar ve sonuçlara göre işlem yapar.
         """
-        self._temizle_ve_baslik_goster("[bold cyan]Tüm Eklentilerde Arama Yapın[/bold cyan]")
+        await self._temizle_ve_baslik_goster("[bold cyan]Tüm Eklentilerde Arama Yapın[/bold cyan]")
         sorgu    = await self.arayuz_yonetici.prompt_text("Arama sorgusu girin:")
         sonuclar = await self.tum_eklentilerde_arama_sorgula(sorgu)
 
@@ -323,7 +323,7 @@ class KekikStream:
         if not secilen_data:
             return
 
-        self.__medya_ayarla(secilen_data)
+        await self.__medya_ayarla(secilen_data)
         self.medya_yonetici.play_media(secilen_data)
     
         await self.icerik_bitti()
@@ -339,7 +339,7 @@ class KekikStream:
             )
         return extract_data
 
-    def __medya_ayarla(self, secilen_data):
+    async def __medya_ayarla(self, secilen_data):
         """
         Medya bilgilerini ayarlar.
         """
