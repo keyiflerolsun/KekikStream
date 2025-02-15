@@ -23,6 +23,8 @@
 
 ## 🚀 Kurulum
 
+> Sisteminizde VLC ve MPV yüklü olmalıdır..
+
 ```bash
 # Yüklemek
 pip install KekikStream
@@ -44,6 +46,11 @@ KekikStream
 ### 🎁 Teşekkürler
 
 - [DeoDorqnt387/aniwatch-tr](https://github.com/DeoDorqnt387/aniwatch-tr)
+
+### 💻 Genişletme Referansları
+
+- [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)
+- [keyiflerolsun/seyirTurk-Parser](https://github.com/keyiflerolsun/seyirTurk-Parser)
 
 ## 🌐 Telif Hakkı ve Lisans
 
