@@ -85,29 +85,29 @@ class DiziYou(PluginBase):
                 case "turkceAltyazili":
                     subtitles.append(Subtitle(
                         name = op_name,
-                        url  = self.fix_url(f"https://storage.diziyou.co/subtitles/{item_id}/tr.vtt"),
+                        url  = self.fix_url(f"{self.main_url.replace('www', 'storage')}/subtitles/{item_id}/tr.vtt"),
                     ))
                     veri = {
                         "dil": "Orjinal Dil",
-                        "url": f"https://storage.diziyou.co/episodes/{item_id}/play.m3u8"
+                        "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}/play.m3u8"
                     }
                     if veri not in stream_urls:
                         stream_urls.append(veri)
                 case "ingilizceAltyazili":
                     subtitles.append(Subtitle(
                         name = op_name,
-                        url  = self.fix_url(f"https://storage.diziyou.co/subtitles/{item_id}/en.vtt"),
+                        url  = self.fix_url(f"{self.main_url.replace('www', 'storage')}/subtitles/{item_id}/en.vtt"),
                     ))
                     veri = {
                         "dil": "Orjinal Dil",
-                        "url": f"https://storage.diziyou.co/episodes/{item_id}/play.m3u8"
+                        "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}/play.m3u8"
                     }
                     if veri not in stream_urls:
                         stream_urls.append(veri)
                 case "turkceDublaj":
                     stream_urls.append({
                         "dil": "Dublaj",
-                        "url": f"https://storage.diziyou.co/episodes/{item_id}_tr/play.m3u8"
+                        "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}_tr/play.m3u8"
                     })
 
 

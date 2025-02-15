@@ -37,6 +37,8 @@ class MediaHandler:
         return self.play_with_vlc(extract_data)
 
     def play_with_vlc(self, extract_data: ExtractResult):
+        konsol.log(f"[yellow][»] VLC ile Oynatılıyor : {extract_data.url}")
+        konsol.print(self.headers)
         try:
             vlc_command = ["vlc", "--quiet"]
 
@@ -68,8 +70,10 @@ class MediaHandler:
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
 
     def play_with_mpv(self, extract_data: ExtractResult):
+        konsol.log(f"[yellow][»] MPV ile Oynatılıyor : {extract_data.url}")
+        konsol.print(self.headers)
         try:
-            mpv_command = ["mpv", "--really-quiet"]
+            mpv_command = ["mpv"]
 
             if self.title:
                 mpv_command.append(f"--force-media-title={self.title}")
@@ -93,6 +97,8 @@ class MediaHandler:
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
 
     def play_with_ytdlp(self, extract_data: ExtractResult):
+        konsol.log(f"[yellow][»] yt-dlp ile Oynatılıyor : {extract_data.url}")
+        konsol.print(self.headers)
         try:
             ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings"]
 
@@ -124,6 +130,8 @@ class MediaHandler:
             print({"title": self.title, "url": extract_data.url, "headers": self.headers})
 
     def play_with_android_mxplayer(self, extract_data: ExtractResult):
+        konsol.log(f"[yellow][»] MxPlayer ile Oynatılıyor : {extract_data.url}")
+        konsol.print(self.headers)
         paketler = [
             "com.mxtech.videoplayer.ad/.ActivityScreen",  # Free sürüm
             "com.mxtech.videoplayer.pro/.ActivityScreen"  # Pro sürüm

@@ -298,7 +298,6 @@ class KekikStream:
         Seçilen bağlantıya göre medya oynatma işlemini gerçekleştirir.
         """
         if hasattr(self.suanki_eklenti, "play") and callable(self.suanki_eklenti.play):
-            konsol.log(f"[yellow][»] Oynatılıyor : {secilen_link}")
             data = self.suanki_eklenti._data.get(secilen_link, {})
 
             await self.suanki_eklenti.play(
@@ -337,7 +336,6 @@ class KekikStream:
         # Başlık ve referrer ayarla
         self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {secilen_data.name}")
         self.medya_yonetici.set_headers({"Referer": secilen_data.referer})
-        konsol.log(f"[yellow][»] Oynatılıyor : {secilen_data.url}")
         self.medya_yonetici.play_media(secilen_data)
     
         await self.bi_bolum_daha() if self.dizi else await self.baslat()

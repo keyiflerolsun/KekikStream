@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult
-from Kekik.Sifreleme import AESManager
-import re, json
 
 class MolyStream(ExtractorBase):
     name     = "MolyStream"
