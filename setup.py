@@ -33,6 +33,7 @@ setup(
         "parsel",
         "pydantic",
         "InquirerPy",
+        "yt-dlp"
     ],
 
     # ? Konsoldan Çalıştırılabilir
