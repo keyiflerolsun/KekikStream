@@ -17,6 +17,10 @@ class VidMoly(ExtractorBase):
             "Sec-Fetch-Dest" : "iframe",
         })
 
+        if self.main_url.endswith(".me"):
+            self.main_url = self.main_url.replace(".me", ".to")
+            url           = url.replace(".me", ".to")
+
         # Embed URL oluştur
         embed_url      = url.replace("/w/", "/embed-") + "-920x360.html" if "/w/" in url else url
         script_content = None

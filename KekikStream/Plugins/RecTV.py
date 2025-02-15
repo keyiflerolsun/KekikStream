@@ -21,18 +21,19 @@ class RecTV(PluginBase):
         istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
-        kanallar  = sorted(kanallar, key=lambda sozluk: sozluk["title"])
-
         icerikler = istek.json().get("posters")
-        icerikler = sorted(icerikler, key=lambda sozluk: sozluk["title"])
+        tum_veri  = {item['title']: item for item in kanallar + icerikler}.values()
+        tum_veri  = sorted(tum_veri, key=lambda sozluk: sozluk["title"])
+
+        tur_ver   = lambda veri: " | Dizi" if veri.get("type") == "serie" else " | Film"
 
         return [
             SearchResult(
-                title  = veri.get("title"),
+                title  = veri.get("title") + tur_ver(veri),
                 url    = dumps(veri),
                 poster = self.fix_url(veri.get("image")),
             )
-                for veri in [*kanallar, *icerikler]
+                for veri in tum_veri
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
@@ -49,7 +50,7 @@ class RecTV(PluginBase):
                         ep_model = Episode(
                             season  = int(re.search(r"(\d+)\.S", season.get("title")).group(1)) if re.search(r"(\d+)\.S", season.get("title")) else 1,
                             episode = int(re.search(r"Bölüm (\d+)", episode.get("title")).group(1)) if re.search(r"Bölüm (\d+)", episode.get("title")) else 1,
-                            title   = season.get("title"),
+                            title   = "",
                             url     = self.fix_url(episode.get("sources")[0].get("url")),
                         )
 
@@ -57,7 +58,7 @@ class RecTV(PluginBase):
 
                         self._data[ep_model.url] = {
                             "ext_name"  : self.name,
-                            "name"      : f"{veri.get('title')} | {ep_model.season}. Sezon {ep_model.episode}. Bölüm - {ep_model.title}",
+                            "name"      : f"{veri.get('title')} | {ep_model.season}. Sezon {ep_model.episode}. Bölüm",
                             "referer"   : "https://twitter.com/",
                             "subtitles" : []
                         }

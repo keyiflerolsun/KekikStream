@@ -62,8 +62,8 @@ class UgurFilm(PluginBase):
             if iframe and self.main_url in iframe:
                 post_data = {
                     "vid"         : iframe.split("vid=")[-1],
-                    "alternative" : "default",
-                    "ord"         : "1",
+                    "alternative" : "vidmoly",
+                    "ord"         : "0",
                 }
                 player_response = await self.oturum.post(
                     url  = f"{self.main_url}/player/ajax_sources.php",
