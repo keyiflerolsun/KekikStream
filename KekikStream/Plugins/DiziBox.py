@@ -57,7 +57,7 @@ class DiziBox(PluginBase):
                     episodes.append(Episode(
                         season  = ep_season,
                         episode = ep_episode,
-                        title   = "",
+                        title   = ep_title,
                         url     = ep_href,
                     ))
 

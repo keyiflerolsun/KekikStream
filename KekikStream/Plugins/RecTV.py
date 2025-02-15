@@ -50,7 +50,7 @@ class RecTV(PluginBase):
                         ep_model = Episode(
                             season  = int(re.search(r"(\d+)\.S", season.get("title")).group(1)) if re.search(r"(\d+)\.S", season.get("title")) else 1,
                             episode = int(re.search(r"Bölüm (\d+)", episode.get("title")).group(1)) if re.search(r"Bölüm (\d+)", episode.get("title")) else 1,
-                            title   = "",
+                            title   = episode.get("title"),
                             url     = self.fix_url(episode.get("sources")[0].get("url")),
                         )
 

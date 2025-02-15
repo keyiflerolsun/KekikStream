@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing   import List, Optional
 
 
@@ -40,6 +40,15 @@ class Episode(BaseModel):
     title   : Optional[str] = None
     url     : Optional[str] = None
 
+    @model_validator(mode="after")
+    def check_title(self) -> "Episode":
+        if not self.title:
+            self.title = ""
+
+        if any(keyword in self.title.lower() for keyword in ["bölüm", "sezon", "episode"]):
+            self.title = ""
+
+        return self
 
 class SeriesInfo(BaseModel):
     url          : Optional[str]           = None
