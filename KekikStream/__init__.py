@@ -17,6 +17,7 @@ class KekikStream:
         self.suanki_eklenti: PluginBase = None
         self.secilen_sonuc              = None
         self.dizi                       = False
+        self.bolum_baslik               = ""
 
     async def _temizle_ve_baslik_goster(self, baslik: str):
         """
@@ -218,14 +219,19 @@ class KekikStream:
             self.dizi = True
             await self.dizi_bolum_secimi(medya_bilgi)
         else:
-            self.dizi   = False
-            baglantilar = await self.suanki_eklenti.load_links(medya_bilgi.url)
+            self.dizi         = False
+            self.bolum_baslik = ""
+            baglantilar       = await self.suanki_eklenti.load_links(medya_bilgi.url)
             await self.baglanti_secenekleri_goster(baglantilar)
 
     async def dizi_bolum_secimi(self, medya_bilgi: SeriesInfo):
         """
         Dizi içeriği için bölüm seçimi yapar ve seçilen bölümün bağlantılarını yükler.
         """
+        bolumler = {
+            bolum.url: f"{bolum.season}. Sezon {bolum.episode}. Bölüm" + (f" - {bolum.title}" if bolum.title else "")
+                for bolum in medya_bilgi.episodes
+        }
         secilen_bolum = await self.arayuz_yonetici.select_from_fuzzy(
             message = "İzlemek istediğiniz bölümü seçin:",
             choices = [
@@ -234,6 +240,8 @@ class KekikStream:
             ]
         )
         if secilen_bolum:
+            self.bolum_baslik = bolumler[secilen_bolum]
+
             baglantilar = await self.suanki_eklenti.load_links(secilen_bolum)
             await self.baglanti_secenekleri_goster(baglantilar)
 
@@ -350,6 +358,9 @@ class KekikStream:
 
         if self.suanki_eklenti.name not in self.medya_yonetici.get_title():
             self.medya_yonetici.set_title(f"{self.suanki_eklenti.name} | {self.medya_yonetici.get_title()}")
+
+        if self.bolum_baslik:
+            self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {self.bolum_baslik}")
 
         if secilen_data.name not in self.medya_yonetici.get_title():
             self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {secilen_data.name}")
