@@ -18,6 +18,13 @@ class KekikStream:
         self.secilen_sonuc              = None
         self.dizi                       = False
 
+    def _temizle_ve_baslik_goster(self, baslik: str):
+        """
+        Konsolu temizler ve verilen başlıkla bir kural (separator) gösterir.
+        """
+        self.arayuz_yonetici.clear_console()
+        konsol.rule(baslik)
+
     async def baslat(self):
         """
         Uygulamayı başlatır: konsolu temizler, başlığı gösterir ve eklenti seçimiyle devam eder.
@@ -33,12 +40,12 @@ class KekikStream:
             # Program kapanırken tüm eklentileri kapat
             await self.eklentiler_yonetici.close_plugins()
 
-    def _temizle_ve_baslik_goster(self, baslik: str):
-        """
-        Konsolu temizler ve verilen başlıkla bir kural (separator) gösterir.
-        """
-        self.arayuz_yonetici.clear_console()
-        konsol.rule(baslik)
+    async def bi_bolum_daha(self):
+        self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
+        return await self.sonuc_detaylari_goster(self.secilen_sonuc)
+
+    async def icerik_bitti(self):
+        return await self.bi_bolum_daha() if self.dizi else await self.baslat()
 
     async def sonuc_bulunamadi(self):
         """
@@ -168,7 +175,7 @@ class KekikStream:
             choices = secenekler
         )
 
-    async def _medya_bilgisi_yukle(self, url: str, deneme: int = 3):
+    async def __medya_bilgisi_yukle(self, url: str, deneme: int = 3):
         """
         Belirtilen URL için medya bilgilerini, belirlenen deneme sayısı kadar yüklemeye çalışır.
         """
@@ -194,7 +201,7 @@ class KekikStream:
             else:
                 url = secilen_sonuc
 
-            medya_bilgi = await self._medya_bilgisi_yukle(url)
+            medya_bilgi = await self.__medya_bilgisi_yukle(url)
             if not medya_bilgi:
                 return await self.sonuc_bulunamadi()
 
@@ -238,21 +245,18 @@ class KekikStream:
             konsol.print("[bold red]Hiçbir bağlantı bulunamadı![/bold red]")
             return await self.sonuc_bulunamadi()
 
+        # Doğrudan oynatma seçeneği
+        if hasattr(self.suanki_eklenti, "play") and callable(getattr(self.suanki_eklenti, "play", None)):
+            return await self.direkt_oynat(baglantilar)
+
         # Bağlantıları çıkarıcılarla eşleştir
         haritalama = self.cikaricilar_yonetici.map_links_to_extractors(baglantilar)
-        play_fonksiyonu_var = hasattr(self.suanki_eklenti, "play") and callable(getattr(self.suanki_eklenti, "play", None))
-        # ! DEBUG
-        # konsol.print(baglantilar)
 
         # Uygun çıkarıcı kontrolü
-        if not haritalama and not play_fonksiyonu_var:
+        if not haritalama:
             konsol.print("[bold red]Hiçbir Extractor bulunamadı![/bold red]")
             konsol.print(baglantilar)
             return await self.sonuc_bulunamadi()
-
-        # Doğrudan oynatma seçeneği
-        if not haritalama:
-            return await self.direkt_oynat(baglantilar)
 
         # Kullanıcı seçenekleri
         secim = await self.arayuz_yonetici.select_from_list(
@@ -267,7 +271,7 @@ class KekikStream:
                     choices = [{"name": cikarici_adi, "value": link} for link, cikarici_adi in haritalama.items()]
                 )
                 if secilen_link:
-                    await self.medya_oynat(secilen_link)
+                    await self.extractor_ile_oynat(secilen_link)
 
             case "Tüm Eklentilerde Ara":
                 await self.tum_eklentilerde_arama()
@@ -286,28 +290,23 @@ class KekikStream:
                     for key, value in self.suanki_eklenti._data.items() if key in baglantilar
             ]
         )
-        if secilen_link:
-            await self.medya_oynat(secilen_link)
+        if not secilen_link:
+            return await self.icerik_bitti()
 
-    async def bi_bolum_daha(self):
-        self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
-        return await self.sonuc_detaylari_goster(self.secilen_sonuc)
+        data = self.suanki_eklenti._data.get(secilen_link, {})
+        await self.suanki_eklenti.play(
+            name      = data.get("name"),
+            url       = secilen_link,
+            referer   = data.get("referer"),
+            subtitles = data.get("subtitles")
+        )
 
-    async def medya_oynat(self, secilen_link: str):
+        return await self.icerik_bitti()
+
+    async def extractor_ile_oynat(self, secilen_link: str):
         """
         Seçilen bağlantıya göre medya oynatma işlemini gerçekleştirir.
         """
-        if hasattr(self.suanki_eklenti, "play") and callable(self.suanki_eklenti.play):
-            data = self.suanki_eklenti._data.get(secilen_link, {})
-
-            await self.suanki_eklenti.play(
-                name      = data.get("name"),
-                url       = secilen_link,
-                referer   = data.get("referer"),
-                subtitles = data.get("subtitles")
-            )
-            return await self.bi_bolum_daha() if self.dizi else await self.baslat()
-
         # Uygun çıkarıcıyı bul
         cikarici: ExtractorBase = self.cikaricilar_yonetici.find_extractor(secilen_link)
         if not cikarici:
@@ -320,25 +319,40 @@ class KekikStream:
             konsol.print(f"[bold red]{cikarici.name} » hata oluştu: {hata}[/bold red]")
             return await self.sonuc_bulunamadi()
 
-        # Birden fazla bağlantı varsa seçim yap
+        secilen_data = await self.__baglanti_secimi_yap(extract_data)
+        if not secilen_data:
+            return
+
+        self.__medya_ayarla(secilen_data)
+        self.medya_yonetici.play_media(secilen_data)
+    
+        await self.icerik_bitti()
+
+    async def __baglanti_secimi_yap(self, extract_data):
+        """
+        Birden fazla bağlantı varsa seçim yapar.
+        """
         if isinstance(extract_data, list):
-            secilen_data = await self.arayuz_yonetici.select_from_list(
+            return await self.arayuz_yonetici.select_from_list(
                 message = "Birden fazla bağlantı bulundu, lütfen birini seçin:",
                 choices = [{"name": data.name, "value": data} for data in extract_data]
             )
-        else:
-            secilen_data = extract_data
+        return extract_data
 
-        # Cookie varsa ayarla
-        if secilen_data.headers.get("Cookie"):
-            self.medya_yonetici.set_headers({"Cookie": secilen_data.headers.get("Cookie")})
+    def __medya_ayarla(self, secilen_data):
+        """
+        Medya bilgilerini ayarlar.
+        """
+        self.medya_yonetici.set_headers(secilen_data.headers)
 
-        # Başlık ve referrer ayarla
-        self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {secilen_data.name}")
-        self.medya_yonetici.set_headers({"Referer": secilen_data.referer})
-        self.medya_yonetici.play_media(secilen_data)
-    
-        await self.bi_bolum_daha() if self.dizi else await self.baslat()
+        if secilen_data.referer and not secilen_data.headers.get("Referer"):
+            self.medya_yonetici.set_headers({"Referer": secilen_data.referer})
+
+        if self.suanki_eklenti.name not in self.medya_yonetici.get_title():
+            self.medya_yonetici.set_title(f"{self.suanki_eklenti.name} | {self.medya_yonetici.get_title()}")
+
+        if secilen_data.name not in self.medya_yonetici.get_title():
+            self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {secilen_data.name}")
 
 def basla():
     try:
