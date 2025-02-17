@@ -5,7 +5,7 @@ from parsel           import Selector
 
 class JetFilmizle(PluginBase):
     name     = "JetFilmizle"
-    main_url = "https://jetfilmizle.nl"
+    main_url = "https://jetfilmizle.io"
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.oturum.post(
