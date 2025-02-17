@@ -7,7 +7,7 @@ import re, urllib.parse, base64, contextlib, asyncio
 
 class DiziBox(PluginBase):
     name     = "DiziBox"
-    main_url = "https://www.dizibox.plus"
+    main_url = "https://www.dizibox.live"
 
     async def search(self, query: str) -> list[SearchResult]:
         self.oturum.cookies.update({
