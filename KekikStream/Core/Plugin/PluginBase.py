@@ -27,10 +27,10 @@ class PluginBase(ABC):
         self.oturum.headers.update(self.cloudscraper.headers)
         self.oturum.cookies.update(self.cloudscraper.cookies)
 
-    @abstractmethod
-    async def main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        """Ana sayfadaki popüler içerikleri döndürür."""
-        pass
+    # @abstractmethod
+    # async def main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+    #     """Ana sayfadaki popüler içerikleri döndürür."""
+    #     pass
 
     @abstractmethod
     async def search(self, query: str) -> list[SearchResult]:
