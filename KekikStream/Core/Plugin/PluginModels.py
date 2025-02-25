@@ -3,6 +3,13 @@
 from pydantic import BaseModel, field_validator, model_validator
 from typing   import List, Optional
 
+class MainPageResult(BaseModel):
+    """Ana sayfa sonucunda dönecek veri modeli."""
+    category : str
+    title    : str
+    url      : str
+    poster   : Optional[str] = None
+
 
 class SearchResult(BaseModel):
     """Arama sonucunda dönecek veri modeli."""
