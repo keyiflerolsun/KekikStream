@@ -9,10 +9,10 @@ from urllib.parse         import urljoin
 import re
 
 class PluginBase(ABC):
-    name       = "Plugin"
-    main_url   = "https://example.com"
-    _data      = {}
-    _main_page = {}
+    name      = "Plugin"
+    main_url  = "https://example.com"
+    _data     = {}
+    main_page = {}
 
     def __init__(self):
         self.oturum = AsyncClient(
@@ -28,7 +28,7 @@ class PluginBase(ABC):
         self.oturum.cookies.update(self.cloudscraper.cookies)
 
     # @abstractmethod
-    # async def main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+    # async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
     #     """Ana sayfadaki popüler içerikleri döndürür."""
     #     pass
 

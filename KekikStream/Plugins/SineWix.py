@@ -6,7 +6,7 @@ class SineWix(PluginBase):
     name     = "SineWix"
     main_url = "https://ythls.kekikakademi.org"
 
-    _main_page = {
+    main_page = {
         f"{main_url}/sinewix/movies"        : "Filmler",
         f"{main_url}/sinewix/series"        : "Diziler",
         f"{main_url}/sinewix/animes"        : "Animeler",
@@ -31,7 +31,7 @@ class SineWix(PluginBase):
         f"{main_url}/sinewix/movies/36"     : "Tarih",
     }
 
-    async def main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.oturum.get(f"{url}/{page}")
         veriler = istek.json()
 
