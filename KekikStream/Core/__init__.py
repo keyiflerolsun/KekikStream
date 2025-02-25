@@ -5,7 +5,7 @@ from .UI.UIManager import UIManager
 from .Plugin.PluginManager import PluginManager
 from .Plugin.PluginBase    import PluginBase
 from .Plugin.PluginLoader  import PluginLoader
-from .Plugin.PluginModels  import SearchResult, MovieInfo, Episode, SeriesInfo
+from .Plugin.PluginModels  import MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo
 
 from .Extractor.ExtractorManager import ExtractorManager
 from .Extractor.ExtractorBase    import ExtractorBase

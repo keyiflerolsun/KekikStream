@@ -3,15 +3,16 @@
 from abc                  import ABC, abstractmethod
 from httpx                import AsyncClient, Timeout
 from cloudscraper         import CloudScraper
-from .PluginModels        import SearchResult, MovieInfo
+from .PluginModels        import MainPageResult, SearchResult, MovieInfo
 from ..Media.MediaHandler import MediaHandler
 from urllib.parse         import urljoin
 import re
 
 class PluginBase(ABC):
-    name     = "Plugin"
-    main_url = "https://example.com"
-    _data    = {}
+    name       = "Plugin"
+    main_url   = "https://example.com"
+    _data      = {}
+    _main_page = {}
 
     def __init__(self):
         self.oturum = AsyncClient(
@@ -25,6 +26,11 @@ class PluginBase(ABC):
         self.cloudscraper  = CloudScraper()
         self.oturum.headers.update(self.cloudscraper.headers)
         self.oturum.cookies.update(self.cloudscraper.cookies)
+
+    @abstractmethod
+    async def main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        """Ana sayfadaki popüler içerikleri döndürür."""
+        pass
 
     @abstractmethod
     async def search(self, query: str) -> list[SearchResult]:
