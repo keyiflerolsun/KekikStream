@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from Kekik.Sifreleme  import CryptoJS
 from parsel           import Selector
 import re, urllib.parse, base64, contextlib, asyncio
@@ -8,6 +8,56 @@ import re, urllib.parse, base64, contextlib, asyncio
 class DiziBox(PluginBase):
     name     = "DiziBox"
     main_url = "https://www.dizibox.live"
+
+    main_page = {
+        f"{main_url}/dizi-arsivi/page/SAYFA/?ulke[]=turkiye&yil=&imdb"   : "Yerli",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=aile&yil&imdb"       : "Aile",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=aksiyon&yil&imdb"    : "Aksiyon",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=animasyon&yil&imdb"  : "Animasyon",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=belgesel&yil&imdb"   : "Belgesel",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=bilimkurgu&yil&imdb" : "Bilimkurgu",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=biyografi&yil&imdb"  : "Biyografi",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=dram&yil&imdb"       : "Dram",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=drama&yil&imdb"      : "Drama",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=fantastik&yil&imdb"  : "Fantastik",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=gerilim&yil&imdb"    : "Gerilim",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=gizem&yil&imdb"      : "Gizem",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=komedi&yil&imdb"     : "Komedi",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=korku&yil&imdb"      : "Korku",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=macera&yil&imdb"     : "Macera",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=muzik&yil&imdb"      : "Müzik",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=muzikal&yil&imdb"    : "Müzikal",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=reality-tv&yil&imdb" : "Reality TV",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=romantik&yil&imdb"   : "Romantik",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=savas&yil&imdb"      : "Savaş",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=spor&yil&imdb"       : "Spor",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=suc&yil&imdb"        : "Suç",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=tarih&yil&imdb"      : "Tarih",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=western&yil&imdb"    : "Western",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=yarisma&yil&imdb"    : "Yarışma"
+    }
+
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek = await self.oturum.get(
+            url     = f"{url.replace('SAYFA', str(page))}",
+            cookies = {
+                "LockUser"      : "true",
+                "isTrustedUser" : "true",
+                "dbxu"          : "1722403730363"
+            },
+            follow_redirects = True
+        )
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("h3 a::text").get(),
+                url      = self.fix_url(veri.css("h3 a::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(src)").get()),
+            )
+                for veri in secici.css("article.detailed-article")
+        ]
 
     async def search(self, query: str) -> list[SearchResult]:
         self.oturum.cookies.update({
