@@ -8,7 +8,7 @@ class UgurFilm(PluginBase):
     main_url = "https://ugurfilm8.com"
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.oturum.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         results = []
@@ -29,7 +29,7 @@ class UgurFilm(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.bilgi h2::text").get().strip()
@@ -50,12 +50,12 @@ class UgurFilm(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[str]:
-        istek   = await self.oturum.get(url)
+        istek   = await self.httpx.get(url)
         secici  = Selector(istek.text)
         results = []
 
         for part_link in secici.css("li.parttab a::attr(href)").getall():
-            sub_response = await self.oturum.get(part_link)
+            sub_response = await self.httpx.get(part_link)
             sub_selector = Selector(sub_response.text)
 
             iframe = sub_selector.css("div#vast iframe::attr(src)").get()
@@ -65,7 +65,7 @@ class UgurFilm(PluginBase):
                     "alternative" : "vidmoly",
                     "ord"         : "0",
                 }
-                player_response = await self.oturum.post(
+                player_response = await self.httpx.post(
                     url  = f"{self.main_url}/player/ajax_sources.php",
                     data = post_data
                 )

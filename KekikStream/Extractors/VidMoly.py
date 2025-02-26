@@ -10,9 +10,9 @@ class VidMoly(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        self.oturum.headers.update({
+        self.httpx.headers.update({
             "User-Agent"     : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
             "Sec-Fetch-Dest" : "iframe",
         })
@@ -29,7 +29,7 @@ class VidMoly(ExtractorBase):
         # Script verisini almak için deneme yap
         while attempts < 10 and not script_content:
             attempts += 1
-            response = await self.oturum.get(embed_url)
+            response = await self.httpx.get(embed_url)
             response.raise_for_status()
 
             script_match   = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)

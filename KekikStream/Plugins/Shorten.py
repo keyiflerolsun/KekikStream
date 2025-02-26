@@ -69,18 +69,18 @@ class Shorten(PluginBase):
     token    = None
 
     async def __giris(self):
-        await self.oturum.get(f"{self.main_url}/tr", follow_redirects=True)
+        await self.httpx.get(f"{self.main_url}/tr", follow_redirects=True)
 
-        self.token = await self.oturum.get(f"{self.main_url}/api/session")
+        self.token = await self.httpx.get(f"{self.main_url}/api/session")
         self.token = self.token.json().get("token")
 
-        self.oturum.headers.update({"Authorization": f"Bearer {self.token}"})
+        self.httpx.headers.update({"Authorization": f"Bearer {self.token}"})
 
     async def raw_diziler(self):
         if not self.token:
             await self.__giris()
 
-        veriler = await self.oturum.get("https://api.shorten.watch/api/series/you-might-like?page=1&per_page=100")
+        veriler = await self.httpx.get("https://api.shorten.watch/api/series/you-might-like?page=1&per_page=100")
         veriler = veriler.json()
 
         return [
@@ -94,7 +94,7 @@ class Shorten(PluginBase):
         if not self.token:
             await self.__giris()
 
-        istek   = await self.oturum.get(f"{self.main_url}/tr/series/{slug}", follow_redirects=True)
+        istek   = await self.httpx.get(f"{self.main_url}/tr/series/{slug}", follow_redirects=True)
         veriler = await extract_next_f_push_data(istek.text)
         veriler = veriler["8"][-1]["children"][-2][-1]["children"][-1]["data"]
         return [
@@ -128,7 +128,7 @@ class Shorten(PluginBase):
         raw_req       = await self.raw_bolumler(slug)
         number, _hash = raw_req[0].values()
 
-        istek   = await self.oturum.get(f"{self.main_url}/tr/series/{slug}/episode-{number}-{_hash}", follow_redirects=True)
+        istek   = await self.httpx.get(f"{self.main_url}/tr/series/{slug}/episode-{number}-{_hash}", follow_redirects=True)
         veriler = await extract_next_f_push_data(istek.text)
         veriler = veriler["b"][3]["children"][1][3]["children"][3]["children"][3]["children"][-1]
 

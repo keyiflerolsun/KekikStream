@@ -10,9 +10,9 @@ class VidMoxy(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.oturum.get(url)
+        istek = await self.httpx.get(url)
         istek.raise_for_status()
 
         subtitles        = []

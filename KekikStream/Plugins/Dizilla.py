@@ -10,22 +10,22 @@ class Dizilla(PluginBase):
     main_url = "https://dizilla.club"
 
     async def search(self, query: str) -> list[SearchResult]:
-        ilk_istek  = await self.oturum.get(self.main_url)
+        ilk_istek  = await self.httpx.get(self.main_url)
         ilk_secici = Selector(ilk_istek.text)
         cKey       = ilk_secici.css("input[name='cKey']::attr(value)").get()
         cValue     = ilk_secici.css("input[name='cValue']::attr(value)").get()
 
-        self.oturum.headers.update({
+        self.httpx.headers.update({
             "Accept"           : "application/json, text/javascript, */*; q=0.01",
             "X-Requested-With" : "XMLHttpRequest",
             "Referer"          : f"{self.main_url}/"
         })
-        self.oturum.cookies.update({
+        self.httpx.cookies.update({
             "showAllDaFull"   : "true",
             "PHPSESSID"       : ilk_istek.cookies.get("PHPSESSID"),
         })
 
-        arama_istek = await self.oturum.post(
+        arama_istek = await self.httpx.post(
             url  = f"{self.main_url}/bg/searchcontent",
             data = {
                 "cKey"       : cKey,
@@ -55,7 +55,7 @@ class Dizilla(PluginBase):
         return urlunparse(yeni_url)
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
         veri   = loads(secici.xpath("//script[@type='application/ld+json']/text()").getall()[-1])
 
@@ -94,12 +94,12 @@ class Dizilla(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[str]:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframes = [self.fix_url(secici.css("div#playerLsDizilla iframe::attr(src)").get())]
         for alternatif in secici.css("a[href*='player']"):
-            alt_istek  = await self.oturum.get(self.fix_url(alternatif.css("::attr(href)").get()))
+            alt_istek  = await self.httpx.get(self.fix_url(alternatif.css("::attr(href)").get()))
             alt_secici = Selector(alt_istek.text)
             iframes.append(self.fix_url(alt_secici.css("div#playerLsDizilla iframe::attr(src)").get()))
 

@@ -9,13 +9,16 @@ from urllib.parse         import urljoin
 import re
 
 class PluginBase(ABC):
-    name      = "Plugin"
-    main_url  = "https://example.com"
-    _data     = {}
-    main_page = {}
+    name        = "Plugin"
+    language    = "tr"
+    main_url    = "https://example.com"
+    description = "No description provided."
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    main_page   = {}
+    _data       = {}
 
     def __init__(self):
-        self.oturum = AsyncClient(
+        self.httpx = AsyncClient(
             headers = {
                 "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)",
                 "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -24,8 +27,8 @@ class PluginBase(ABC):
         )
         self.media_handler = MediaHandler()
         self.cloudscraper  = CloudScraper()
-        self.oturum.headers.update(self.cloudscraper.headers)
-        self.oturum.cookies.update(self.cloudscraper.cookies)
+        self.httpx.headers.update(self.cloudscraper.headers)
+        self.httpx.cookies.update(self.cloudscraper.cookies)
 
     # @abstractmethod
     # async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -48,7 +51,7 @@ class PluginBase(ABC):
         pass
 
     async def close(self):
-        await self.oturum.aclose()
+        await self.httpx.aclose()
 
     def fix_url(self, url: str) -> str:
         if not url:

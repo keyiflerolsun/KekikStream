@@ -9,14 +9,14 @@ class PeaceMakerst(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        self.oturum.headers.update({
+        self.httpx.headers.update({
             "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With" : "XMLHttpRequest"
         })
 
-        response = await self.oturum.post(
+        response = await self.httpx.post(
             url  = f"{url}?do=getVideo",
             data = {
                 "hash" : url.split("video/")[-1],
@@ -33,7 +33,7 @@ class PeaceMakerst(ExtractorBase):
             teve2_id = re.search(r"teve2\.com\.tr\\\/embed\\\/(\d+)", response_text)[1]
             teve2_url = f"https://www.teve2.com.tr/action/media/{teve2_id}"
 
-            teve2_response = await self.oturum.get(teve2_url, headers={"Referer": f"https://www.teve2.com.tr/embed/{teve2_id}"})
+            teve2_response = await self.httpx.get(teve2_url, headers={"Referer": f"https://www.teve2.com.tr/embed/{teve2_id}"})
             teve2_response.raise_for_status()
             teve2_json = teve2_response.json()
 

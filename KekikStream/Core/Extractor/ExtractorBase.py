@@ -14,7 +14,7 @@ class ExtractorBase(ABC):
 
     def __init__(self):
         # HTTP istekleri için oturum oluştur
-        self.oturum = AsyncClient(
+        self.httpx = AsyncClient(
             headers = {
                 "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)",
                 "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -35,7 +35,7 @@ class ExtractorBase(ABC):
 
     async def close(self):
         # HTTP oturumunu güvenli bir şekilde kapat
-        await self.oturum.aclose()
+        await self.httpx.aclose()
 
     def fix_url(self, url: str) -> str:
         # Eksik URL'leri düzelt ve tam URL formatına çevir

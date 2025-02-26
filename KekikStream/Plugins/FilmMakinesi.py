@@ -8,7 +8,7 @@ class FilmMakinesi(PluginBase):
     main_url = "https://filmmakinesi.de"
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.oturum.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         results = []
@@ -29,7 +29,7 @@ class FilmMakinesi(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("h1.single_h1 a::text").get().strip()
@@ -58,7 +58,7 @@ class FilmMakinesi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[str]:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframe_src = secici.css("div.player-div iframe::attr(src)").get() or secici.css("div.player-div iframe::attr(data-src)").get()

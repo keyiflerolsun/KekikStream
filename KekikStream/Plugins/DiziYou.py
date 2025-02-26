@@ -9,7 +9,7 @@ class DiziYou(PluginBase):
     main_url = "https://www.diziyou1.com"
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.oturum.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -22,7 +22,7 @@ class DiziYou(PluginBase):
         ]
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("h1::text").get().strip()
@@ -68,7 +68,7 @@ class DiziYou(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[str]:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         item_title = secici.css("div.title h1::text").get()

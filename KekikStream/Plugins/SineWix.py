@@ -3,8 +3,9 @@
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 
 class SineWix(PluginBase):
-    name     = "SineWix"
-    main_url = "https://ythls.kekikakademi.org"
+    name        = "SineWix"
+    main_url    = "https://ythls.kekikakademi.org"
+    description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
     main_page = {
         f"{main_url}/sinewix/movies"        : "Filmler",
@@ -32,7 +33,7 @@ class SineWix(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.oturum.get(f"{url}/{page}")
+        istek   = await self.httpx.get(f"{url}/{page}")
         veriler = istek.json()
 
         return [
@@ -46,7 +47,7 @@ class SineWix(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.oturum.get(f"{self.main_url}/sinewix/search/{query}")
+        istek = await self.httpx.get(f"{self.main_url}/sinewix/search/{query}")
 
         return [
             SearchResult(
@@ -61,7 +62,7 @@ class SineWix(PluginBase):
         item_type = url.split("?type=")[-1].split("&id=")[0]
         item_id   = url.split("&id=")[-1]
 
-        istek = await self.oturum.get(f"{self.main_url}/sinewix/{item_type}/{item_id}")
+        istek = await self.httpx.get(f"{self.main_url}/sinewix/{item_type}/{item_id}")
         veri  = istek.json()
 
         match item_type:
@@ -123,7 +124,7 @@ class SineWix(PluginBase):
         if not url.startswith(self.main_url):
             return [url]
 
-        istek = await self.oturum.get(url)
+        istek = await self.httpx.get(url)
         veri  = istek.json()
 
         org_title = veri.get("title")

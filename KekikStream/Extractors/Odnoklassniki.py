@@ -9,9 +9,9 @@ class Odnoklassniki(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        self.oturum.headers.update({
+        self.httpx.headers.update({
             "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
         })
 
@@ -88,7 +88,7 @@ class Odnoklassniki(ExtractorBase):
         """Yönlendirmeleri takip eden bir fonksiyon"""
         redirects = 0
         while redirects < max_redirects:
-            istek = await self.oturum.get(url, follow_redirects=False)
+            istek = await self.httpx.get(url, follow_redirects=False)
 
             if istek.status_code not in [301, 302]:
                 break  # Yönlendirme yoksa çık

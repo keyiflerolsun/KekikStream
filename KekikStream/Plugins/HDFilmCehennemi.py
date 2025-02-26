@@ -9,7 +9,7 @@ class HDFilmCehennemi(PluginBase):
     main_url = "https://www.hdfilmcehennemi.nl"
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.oturum.get(
+        istek = await self.httpx.get(
             url     = f"{self.main_url}/search?q={query}",
             headers = {
                 "Referer"          : f"{self.main_url}/",
@@ -37,7 +37,7 @@ class HDFilmCehennemi(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.oturum.get(url, headers = {"Referer": f"{self.main_url}/"})
+        istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = Selector(istek.text)
 
         title       = secici.css("h1.section-title::text").get().strip()
@@ -73,7 +73,7 @@ class HDFilmCehennemi(PluginBase):
     async def load_links(self, url: str) -> list[str]:
         self._data.clear()
 
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         lang_code = secici.css("div.alternative-links::attr(data-lang)").get().upper()
@@ -85,7 +85,7 @@ class HDFilmCehennemi(PluginBase):
             source   = button.css("button.alternative-link::text").get().replace("(HDrip Xbet)", "").strip() + " " + lang_code
             video_id = button.css("button.alternative-link::attr(data-video)").get()
 
-            istek = await self.oturum.get(
+            istek = await self.httpx.get(
                 url     = f"{self.main_url}/video/{video_id}/",
                 headers = {
                     "Referer"          : f"{self.main_url}/", 
@@ -110,7 +110,7 @@ class HDFilmCehennemi(PluginBase):
                break
 
         # selected_quality: low
-        istek = await self.oturum.post(
+        istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
                 "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
@@ -132,7 +132,7 @@ class HDFilmCehennemi(PluginBase):
         }
 
         # selected_quality: high
-        istek = await self.oturum.post(
+        istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
                 "Referer"          : f"https://cehennempass.pw/download/{video_id}", 

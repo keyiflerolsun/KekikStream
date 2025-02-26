@@ -6,8 +6,9 @@ from parsel           import Selector
 import re, urllib.parse, base64, contextlib, asyncio
 
 class DiziBox(PluginBase):
-    name     = "DiziBox"
-    main_url = "https://www.dizibox.live"
+    name        = "DiziBox"
+    main_url    = "https://www.dizibox.live"
+    description = "Yabancı Dizi izle, Tüm yabancı dizilerin yeni ve eski sezonlarını full hd izleyebileceğiniz elit site."
 
     main_page = {
         f"{main_url}/dizi-arsivi/page/SAYFA/?ulke[]=turkiye&yil=&imdb"   : "Yerli",
@@ -38,7 +39,7 @@ class DiziBox(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek = await self.oturum.get(
+        istek = await self.httpx.get(
             url     = f"{url.replace('SAYFA', str(page))}",
             cookies = {
                 "LockUser"      : "true",
@@ -60,12 +61,12 @@ class DiziBox(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        self.oturum.cookies.update({
+        self.httpx.cookies.update({
             "LockUser"      : "true",
             "isTrustedUser" : "true",
             "dbxu"          : "1722403730363"
         })
-        istek  = await self.oturum.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -78,7 +79,7 @@ class DiziBox(PluginBase):
         ]
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.tv-overview h1 a::text").get()
@@ -92,7 +93,7 @@ class DiziBox(PluginBase):
         episodes = []
         for sezon_link in secici.css("div#seasons-list a::attr(href)").getall():
             sezon_url    = self.fix_url(sezon_link)
-            sezon_istek  = await self.oturum.get(sezon_url)
+            sezon_istek  = await self.httpx.get(sezon_url)
             sezon_secici = Selector(sezon_istek.text)
 
             for bolum in sezon_secici.css("article.grid-box"):
@@ -128,14 +129,14 @@ class DiziBox(PluginBase):
 
         if "/player/king/king.php" in iframe_link:
             iframe_link = iframe_link.replace("king.php?v=", "king.php?wmode=opaque&v=")
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-            istek  = await self.oturum.get(iframe_link)
+            istek  = await self.httpx.get(iframe_link)
             secici = Selector(istek.text)
             iframe = secici.css("div#Player iframe::attr(src)").get()
 
-            self.oturum.headers.update({"Referer": self.main_url})
-            istek = await self.oturum.get(iframe)
+            self.httpx.headers.update({"Referer": self.main_url})
+            istek = await self.httpx.get(iframe)
 
             crypt_data = re.search(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", istek.text)[1]
             crypt_pass = re.search(r"\",\"(.*)\"\);", istek.text)[1]
@@ -148,11 +149,11 @@ class DiziBox(PluginBase):
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
-            self.oturum.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
             while True:
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
-                    istek  = await self.oturum.get(iframe_link)
+                    istek  = await self.httpx.get(iframe_link)
 
                     if atob_data := re.search(r"unescape\(\"(.*)\"\)", istek.text):
                         decoded_atob = urllib.parse.unquote(atob_data[1])
@@ -170,7 +171,7 @@ class DiziBox(PluginBase):
         return results
 
     async def load_links(self, url: str) -> list[str]:
-        istek  = await self.oturum.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframes = []
@@ -185,8 +186,8 @@ class DiziBox(PluginBase):
             if not alt_link:
                 continue
 
-            self.oturum.headers.update({"Referer": url})
-            alt_istek = await self.oturum.get(alt_link)
+            self.httpx.headers.update({"Referer": url})
+            alt_istek = await self.httpx.get(alt_link)
             alt_istek.raise_for_status()
 
             alt_secici = Selector(alt_istek.text)
