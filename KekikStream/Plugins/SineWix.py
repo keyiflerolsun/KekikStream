@@ -41,7 +41,7 @@ class SineWix(PluginBase):
         return [
             MainPageResult(
                 category = category,
-                title    = veri.get("title"),
+                title    = veri.get("title") or veri.get("name"),
                 url      = f"?type={veri.get('type')}&id={veri.get('id')}",
                 poster   = self.fix_url(veri.get("poster_path")),
             )
@@ -105,7 +105,7 @@ class SineWix(PluginBase):
 
                         self._data[ep_model.url] = {
                             "ext_name"  : self.name,
-                            "name"      : f"{ep_model.season}. Sezon {ep_model.episode}. Bölüm - {ep_model.title}",
+                            "name"      : f"{title} | {ep_model.season}x{ep_model.episode}",
                             "referer"   : self.main_url,
                             "subtitles" : []
                         }

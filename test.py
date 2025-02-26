@@ -2,11 +2,11 @@
 
 from KekikStream.CLI             import konsol
 from asyncio                     import run
-from KekikStream.Plugins.DiziBox import DiziBox
-from KekikStream.Core            import ExtractorManager, MediaManager
+from KekikStream.Plugins.SineWix import SineWix
+from KekikStream.Core            import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
 
 async def main():
-    plugin = DiziBox()
+    plugin = SineWix()
     ext    = ExtractorManager()
     media  = MediaManager()
 
@@ -26,16 +26,32 @@ async def main():
             detay = await plugin.load_item(icerik.url)
             konsol.log(detay)
 
-            bolum     = detay.episodes[0]
-            icerikler = await plugin.load_links(bolum.url)
+            if isinstance(detay, MovieInfo):
+                konsol.log(f"[red]Film        » [purple]{detay.title}")
+                icerikler = await plugin.load_links(detay.url)
+            elif isinstance(detay, SeriesInfo):
+                konsol.log(f"[red]Dizi        » [purple]{detay.title}")
+                bolum     = detay.episodes[0]
+                icerikler = await plugin.load_links(bolum.url)
+
             for link in icerikler:
                 konsol.log(f"[red]icerik_link » [purple]{link}")
 
-                if extractor := ext.find_extractor(link):
+                if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
+                    data = plugin._data.get(link, {})
+                    await plugin.play(
+                        name      = data.get("name"),
+                        url       = link,
+                        referer   = data.get("referer"),
+                        subtitles = data.get("subtitles")
+                    )
+                elif extractor := ext.find_extractor(link):
                     sonuc = await extractor.extract(link)
                     konsol.log(sonuc)
                     media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title} - {bolum.title or f'{bolum.season}x{bolum.episode}'}")
                     media.play_media(sonuc)
+                else:
+                    konsol.print(f"[red]Önerilen araç bulunamadı: {link}")
 
                 break
             break
