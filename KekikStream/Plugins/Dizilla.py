@@ -1,13 +1,68 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
 from urllib.parse     import urlparse, urlunparse
 
 class Dizilla(PluginBase):
-    name     = "Dizilla"
-    main_url = "https://dizilla.club"
+    name        = "Dizilla"
+    language    = "tr"
+    main_url    = "https://dizilla.club"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Dizilla tüm yabancı dizileri ücretsiz olarak Türkçe Dublaj ve altyazılı seçenekleri ile 1080P kalite izleyebileceğiniz yeni nesil yabancı dizi izleme siteniz."
+
+    main_page   = {
+        f"{main_url}/tum-bolumler"          : "Altyazılı Bölümler",
+        f"{main_url}/dublaj-bolumler"       : "Dublaj Bölümler",
+        f"{main_url}/dizi-turu/aile"        : "Aile",
+        f"{main_url}/dizi-turu/aksiyon"     : "Aksiyon",
+        f"{main_url}/dizi-turu/bilim-kurgu" : "Bilim Kurgu",
+        f"{main_url}/dizi-turu/romantik"    : "Romantik",
+        f"{main_url}/dizi-turu/komedi"      : "Komedi"
+    }
+
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(url)
+        secici = Selector(istek.text)
+
+        ana_sayfa = []
+
+        if "dizi-turu" in url:
+            ana_sayfa.extend([
+                MainPageResult(
+                    category = category,
+                    title    = veri.css("h2::text").get(),
+                    url      = self.fix_url(veri.css("::attr(href)").get()),
+                    poster   = self.fix_url(veri.css("img::attr(src)").get() or veri.css("img::attr(data-src)").get())
+                )
+                    for veri in secici.css("div.grid-cols-3 a")
+            ])
+        else:
+            for veri in secici.css("div.grid a"):
+                name    = veri.css("h2::text").get()
+                ep_name = veri.css("div.opacity-80::text").get()
+                if not ep_name:
+                    continue
+
+                ep_name = ep_name.replace(". Sezon", "x").replace(". Bölüm", "").replace("x ", "x")
+                title   = f"{name} - {ep_name}"
+
+                ep_req    = await self.httpx.get(veri.css("::attr(href)").get())
+                ep_secici = Selector(ep_req.text)
+                href      = self.fix_url(ep_secici.css("a.relative::attr(href)").get())
+                poster    = self.fix_url(ep_secici.css("img.imgt::attr(onerror)").get().split("= '")[-1].split("';")[0])
+
+                ana_sayfa.append(
+                    MainPageResult(
+                        category = category,
+                        title    = title,
+                        url      = href,
+                        poster   = poster
+                    )
+                )
+
+        return ana_sayfa
 
     async def search(self, query: str) -> list[SearchResult]:
         ilk_istek  = await self.httpx.get(self.main_url)
