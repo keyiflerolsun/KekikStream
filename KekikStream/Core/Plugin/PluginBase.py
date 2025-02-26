@@ -12,10 +12,17 @@ class PluginBase(ABC):
     name        = "Plugin"
     language    = "tr"
     main_url    = "https://example.com"
-    description = "No description provided."
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "No description provided."
+
     main_page   = {}
+
     _data       = {}
+
+    async def url_update(self, new_url: str):
+        self.favicon   = self.favicon.replace(self.main_url, new_url)
+        self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
+        self.main_url  = new_url
 
     def __init__(self):
         self.httpx = AsyncClient(
