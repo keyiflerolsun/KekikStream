@@ -4,7 +4,9 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 
 class SineWix(PluginBase):
     name        = "SineWix"
+    language    = "tr"
     main_url    = "https://ythls.kekikakademi.org"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
     main_page = {

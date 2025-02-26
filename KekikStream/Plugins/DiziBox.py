@@ -7,7 +7,9 @@ import re, urllib.parse, base64, contextlib, asyncio
 
 class DiziBox(PluginBase):
     name        = "DiziBox"
+    language    = "tr"
     main_url    = "https://www.dizibox.live"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Yabancı Dizi izle, Tüm yabancı dizilerin yeni ve eski sezonlarını full hd izleyebileceğiniz elit site."
 
     main_page = {
