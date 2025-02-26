@@ -9,7 +9,7 @@ class SineWix(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
-    main_page = {
+    main_page   = {
         f"{main_url}/sinewix/movies"        : "Filmler",
         f"{main_url}/sinewix/series"        : "Diziler",
         f"{main_url}/sinewix/animes"        : "Animeler",
