@@ -3,7 +3,7 @@
 from ...CLI         import konsol, cikis_yap
 from .ExtractorBase import ExtractorBase
 from pathlib        import Path
-import os, importlib.util
+import os, importlib.util, traceback
 
 class ExtractorLoader:
     def __init__(self, extractors_dir: str):
@@ -13,7 +13,7 @@ class ExtractorLoader:
 
         # Dizin kontrolü
         if not self.local_extractors_dir.exists() and not self.global_extractors_dir.exists():
-            konsol.log(f"[red][!] Extractor dizini bulunamadı: {self.global_extractors_dir}[/red]")
+            # konsol.log(f"[red][!] Extractor dizini bulunamadı: {self.global_extractors_dir}[/red]")
             cikis_yap(False)
 
     def load_all(self) -> list[ExtractorBase]:
@@ -21,16 +21,16 @@ class ExtractorLoader:
 
         # Global çıkarıcıları yükle
         if self.global_extractors_dir.exists():
-            konsol.log(f"[green][*] Global Extractor dizininden yükleniyor: {self.global_extractors_dir}[/green]")
+            # konsol.log(f"[green][*] Global Extractor dizininden yükleniyor: {self.global_extractors_dir}[/green]")
             global_extractors = self._load_from_directory(self.global_extractors_dir)
-            konsol.log(f"[green]Global Extractor'lar: {[e.__name__ for e in global_extractors]}[/green]")
+            # konsol.log(f"[green]Global Extractor'lar: {[e.__name__ for e in global_extractors]}[/green]")
             extractors.extend(global_extractors)
 
         # Yerel çıkarıcıları yükle
         if self.local_extractors_dir.exists():
-            konsol.log(f"[green][*] Yerel Extractor dizininden yükleniyor: {self.local_extractors_dir}[/green]")
+            # konsol.log(f"[green][*] Yerel Extractor dizininden yükleniyor: {self.local_extractors_dir}[/green]")
             local_extractors = self._load_from_directory(self.local_extractors_dir)
-            konsol.log(f"[green]Yerel Extractor'lar: {[e.__name__ for e in local_extractors]}[/green]")
+            # konsol.log(f"[green]Yerel Extractor'lar: {[e.__name__ for e in local_extractors]}[/green]")
             extractors.extend(local_extractors)
 
         # Benzersizliği sağlama (modül adı + sınıf adı bazında)
@@ -42,7 +42,7 @@ class ExtractorLoader:
                 unique_extractors.append(ext)
                 seen_names.add(identifier)
 
-        konsol.log(f"[blue]Sonuç Extractor'lar: {[e.__name__ for e in unique_extractors]}[/blue]")
+        # konsol.log(f"[blue]Sonuç Extractor'lar: {[e.__name__ for e in unique_extractors]}[/blue]")
 
         if not unique_extractors:
             konsol.log("[yellow][!] Yüklenecek bir Extractor bulunamadı![/yellow]")
@@ -56,12 +56,12 @@ class ExtractorLoader:
         for file in os.listdir(directory):
             if file.endswith(".py") and not file.startswith("__"):
                 module_name = file[:-3] # .py uzantısını kaldır
-                konsol.log(f"[cyan]Okunan Dosya\t\t: {module_name}[/cyan]")
+                # konsol.log(f"[cyan]Okunan Dosya\t\t: {module_name}[/cyan]")
                 if extractor := self._load_extractor(directory, module_name):
-                    konsol.log(f"[magenta]Extractor Yüklendi\t: {extractor.__name__}[/magenta]")
+                    # konsol.log(f"[magenta]Extractor Yüklendi\t: {extractor.__name__}[/magenta]")
                     extractors.append(extractor)
 
-        konsol.log(f"[yellow]{directory} dizininden yüklenen Extractor'lar: {[e.__name__ for e in extractors]}[/yellow]")
+        # konsol.log(f"[yellow]{directory} dizininden yüklenen Extractor'lar: {[e.__name__ for e in extractors]}[/yellow]")
         return extractors
 
     def _load_extractor(self, directory: Path, module_name: str):
@@ -80,10 +80,11 @@ class ExtractorLoader:
             for attr in dir(module):
                 obj = getattr(module, attr)
                 if obj.__module__ == module_name and isinstance(obj, type) and issubclass(obj, ExtractorBase) and obj is not ExtractorBase:
-                    konsol.log(f"[green]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/green]")
+                    # konsol.log(f"[green]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/green]")
                     return obj
 
         except Exception as hata:
             konsol.log(f"[red][!] Extractor yüklenirken hata oluştu: {module_name}\nHata: {hata}")
+            konsol.print(f"[dim]{traceback.format_exc()}[/dim]")
 
         return None
