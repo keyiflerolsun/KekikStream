@@ -13,7 +13,7 @@ class PluginLoader:
 
         # Dizin kontrolü
         if not self.local_plugins_dir.exists() and not self.global_plugins_dir.exists():
-            konsol.log(f"[red][!] Eklenti dizini bulunamadı: {plugins_dir}[/red]")
+            # konsol.log(f"[red][!] Eklenti dizini bulunamadı: {plugins_dir}[/red]")
             cikis_yap(False)
 
     def load_all(self) -> dict[str, PluginBase]:
@@ -21,12 +21,12 @@ class PluginLoader:
 
         # Global eklentileri yükle
         if self.global_plugins_dir.exists():
-            konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
+            # konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
             plugins |= self._load_from_directory(self.global_plugins_dir)
 
         # Yerel eklentileri yükle
         if self.local_plugins_dir.exists():
-            konsol.log(f"[green][*] Yerel Eklenti dizininden yükleniyor: {self.local_plugins_dir}[/green]")
+            # konsol.log(f"[green][*] Yerel Eklenti dizininden yükleniyor: {self.local_plugins_dir}[/green]")
             plugins |= self._load_from_directory(self.local_plugins_dir)
 
         if not plugins:
@@ -41,12 +41,12 @@ class PluginLoader:
         for file in os.listdir(directory):
             if file.endswith(".py") and not file.startswith("__"):
                 module_name = file[:-3] # .py uzantısını kaldır
-                konsol.log(f"[cyan]Okunan Dosya\t\t: {module_name}[/cyan]")
+                # konsol.log(f"[cyan]Okunan Dosya\t\t: {module_name}[/cyan]")
                 if plugin := self._load_plugin(directory, module_name):
-                    konsol.log(f"[magenta]Eklenti Yüklendi\t: {plugin.name}[/magenta]")
+                    # konsol.log(f"[magenta]Eklenti Yüklendi\t: {plugin.name}[/magenta]")
                     plugins[module_name] = plugin
 
-        konsol.log(f"[yellow]{directory} dizininden yüklenen Eklentiler: {list(plugins.keys())}[/yellow]")
+        # konsol.log(f"[yellow]{directory} dizininden yüklenen Eklentiler: {list(plugins.keys())}[/yellow]")
         return plugins
 
     def _load_plugin(self, directory: Path, module_name: str):
@@ -65,7 +65,7 @@ class PluginLoader:
             for attr in dir(module):
                 obj = getattr(module, attr)
                 if isinstance(obj, type) and issubclass(obj, PluginBase) and obj is not PluginBase:
-                    konsol.log(f"[yellow]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/yellow]")
+                    # konsol.log(f"[yellow]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/yellow]")
                     return obj()
 
         except Exception as hata:
