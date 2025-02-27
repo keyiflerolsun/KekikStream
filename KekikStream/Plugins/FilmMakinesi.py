@@ -8,7 +8,7 @@ class FilmMakinesi(PluginBase):
     language    = "tr"
     main_url    = "https://filmmakinesi.de"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Diziyou en kaliteli Türkçe dublaj ve altyazılı yabancı dizi izleme sitesidir. Güncel ve efsanevi dizileri 1080p Full HD kalitede izlemek için hemen tıkla!"
+    description = "Film Makinesi, en yeni ve en güncel filmleri sitemizde full HD kalite farkı ile izleyebilirsiniz. HD film izle denildiğinde akla gelen en kaliteli film izleme sitesi."
 
     main_page   = {
         f"{main_url}/page/"                                        : "Son Filmler",
