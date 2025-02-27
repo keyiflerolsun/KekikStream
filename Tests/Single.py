@@ -2,11 +2,11 @@
 
 from KekikStream.CLI             import konsol
 from asyncio                     import run
-from KekikStream.Plugins.RecTV import RecTV
+from KekikStream.Plugins.SezonlukDizi import SezonlukDizi
 from KekikStream.Core            import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
 
 async def main():
-    plugin = RecTV()
+    plugin = SezonlukDizi()
     ext    = ExtractorManager()
     media  = MediaManager()
 
