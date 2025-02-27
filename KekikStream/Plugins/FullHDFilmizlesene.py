@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.CLI  import konsol
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
 from parsel           import Selector
 from Kekik.Sifreleme  import StringCodec
 import json, re
@@ -10,6 +9,7 @@ class FullHDFilmizlesene(PluginBase):
     name     = "FullHDFilmizlesene"
     main_url = "https://www.fullhdfilmizlesene.de"
 
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
         secici = Selector(istek.text)
@@ -31,6 +31,7 @@ class FullHDFilmizlesene(PluginBase):
 
         return results
 
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -56,6 +57,7 @@ class FullHDFilmizlesene(PluginBase):
             duration    = duration
         )
 
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

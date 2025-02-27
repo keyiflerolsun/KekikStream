@@ -1,12 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 
 class SezonlukDizi(PluginBase):
     name     = "SezonlukDizi"
     main_url = "https://sezonlukdizi6.com"
 
+    kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
         secici = Selector(istek.text)
@@ -20,6 +21,7 @@ class SezonlukDizi(PluginBase):
                 for afis in secici.css("div.afis a.column")
         ]
 
+    kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -71,6 +73,7 @@ class SezonlukDizi(PluginBase):
             actors      = actors
         )
 
+    kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

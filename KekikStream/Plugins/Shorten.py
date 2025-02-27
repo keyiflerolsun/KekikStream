@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
-
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 from Kekik.unicode_tr import unicode_tr
 import re, json, base64
 
@@ -156,6 +155,7 @@ class Shorten(PluginBase):
 
         return veriler["data"]
 
+    kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         veriler = await self.raw_diziler()
 
@@ -168,6 +168,7 @@ class Shorten(PluginBase):
                 for veri in veriler
         ]
 
+    kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         veri = await self.bolumler(url)
 
@@ -204,6 +205,7 @@ class Shorten(PluginBase):
             episodes    = episodes,
         )
 
+    kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         return [url]
 

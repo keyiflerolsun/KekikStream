@@ -1,12 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
 from parsel           import Selector
 
 class UgurFilm(PluginBase):
     name     = "UgurFilm"
     main_url = "https://ugurfilm8.com"
 
+    kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -28,6 +29,7 @@ class UgurFilm(PluginBase):
 
         return results
 
+    kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -49,6 +51,7 @@ class UgurFilm(PluginBase):
             actors      = actors,
         )
 
+    kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         istek   = await self.httpx.get(url)
         secici  = Selector(istek.text)

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
 from urllib.parse     import urlparse, urlunparse
@@ -22,6 +22,7 @@ class Dizilla(PluginBase):
         f"{main_url}/dizi-turu/komedi"      : "Komedi"
     }
 
+    @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -64,6 +65,7 @@ class Dizilla(PluginBase):
 
         return ana_sayfa
 
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         ilk_istek  = await self.httpx.get(self.main_url)
         ilk_secici = Selector(ilk_istek.text)
@@ -99,6 +101,7 @@ class Dizilla(PluginBase):
                 for veri in arama_veri
         ]
 
+    @kekik_cache(ttl=60*60)
     async def url_base_degis(self, eski_url:str, yeni_base:str) -> str:
         parsed_url       = urlparse(eski_url)
         parsed_yeni_base = urlparse(yeni_base)
@@ -109,6 +112,7 @@ class Dizilla(PluginBase):
 
         return urlunparse(yeni_url)
 
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -148,6 +152,7 @@ class Dizilla(PluginBase):
             actors      = actors
         )
 
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

@@ -1,11 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.CLI  import konsol
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 from httpx            import AsyncClient
 from json             import dumps, loads
 import re
-
 
 class RecTV(PluginBase):
     name     = "RecTV"
@@ -15,6 +13,7 @@ class RecTV(PluginBase):
     http2   = AsyncClient(http2=True)
     http2.headers.update({"user-agent": "okhttp/4.12.0"})
 
+    kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         self.media_handler.headers.update({"User-Agent": "googleusercontent"})
 
@@ -36,6 +35,7 @@ class RecTV(PluginBase):
                 for veri in tum_veri
         ]
 
+    kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         veri = loads(url)
 
@@ -86,6 +86,7 @@ class RecTV(PluginBase):
                     actors      = []
                 )
 
+    kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         try:
             veri = loads(url)

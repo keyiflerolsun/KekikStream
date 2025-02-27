@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo, ExtractResult, Subtitle
 from parsel           import Selector
 import random, string
 
@@ -8,6 +8,7 @@ class HDFilmCehennemi(PluginBase):
     name     = "HDFilmCehennemi"
     main_url = "https://www.hdfilmcehennemi.nl"
 
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek = await self.httpx.get(
             url     = f"{self.main_url}/search?q={query}",
@@ -36,6 +37,7 @@ class HDFilmCehennemi(PluginBase):
             
         return results
 
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = Selector(istek.text)
@@ -70,6 +72,7 @@ class HDFilmCehennemi(PluginBase):
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         self._data.clear()
 

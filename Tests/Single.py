@@ -46,7 +46,7 @@ async def main():
                         subtitles = data.get("subtitles")
                     )
                 elif extractor := ext.find_extractor(link):
-                    sonuc = await extractor.extract(link)
+                    sonuc = await extractor.extract(link, referer=plugin.main_url)
                     konsol.log(sonuc)
                     media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title} - {bolum.title or f'{bolum.season}x{bolum.episode}'}")
                     media.play_media(sonuc)

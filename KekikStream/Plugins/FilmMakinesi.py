@@ -1,12 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
 from parsel           import Selector
 
 class FilmMakinesi(PluginBase):
     name     = "FilmMakinesi"
     main_url = "https://filmmakinesi.de"
 
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -28,6 +29,7 @@ class FilmMakinesi(PluginBase):
 
         return results
 
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -57,6 +59,7 @@ class FilmMakinesi(PluginBase):
             duration    = duration_minutes
         )
 
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
