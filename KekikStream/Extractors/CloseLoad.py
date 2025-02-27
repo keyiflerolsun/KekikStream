@@ -36,7 +36,6 @@ class CloseLoadExtractor(ExtractorBase):
 
         eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
         m3u_link  = get_m3u_link(extract_data(unpack(eval_func)))
-        print(m3u_link)
 
         await self.close()
         return ExtractResult(

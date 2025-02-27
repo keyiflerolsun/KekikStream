@@ -1,19 +1,54 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 from httpx            import AsyncClient
 from json             import dumps, loads
 import re
 
 class RecTV(PluginBase):
-    name     = "RecTV"
-    main_url = "https://a.prectv35.sbs"
+    name        = "RecTV"
+    language    = "tr"
+    main_url    = "https://a.prectv35.sbs"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
     sw_key  = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
     http2   = AsyncClient(http2=True)
     http2.headers.update({"user-agent": "okhttp/4.12.0"})
 
-    kekik_cache(ttl=60*60)
+    main_page   = {
+        f"{main_url}/api/channel/by/filtres/0/0/SAYFA/{sw_key}/"      : "Canlı",
+        f"{main_url}/api/movie/by/filtres/0/created/SAYFA/{sw_key}/"  : "Son Filmler",
+        f"{main_url}/api/serie/by/filtres/0/created/SAYFA/{sw_key}/"  : "Son Diziler",
+        f"{main_url}/api/movie/by/filtres/14/created/SAYFA/{sw_key}/" : "Aile",
+        f"{main_url}/api/movie/by/filtres/1/created/SAYFA/{sw_key}/"  : "Aksiyon",
+        f"{main_url}/api/movie/by/filtres/13/created/SAYFA/{sw_key}/" : "Animasyon",
+        f"{main_url}/api/movie/by/filtres/19/created/SAYFA/{sw_key}/" : "Belgesel",
+        f"{main_url}/api/movie/by/filtres/4/created/SAYFA/{sw_key}/"  : "Bilim Kurgu",
+        f"{main_url}/api/movie/by/filtres/2/created/SAYFA/{sw_key}/"  : "Dram",
+        f"{main_url}/api/movie/by/filtres/10/created/SAYFA/{sw_key}/" : "Fantastik",
+        f"{main_url}/api/movie/by/filtres/3/created/SAYFA/{sw_key}/"  : "Komedi",
+        f"{main_url}/api/movie/by/filtres/8/created/SAYFA/{sw_key}/"  : "Korku",
+        f"{main_url}/api/movie/by/filtres/17/created/SAYFA/{sw_key}/" : "Macera",
+        f"{main_url}/api/movie/by/filtres/5/created/SAYFA/{sw_key}/"  : "Romantik"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
+        veriler = istek.json()
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = self.clean_title(veri.get("title")),
+                url      = dumps(veri),
+                poster   = self.fix_url(veri.get("image")),
+            )
+                for veri in veriler
+        ]
+
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         self.media_handler.headers.update({"User-Agent": "googleusercontent"})
 
@@ -35,7 +70,7 @@ class RecTV(PluginBase):
                 for veri in tum_veri
         ]
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         veri = loads(url)
 
@@ -86,7 +121,7 @@ class RecTV(PluginBase):
                     actors      = []
                 )
 
-    kekik_cache(ttl=15*60)
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         try:
             veri = loads(url)

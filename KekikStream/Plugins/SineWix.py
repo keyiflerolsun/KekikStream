@@ -34,7 +34,7 @@ class SineWix(PluginBase):
         f"{main_url}/sinewix/movies/36"     : "Tarih",
     }
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.httpx.get(f"{url}/{page}")
         veriler = istek.json()
@@ -49,7 +49,7 @@ class SineWix(PluginBase):
                 for veri in veriler.get("data")
         ]
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek = await self.httpx.get(f"{self.main_url}/sinewix/search/{query}")
 
@@ -62,7 +62,7 @@ class SineWix(PluginBase):
                 for veri in istek.json().get("search")
         ]
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         item_type = url.split("?type=")[-1].split("&id=")[0]
         item_id   = url.split("&id=")[-1]
@@ -125,7 +125,7 @@ class SineWix(PluginBase):
                     episodes    = episodes,
                 )
 
-    kekik_cache(ttl=15*60)
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         if not url.startswith(self.main_url):
             return [url]

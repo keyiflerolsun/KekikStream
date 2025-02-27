@@ -2,11 +2,11 @@
 
 from KekikStream.CLI             import konsol
 from asyncio                     import run
-from KekikStream.Plugins.FullHDFilmizlesene import FullHDFilmizlesene
+from KekikStream.Plugins.RecTV import RecTV
 from KekikStream.Core            import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
 
 async def main():
-    plugin = FullHDFilmizlesene()
+    plugin = RecTV()
     ext    = ExtractorManager()
     media  = MediaManager()
 

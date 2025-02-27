@@ -155,7 +155,7 @@ class Shorten(PluginBase):
 
         return veriler["data"]
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         veriler = await self.raw_diziler()
 
@@ -168,7 +168,7 @@ class Shorten(PluginBase):
                 for veri in veriler
         ]
 
-    kekik_cache(ttl=60*60)
+    @kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         veri = await self.bolumler(url)
 
@@ -205,7 +205,7 @@ class Shorten(PluginBase):
             episodes    = episodes,
         )
 
-    kekik_cache(ttl=15*60)
+    @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
         return [url]
 

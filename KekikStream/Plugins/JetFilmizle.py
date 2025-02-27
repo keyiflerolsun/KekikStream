@@ -1,11 +1,38 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo
 from parsel           import Selector
 
 class JetFilmizle(PluginBase):
-    name     = "JetFilmizle"
-    main_url = "https://jetfilmizle.io"
+    name        = "JetFilmizle"
+    language    = "tr"
+    main_url    = "https://jetfilmizle.io"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Binlerce Film İzleme Seçeneğiyle En İyi Film İzleme Sitesi"
+
+    main_page   = {
+        f"{main_url}/page/"                                     : "Son Filmler",
+        f"{main_url}/netflix/page/"                             : "Netflix",
+        f"{main_url}/editorun-secimi/page/"                     : "Editörün Seçimi",
+        f"{main_url}/turk-film-izle/page/"                      : "Türk Filmleri",
+        f"{main_url}/cizgi-filmler-izle/page/"                  : "Çizgi Filmler",
+        f"{main_url}/kategoriler/yesilcam-filmleri-izlee/page/" : "Yeşilçam Filmleri"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(f"{url}{page}")
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = self.clean_title(veri.css("h2 a::text, h3 a::text, h4 a::text, h5 a::text, h6 a::text").get()),
+                url      = self.fix_url(veri.css("a::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(data-src)").get() or veri.css("img::attr(src)").get()),
+            )
+                for veri in secici.css("article.movie")
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
@@ -43,7 +70,8 @@ class JetFilmizle(PluginBase):
         description = secici.css("section.movie-exp p.aciklama::text").get().strip()
         tags        = secici.css("section.movie-exp div.catss a::text").getall()
         rating      = secici.css("section.movie-exp div.imdb_puan span::text").get().strip()
-        year        = secici.xpath("//div[@class='yap' and (contains(., 'Vizyon') or contains(., 'Yapım'))]/text()").get().strip()
+        year        = secici.xpath("//div[@class='yap' and (contains(., 'Vizyon') or contains(., 'Yapım'))]/text()").get()
+        year        = year.strip() if year else None
         actors      = secici.css("div[itemprop='actor'] a span::text").getall()
 
         return MovieInfo(

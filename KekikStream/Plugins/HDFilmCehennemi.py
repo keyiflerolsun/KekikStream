@@ -1,12 +1,47 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
 from parsel           import Selector
 import random, string
 
 class HDFilmCehennemi(PluginBase):
-    name     = "HDFilmCehennemi"
-    main_url = "https://www.hdfilmcehennemi.nl"
+    name        = "HDFilmCehennemi"
+    language    = "tr"
+    main_url    = "https://www.hdfilmcehennemi.nl"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Türkiye'nin en hızlı hd film izleme sitesi"
+
+    main_page   = {
+        f"{main_url}"                                      : "Yeni Eklenen Filmler",
+        f"{main_url}/yabancidiziizle-2"                    : "Yeni Eklenen Diziler",
+        f"{main_url}/category/tavsiye-filmler-izle2"       : "Tavsiye Filmler",
+        f"{main_url}/imdb-7-puan-uzeri-filmler"            : "IMDB 7+ Filmler",
+        f"{main_url}/en-cok-yorumlananlar-1"               : "En Çok Yorumlananlar",
+        f"{main_url}/en-cok-begenilen-filmleri-izle"       : "En Çok Beğenilenler",
+        f"{main_url}/tur/aile-filmleri-izleyin-6"          : "Aile Filmleri",
+        f"{main_url}/tur/aksiyon-filmleri-izleyin-3"       : "Aksiyon Filmleri",
+        f"{main_url}/tur/animasyon-filmlerini-izleyin-4"   : "Animasyon Filmleri",
+        f"{main_url}/tur/belgesel-filmlerini-izle-1"       : "Belgesel Filmleri",
+        f"{main_url}/tur/bilim-kurgu-filmlerini-izleyin-2" : "Bilim Kurgu Filmleri",
+        f"{main_url}/tur/komedi-filmlerini-izleyin-1"      : "Komedi Filmleri",
+        f"{main_url}/tur/korku-filmlerini-izle-2/"         : "Korku Filmleri",
+        f"{main_url}/tur/romantik-filmleri-izle-1"         : "Romantik Filmleri"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(f"{url}")
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("strong.poster-title::text").get(),
+                url      = self.fix_url(veri.css("::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(data-src)").get()),
+            )
+                for veri in secici.css("div.section-content a.poster")
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
