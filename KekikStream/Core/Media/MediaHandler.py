@@ -123,11 +123,11 @@ class MediaHandler:
                 subprocess.run(mpv_command, stdin=ytdlp_proc.stdout, check=True)
 
         except subprocess.CalledProcessError as hata:
-            print(f"[red]Oynatma hatası: {hata}[/red]")
-            print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print(f"[red]Oynatma hatası: {hata}[/red]")
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
         except FileNotFoundError:
-            print("[red]yt-dlp veya mpv bulunamadı! Kurulumlarından emin olun.[/red]")
-            print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print("[red]yt-dlp veya mpv bulunamadı! Kurulumlarından emin olun.[/red]")
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
 
     def play_with_android_mxplayer(self, extract_data: ExtractResult):
         konsol.log(f"[yellow][»] MxPlayer ile Oynatılıyor : {extract_data.url}")
