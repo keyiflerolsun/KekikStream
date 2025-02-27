@@ -1,11 +1,55 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo
 from parsel           import Selector
 
 class FilmMakinesi(PluginBase):
-    name     = "FilmMakinesi"
-    main_url = "https://filmmakinesi.de"
+    name        = "FilmMakinesi"
+    language    = "tr"
+    main_url    = "https://filmmakinesi.de"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Diziyou en kaliteli Türkçe dublaj ve altyazılı yabancı dizi izleme sitesidir. Güncel ve efsanevi dizileri 1080p Full HD kalitede izlemek için hemen tıkla!"
+
+    main_page   = {
+        f"{main_url}/page/"                                        : "Son Filmler",
+        f"{main_url}/film-izle/olmeden-izlenmesi-gerekenler/page/" : "Ölmeden İzle",
+        f"{main_url}/film-izle/aksiyon-filmleri-izle/page/"        : "Aksiyon",
+        f"{main_url}/film-izle/bilim-kurgu-filmi-izle/page/"       : "Bilim Kurgu",
+        f"{main_url}/film-izle/macera-filmleri/page/"              : "Macera",
+        f"{main_url}/film-izle/komedi-filmi-izle/page/"            : "Komedi",
+        f"{main_url}/film-izle/romantik-filmler-izle/page/"        : "Romantik",
+        f"{main_url}/film-izle/belgesel/page/"                     : "Belgesel",
+        f"{main_url}/film-izle/fantastik-filmler-izle/page/"       : "Fantastik",
+        f"{main_url}/film-izle/polisiye-filmleri-izle/page/"       : "Polisiye Suç",
+        f"{main_url}/film-izle/korku-filmleri-izle-hd/page/"       : "Korku",
+        f"{main_url}/film-izle/savas/page/"                        : "Tarihi ve Savaş",
+        f"{main_url}/film-izle/gerilim-filmleri-izle/page/"        : "Gerilim Heyecan",
+        f"{main_url}/film-izle/gizemli/page/"                      : "Gizem",
+        f"{main_url}/film-izle/aile-filmleri/page/"                : "Aile",
+        f"{main_url}/film-izle/animasyon-filmler/page/"            : "Animasyon",
+        f"{main_url}/film-izle/western/page/"                      : "Western",
+        f"{main_url}/film-izle/biyografi/page/"                    : "Biyografik",
+        f"{main_url}/film-izle/dram/page/"                         : "Dram",
+        f"{main_url}/film-izle/muzik/page/"                        : "Müzik",
+        f"{main_url}/film-izle/spor/page/"                         : "Spor"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = self.cloudscraper.get(f"{url}{page}")
+        secici = Selector(istek.text)
+
+        veriler = secici.css("section#film_posts article") if "/film-izle/" in url else secici.css("section#film_posts div.tooltip")
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("h6 a::text").get(),
+                url      = self.fix_url(veri.css("h6 a::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(data-src)").get() or veri.css("img::attr(src)").get()),
+            )
+                for veri in veriler
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:

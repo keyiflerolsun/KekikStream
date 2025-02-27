@@ -1,12 +1,48 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult
 from parsel           import Selector
 import re
 
 class DiziYou(PluginBase):
-    name     = "DiziYou"
-    main_url = "https://www.diziyou1.com"
+    name        = "DiziYou"
+    language    = "tr"
+    main_url    = "https://www.diziyou1.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Diziyou en kaliteli Türkçe dublaj ve altyazılı yabancı dizi izleme sitesidir. Güncel ve efsanevi dizileri 1080p Full HD kalitede izlemek için hemen tıkla!"
+
+    main_page   = {
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Aile"                 : "Aile",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Aksiyon"              : "Aksiyon",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Animasyon"            : "Animasyon",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Belgesel"             : "Belgesel",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Bilim+Kurgu"          : "Bilim Kurgu",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Dram"                 : "Dram",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Fantazi"              : "Fantazi",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Gerilim"              : "Gerilim",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Gizem"                : "Gizem",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Komedi"               : "Komedi",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Korku"                : "Korku",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Macera"               : "Macera",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Sava%C5%9F"           : "Savaş",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Su%C3%A7"             : "Suç",
+        f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Vah%C5%9Fi+Bat%C4%B1" : "Vahşi Batı"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("div#categorytitle a::text").get(),
+                url      = self.fix_url(veri.css("div#categorytitle a::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(src)").get()),
+            )
+                for veri in secici.css("div.single-item")
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
