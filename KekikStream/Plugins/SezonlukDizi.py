@@ -1,11 +1,40 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 
 class SezonlukDizi(PluginBase):
-    name     = "SezonlukDizi"
-    main_url = "https://sezonlukdizi6.com"
+    name        = "SezonlukDizi"
+    language    = "tr"
+    main_url    = "https://sezonlukdizi6.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Güncel ve eski dizileri en iyi görüntü kalitesiyle bulabileceğiniz yabancı dizi izleme siteniz."
+
+    main_page   = {
+        f"{main_url}/diziler.asp?siralama_tipi=id&s="          : "Son Eklenenler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=mini&s=" : "Mini Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=2&s="    : "Yerli Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=1&s="    : "Yabancı Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=3&s="    : "Asya Dizileri",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=4&s="    : "Animasyonlar",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=5&s="    : "Animeler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="    : "Belgeseller",
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(f"{url}{page}")
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("div.description::text").get(),
+                url      = self.fix_url(veri.css("::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(data-src)").get()),
+            )
+                for veri in secici.css("div.afis a") if veri.css("div.description::text").get()
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
