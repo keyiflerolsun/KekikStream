@@ -41,9 +41,9 @@ KekikStream
 
 ## 💻 Kendi Projenizde Kullanabilirsiniz
 
-- _Python için örnek iş akışı_ » *[KekikStream/Tests/Single.py](https://github.com/keyiflerolsun/KekikStream/blob/master/Tests/Single.py)*
-- _Yerelde ağ genelinde kullanmak için API_ » *[KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI)*
-  - _API için örnek iş akışı_ » *[KekikStreamAPI/Tests/Single.py](https://github.com/keyiflerolsun/KekikStream/blob/master/Tests/Single.py)*
+- _Python için örnek iş akışı_ » **[KekikStream/Tests/Single.py](https://github.com/keyiflerolsun/KekikStream/blob/master/Tests/Single.py)**
+- _Yerelde ağ genelinde kullanmak için API_ » **[KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI)**
+  - _API için örnek iş akışı_ » **[KekikStreamAPI/Tests/Single.py](https://github.com/keyiflerolsun/KekikStream/blob/master/Tests/Single.py)**
 
 ## 💸 Bağış Yap
 
