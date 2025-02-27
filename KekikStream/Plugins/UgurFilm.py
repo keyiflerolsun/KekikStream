@@ -1,11 +1,42 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, SearchResult, MovieInfo
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo
 from parsel           import Selector
 
 class UgurFilm(PluginBase):
-    name     = "UgurFilm"
-    main_url = "https://ugurfilm8.com"
+    name        = "UgurFilm"
+    language    = "tr"
+    main_url    = "https://ugurfilm8.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Yabancı film izle, Türkçe dublaj ve Türkçe altyazılı film seçenekleriyle 720p ve 1080p HD kalitesinde film izle - Uğur Film full hd film izle."
+
+    main_page   = {
+        f"{main_url}/turkce-altyazili-filmler/page/" : "Türkçe Altyazılı Filmler",
+        f"{main_url}/yerli-filmler/page/"            : "Yerli Filmler",
+        f"{main_url}/en-cok-izlenen-filmler/page/"   : "En Çok İzlenen Filmler",
+        f"{main_url}/category/kisa-film/page/"       : "Kısa Film",
+        f"{main_url}/category/aksiyon/page/"         : "Aksiyon",
+        f"{main_url}/category/bilim-kurgu/page/"     : "Bilim Kurgu",
+        f"{main_url}/category/belgesel/page/"        : "Belgesel",
+        f"{main_url}/category/komedi/page/"          : "Komedi",
+        f"{main_url}/category/kara-film/page/"       : "Kara Film",
+        f"{main_url}/category/erotik/page/"          : "Erotik"
+    }
+
+    @kekik_cache(ttl=60*60)
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
+        secici = Selector(istek.text)
+
+        return [
+            MainPageResult(
+                category = category,
+                title    = veri.css("span:nth-child(1)::text").get(),
+                url      = self.fix_url(veri.css("a::attr(href)").get()),
+                poster   = self.fix_url(veri.css("img::attr(src)").get()),
+            )
+                for veri in secici.css("div.icerik div") if veri.css("span:nth-child(1)::text").get()
+        ]
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:

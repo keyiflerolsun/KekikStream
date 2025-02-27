@@ -1,12 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.CLI             import konsol
-from asyncio                     import run
-from KekikStream.Plugins.SezonlukDizi import SezonlukDizi
-from KekikStream.Core            import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
+from KekikStream.CLI  import konsol
+from asyncio          import run
+from KekikStream.Core import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
+
+from KekikStream.Plugins.UgurFilm import UgurFilm
 
 async def main():
-    plugin = SezonlukDizi()
+    plugin = UgurFilm()
     ext    = ExtractorManager()
     media  = MediaManager()
 
