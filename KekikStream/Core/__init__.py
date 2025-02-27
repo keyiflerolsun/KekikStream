@@ -1,5 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+from Kekik.cache import kekik_cache
+
 from .UI.UIManager import UIManager
 
 from .Plugin.PluginManager import PluginManager
