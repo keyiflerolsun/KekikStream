@@ -153,14 +153,14 @@ class HDFilmCehennemi(PluginBase):
         return None
 
     @kekik_cache(ttl=15*60)
-    async def invoke_local_source(self, iframe: str, source: str, video_id: str, url: str):
+    async def invoke_local_source(self, iframe: str, source: str, url: str):
         self.httpx.headers.update({"Referer": f"{self.main_url}/"})
         istek = await self.httpx.get(iframe)
 
         try:
             eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
         except Exception:
-            await self.cehennempass(video_id)
+            await self.cehennempass(iframe.split("/")[-1])
             return None, None
 
         unpacked  = unpack(eval_func)
@@ -214,7 +214,7 @@ class HDFilmCehennemi(PluginBase):
                 if iframe and "?rapidrame_id=" in iframe:
                     iframe = f"{self.main_url}/playerr/{iframe.split('?rapidrame_id=')[1]}"
 
-                video_url, data = await self.invoke_local_source(iframe, source, video_id, url)
+                video_url, data = await self.invoke_local_source(iframe, source, url)
                 if not video_url:
                     continue
 
