@@ -6,7 +6,7 @@ from io         import open
 setup(
     # ? Genel Bilgiler
     name         = "KekikStream",
-    version      = "1.3.7",
+    version      = "1.3.8",
     url          = "https://github.com/keyiflerolsun/KekikStream",
     description  = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir bıdı bıdı",
     keywords     = ["KekikStream", "KekikAkademi", "keyiflerolsun"],
@@ -33,14 +33,19 @@ setup(
         "parsel",
         "pydantic",
         "InquirerPy",
-        "yt-dlp"
+        "yt-dlp",
+        "fastapi",
+        "Jinja2",
+        "uvicorn",
+        "user_agents",
+        "PyYAML"
     ],
 
     # ? Konsoldan Çalıştırılabilir
     entry_points = {
         "console_scripts": [
             "KekikStream    = KekikStream:basla",
-            "KekikStreamAPI = KekikStreamAPI:basla.basla"
+            "KekikStreamAPI = KekikStreamAPI:basla"
         ]
     },
 
