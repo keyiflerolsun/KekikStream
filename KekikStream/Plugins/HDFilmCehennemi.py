@@ -1,8 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
-from parsel           import Selector
-import random, string
+from KekikStream.Core           import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from parsel                     import Selector
+from KekikStream.Helpers.Unpack import unpack
+import random, string, re, base64
 
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
@@ -103,51 +104,12 @@ class HDFilmCehennemi(PluginBase):
             actors      = actors,
             duration    = duration_minutes
         )
-    
+
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
     @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
-        self._data.clear()
-
-        istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
-
-        lang_code = secici.css("div.alternative-links::attr(data-lang)").get().upper()
-        buttons   = secici.css("div.alternative-links > button")
-
-        link_list = []
-
-        for button in buttons:
-            source   = button.css("button.alternative-link::text").get().replace("(HDrip Xbet)", "").strip() + " " + lang_code
-            video_id = button.css("button.alternative-link::attr(data-video)").get()
-
-            istek = await self.httpx.get(
-                url     = f"{self.main_url}/video/{video_id}/",
-                headers = {
-                    "Referer"          : f"{self.main_url}/", 
-                    "X-Requested-With" : "fetch", 
-                    "authority"        : f"{self.main_url}"
-                }
-            )
-
-            data       = istek.json().get("data")
-            secici     = Selector(data["html"])
-            iframe_url = secici.css("iframe::attr(src)").get() or secici.css("iframe::attr(data-src)").get()
-
-            if "?rapidrame_id=" in iframe_url:
-                # https://hdfilmcehennemi.mobi/video/embed/uQcCR9nhaNz/?rapidrame_id=j4b4kvc0s24l\
-                video_id = iframe_url.split("=")[1]
-            else:
-                # https://www.hdfilmcehennemi.nl/rplayer/j4b4kvc0s24l/
-                video_id = iframe_url.split("/")[-1]
-
-            # print(video_id)
-            if(video_id):
-               break
-
-        # selected_quality: low
+    async def cehennempass(self, video_id: str):
         istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
@@ -160,7 +122,6 @@ class HDFilmCehennemi(PluginBase):
         )
 
         video_url = istek.json().get("download_link")
-        # print(video_url)
 
         self._data[self.fix_url(video_url)] = {
             "ext_name"  : f"{self.name} | Düşük Kalite",
@@ -169,7 +130,6 @@ class HDFilmCehennemi(PluginBase):
             "subtitles" : []
         }
 
-        # selected_quality: high
         istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
@@ -189,6 +149,76 @@ class HDFilmCehennemi(PluginBase):
             "referer"   : f"https://cehennempass.pw/download/{video_id}",
             "subtitles" : []
         }
+
+        return None
+
+    @kekik_cache(ttl=15*60)
+    async def invoke_local_source(self, iframe: str, source: str, video_id: str, url: str):
+        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
+        istek = await self.httpx.get(iframe)
+
+        try:
+            eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
+        except Exception:
+            await self.cehennempass(video_id)
+            return None, None
+
+        unpacked  = unpack(eval_func)
+        b64_url   = re.search(r'file_link=\"(.*)\"\;', unpacked)[1]
+        video_url = base64.b64decode(b64_url).decode("utf-8")
+
+        subtitles = []
+        try:
+            sub_data = istek.text.split("tracks: [")[1].split("]")[0]
+            for sub in re.findall(r'file":"([^"]+)".*?"language":"([^"]+)"', sub_data, flags=re.DOTALL):
+                subtitles.append(Subtitle(
+                    name = sub[1].upper(),
+                    url  = self.fix_url(sub[0].replace("\\", "")),
+                ))
+        except Exception:
+            pass
+
+        data = {
+            "ext_name"  : f"{self.name} | {source}",
+            "name"      : f"{self.name} | {source}",
+            "referer"   : url,
+            "subtitles" : subtitles
+        }
+
+        return video_url, data
+
+    @kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[str]:
+        istek  = await self.httpx.get(url)
+        secici = Selector(istek.text)
+
+        for alternatif in secici.css("div.alternative-links"):
+            lang_code = alternatif.css("::attr(data-lang)").get().upper()
+
+            for link in alternatif.css("button.alternative-link"):
+                source   = f"{link.css('::text').get().replace('(HDrip Xbet)', '').strip()} {lang_code}"
+                video_id = link.css("::attr(data-video)").get()
+
+                api_get = await self.httpx.get(
+                    url     = f"{self.main_url}/video/{video_id}/",
+                    headers = {
+                        "Content-Type"     : "application/json",
+                        "X-Requested-With" : "fetch",
+                        "Referer"          : url,
+                    },
+                )
+
+                match  = re.search(r'data-src=\\"([^"]+)', api_get.text)
+                iframe = match[1].replace("\\", "") if match else None
+
+                if iframe and "?rapidrame_id=" in iframe:
+                    iframe = f"{self.main_url}/playerr/{iframe.split('?rapidrame_id=')[1]}"
+
+                video_url, data = await self.invoke_local_source(iframe, source, video_id, url)
+                if not video_url:
+                    continue
+
+                self._data[video_url] = data
 
         return list(self._data.keys())
 
