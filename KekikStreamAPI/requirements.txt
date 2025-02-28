@@ -1,0 +1,11 @@
+setuptools
+wheel
+Kekik
+httpx
+parsel
+fastapi
+uvicorn
+user_agents
+PyYAML
+Jinja2
+KekikStream
