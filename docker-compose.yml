@@ -1,0 +1,20 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
+networks:
+  local:
+    driver: bridge
+
+services:
+  KekikStreamAPI:
+    container_name : KekikStreamAPI
+    image          : kekikstream:latest
+    tty            : true
+    restart        : always
+    build          : .
+
+    volumes:
+      - .:/usr/src/KekikStreamAPI
+    networks:
+      - local
+    ports:
+      - 3310:3310
