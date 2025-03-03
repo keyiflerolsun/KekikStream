@@ -21,7 +21,7 @@ class JetFilmizle(PluginBase):
 
     @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
         secici = Selector(istek.text)
 
         return [
@@ -31,7 +31,7 @@ class JetFilmizle(PluginBase):
                 url      = self.fix_url(veri.css("a::attr(href)").get()),
                 poster   = self.fix_url(veri.css("img::attr(data-src)").get() or veri.css("img::attr(src)").get()),
             )
-                for veri in secici.css("article.movie")
+                for veri in secici.css("article.movie") if veri.css("h2 a::text, h3 a::text, h4 a::text, h5 a::text, h6 a::text").get()
         ]
 
     @kekik_cache(ttl=60*60)
