@@ -130,6 +130,8 @@ class RecTV(PluginBase):
 
         videolar = []
         if veri.get("sources"):
+            self._data.clear()
+
             for kaynak in veri.get("sources"):
                 video_link = kaynak.get("url")
                 if "otolinkaff" in video_link:

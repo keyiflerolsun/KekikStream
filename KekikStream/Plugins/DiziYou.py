@@ -107,6 +107,8 @@ class DiziYou(PluginBase):
 
     @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
+        self._data.clear()
+
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
