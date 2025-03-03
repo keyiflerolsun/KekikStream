@@ -6,7 +6,7 @@ class SineWix(PluginBase):
     name        = "SineWix"
     language    = "tr"
     main_url    = "https://ythls.kekikakademi.org"
-    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    favicon     = "https://play-lh.googleusercontent.com/brwGNmr7IjA_MKk_TTPs0va10hdKE_bD_a1lnKoiMuCayW98EHpRv55edA6aEoJlmwfX"
     description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
     main_page   = {
