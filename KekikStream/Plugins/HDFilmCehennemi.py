@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core           import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
-from parsel                     import Selector
-from KekikStream.Helpers.Unpack import unpack
+from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from parsel           import Selector
+from Kekik.Sifreleme  import Packer
 import random, string, re, base64
 
 class HDFilmCehennemi(PluginBase):
@@ -167,7 +167,7 @@ class HDFilmCehennemi(PluginBase):
             await self.cehennempass(iframe.split("/")[-1])
             return None, None
 
-        unpacked  = unpack(eval_func)
+        unpacked  = Packer.unpack(eval_func)
         b64_url   = re.search(r'file_link=\"(.*)\"\;', unpacked)[1]
         video_url = base64.b64decode(b64_url).decode("utf-8")
 

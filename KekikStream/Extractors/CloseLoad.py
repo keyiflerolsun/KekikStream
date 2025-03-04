@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core           import ExtractorBase, ExtractResult
-from KekikStream.Helpers.Unpack import unpack
+from KekikStream.Core import ExtractorBase, ExtractResult
+from Kekik.Sifreleme  import Packer
 import re, base64
 
 def get_m3u_link(data: str) -> str:
@@ -35,7 +35,7 @@ class CloseLoadExtractor(ExtractorBase):
         istek.raise_for_status()
 
         eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
-        m3u_link  = get_m3u_link(extract_data(unpack(eval_func)))
+        m3u_link  = get_m3u_link(extract_data(Packer.unpack(eval_func)))
 
         await self.close()
         return ExtractResult(
