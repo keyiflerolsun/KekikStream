@@ -29,6 +29,8 @@ class HDFilmCehennemi(PluginBase):
         f"{main_url}/tur/romantik-filmleri-izle-1"         : "Romantik Filmleri"
     }
 
+    _data = {}
+
     @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}", follow_redirects=True)
@@ -189,8 +191,6 @@ class HDFilmCehennemi(PluginBase):
 
     @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
-        self._data.clear()
-
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 

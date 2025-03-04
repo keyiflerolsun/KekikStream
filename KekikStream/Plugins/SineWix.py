@@ -34,6 +34,8 @@ class SineWix(PluginBase):
         f"{main_url}/sinewix/movies/36"     : "Tarih",
     }
 
+    _data = {}
+
     @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.httpx.get(f"{url}/{page}")
@@ -137,7 +139,6 @@ class SineWix(PluginBase):
         alt_title = veri.get("original_name") or ""
         title     = f"{org_title} - {alt_title}" if (alt_title and org_title != alt_title)  else org_title
 
-        self._data.clear()
         for video in veri.get("videos"):
             video_link = video.get("link").split("_blank\">")[-1]
             self._data[video_link] = {

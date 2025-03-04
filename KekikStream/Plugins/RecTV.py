@@ -33,6 +33,8 @@ class RecTV(PluginBase):
         f"{main_url}/api/movie/by/filtres/5/created/SAYFA/{sw_key}/"  : "Romantik"
     }
 
+    _data = {}
+
     @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
@@ -130,8 +132,6 @@ class RecTV(PluginBase):
 
         videolar = []
         if veri.get("sources"):
-            self._data.clear()
-
             for kaynak in veri.get("sources"):
                 video_link = kaynak.get("url")
                 if "otolinkaff" in video_link:

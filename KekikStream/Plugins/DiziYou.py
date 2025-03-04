@@ -29,6 +29,8 @@ class DiziYou(PluginBase):
         f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Vah%C5%9Fi+Bat%C4%B1" : "Vahşi Batı"
     }
 
+    _data = {}
+
     @kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
@@ -107,8 +109,6 @@ class DiziYou(PluginBase):
 
     @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
-        self._data.clear()
-
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
