@@ -49,6 +49,7 @@ class Sobreatsesuyp(ExtractorBase):
                     name      = f"{self.name} - {title}",
                     url       = playlist_request.text,
                     referer   = self.main_url,
+                    headers   = {},
                     subtitles = []
                 )
             )

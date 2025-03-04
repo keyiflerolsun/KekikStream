@@ -15,5 +15,5 @@ class ExtractResult(BaseModel):
     name      : str
     url       : str
     referer   : str
-    subtitles : List[Subtitle] = []
     headers   : Optional[dict] = {}
+    subtitles : List[Subtitle] = []

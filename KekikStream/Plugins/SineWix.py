@@ -112,6 +112,7 @@ class SineWix(PluginBase):
                             "ext_name"  : self.name,
                             "name"      : f"{title} | {ep_model.season}x{ep_model.episode}",
                             "referer"   : self.main_url,
+                            "headers"   : self.media_handler.headers,
                             "subtitles" : []
                         }
 
@@ -145,6 +146,7 @@ class SineWix(PluginBase):
                 "ext_name"  : self.name,
                 "name"      : f"{self.name} | {title}",
                 "referer"   : self.main_url,
+                "headers"   : self.media_handler.headers,
                 "subtitles" : []
             }
 

@@ -190,6 +190,7 @@ class Shorten(PluginBase):
                 "ext_name"  : self.name,
                 "name"      : f"{ep_model.title}",
                 "referer"   : f"{self.main_url}/tr",
+                "headers"   : self.media_handler.headers,
                 "subtitles" : []
             }
 

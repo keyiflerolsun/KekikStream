@@ -158,6 +158,7 @@ class DiziYou(PluginBase):
                 "ext_name"  : f"{self.name} | {stream.get('dil')}",
                 "name"      : f"{self.name} | {stream.get('dil')} | {item_title} - {ep_name}",
                 "referer"   : url,
+                "headers"   : self.media_handler.headers,
                 "subtitles" : subtitles
             }
 

@@ -26,6 +26,7 @@ class TauVideo(ExtractorBase):
                     name      = f"{self.name} - {video['label']}",
                     url       = video["url"],
                     referer   = referer or self.main_url,
+                    headers   = {},
                     subtitles = []
                 )
                     for video in api_data["urls"]

@@ -129,6 +129,7 @@ class HDFilmCehennemi(PluginBase):
             "ext_name"  : f"{self.name} | Düşük Kalite",
             "name"      : "Düşük Kalite",
             "referer"   : f"https://cehennempass.pw/download/{video_id}",
+            "headers"   : self.media_handler.headers,
             "subtitles" : []
         }
 
@@ -149,6 +150,7 @@ class HDFilmCehennemi(PluginBase):
             "ext_name"  : f"{self.name} | Yüksek Kalite",
             "name"      : "Yüksek Kalite",
             "referer"   : f"https://cehennempass.pw/download/{video_id}",
+            "headers"   : self.media_handler.headers,
             "subtitles" : []
         }
 

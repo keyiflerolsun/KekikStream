@@ -81,6 +81,7 @@ class Odnoklassniki(ExtractorBase):
             name      = self.name,
             url       = best_video,
             referer   = self.main_url,
+            headers   = {},
             subtitles = []
         )
 

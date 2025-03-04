@@ -52,8 +52,6 @@ class RecTV(PluginBase):
 
     @kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
-
         istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
@@ -97,6 +95,7 @@ class RecTV(PluginBase):
                             "ext_name"  : self.name,
                             "name"      : f"{veri.get('title')} | {ep_model.season}. Sezon {ep_model.episode}. Bölüm",
                             "referer"   : "https://twitter.com/",
+                            "headers"   : self.media_handler.headers,
                             "subtitles" : []
                         }
 
@@ -125,6 +124,8 @@ class RecTV(PluginBase):
 
     @kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[str]:
+        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
+
         try:
             veri = loads(url)
         except Exception:
@@ -141,6 +142,7 @@ class RecTV(PluginBase):
                     "ext_name"  : self.name,
                     "name"      : veri.get("title"),
                     "referer"   : "https://twitter.com/",
+                    "headers"   : self.media_handler.headers,
                     "subtitles" : []
                 }
                 videolar.append(video_link)
