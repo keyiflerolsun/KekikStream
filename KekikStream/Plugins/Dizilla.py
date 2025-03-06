@@ -8,7 +8,7 @@ from urllib.parse     import urlparse, urlunparse
 class Dizilla(PluginBase):
     name        = "Dizilla"
     language    = "tr"
-    main_url    = "https://dizilla.club"
+    main_url    = "https://dizilla.nl"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Dizilla tüm yabancı dizileri ücretsiz olarak Türkçe Dublaj ve altyazılı seçenekleri ile 1080P kalite izleyebileceğiniz yeni nesil yabancı dizi izleme siteniz."
 
