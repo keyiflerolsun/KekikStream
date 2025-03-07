@@ -8,7 +8,7 @@ import re
 class RecTV(PluginBase):
     name        = "RecTV"
     language    = "tr"
-    main_url    = "https://m.prectv37.sbs"
+    main_url    = "https://a.prectv37.sbs"
     favicon     = "https://rectvapk.cc/wp-content/uploads/2023/02/Rec-TV.webp"
     description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
