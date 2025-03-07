@@ -98,7 +98,7 @@ class HDFilmCehennemi(PluginBase):
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
-            title       = title,
+            title       = self.clean_title(title),
             description = description,
             tags        = tags,
             rating      = rating,
@@ -184,7 +184,7 @@ class HDFilmCehennemi(PluginBase):
 
         data = {
             "ext_name"  : f"{self.name} | {source}",
-            "name"      : f"{self.name} | {source}",
+            "name"      : f"{source}",
             "referer"   : url,
             "subtitles" : subtitles
         }
