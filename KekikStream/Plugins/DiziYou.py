@@ -7,7 +7,7 @@ import re
 class DiziYou(PluginBase):
     name        = "DiziYou"
     language    = "tr"
-    main_url    = "https://www.diziyou2.com"
+    main_url    = "https://www.diziyou3.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Diziyou en kaliteli Türkçe dublaj ve altyazılı yabancı dizi izleme sitesidir. Güncel ve efsanevi dizileri 1080p Full HD kalitede izlemek için hemen tıkla!"
 
