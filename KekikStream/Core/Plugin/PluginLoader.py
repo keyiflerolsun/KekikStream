@@ -20,9 +20,9 @@ class PluginLoader:
         plugins = {}
 
         # Global eklentileri yükle
-        if self.global_plugins_dir.exists():
+        # if self.global_plugins_dir.exists():
             # konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
-            plugins |= self._load_from_directory(self.global_plugins_dir)
+            # plugins |= self._load_from_directory(self.global_plugins_dir)
 
         # Yerel eklentileri yükle
         if self.local_plugins_dir.exists():
