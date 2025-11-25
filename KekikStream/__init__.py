@@ -255,7 +255,7 @@ class KekikStream:
         self.update_title(selected.get("name"))
 
         await self.current_plugin.play(
-            name      = selected.get("name"),
+            name      = self.media.get_title(),
             url       = selected.get("url"),
             referer   = selected.get("referer"),
             subtitles = selected.get("subtitles", [])
