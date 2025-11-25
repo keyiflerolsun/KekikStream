@@ -10,15 +10,14 @@ class CloseLoadExtractor(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.httpx.headers.update({"Referer": referer})
+            self.cffi.headers.update({"Referer": referer})
 
-        istek = await self.httpx.get(url)
+        istek = await self.cffi.get(url)
         istek.raise_for_status()
 
         eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
         m3u_link  = StreamDecoder.extract_stream_url(Packer.unpack(eval_func))
 
-        await self.close()
         return ExtractResult(
             name      = self.name,
             url       = m3u_link,

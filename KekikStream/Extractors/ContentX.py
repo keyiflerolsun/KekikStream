@@ -9,9 +9,9 @@ class ContentX(ExtractorBase):
 
     async def extract(self, url, referer=None) -> list[ExtractResult]:
         if referer:
-            self.httpx.headers.update({"Referer": referer})
+            self.cffi.headers.update({"Referer": referer})
 
-        istek = await self.httpx.get(url)
+        istek = await self.cffi.get(url)
         istek.raise_for_status()
         i_source = istek.text
 
@@ -39,7 +39,7 @@ class ContentX(ExtractorBase):
                 )
             )
 
-        vid_source_request = await self.httpx.get(f"{self.main_url}/source2.php?v={i_extract_value}", headers={"Referer": referer or self.main_url})
+        vid_source_request = await self.cffi.get(f"{self.main_url}/source2.php?v={i_extract_value}", headers={"Referer": referer or self.main_url})
         vid_source_request.raise_for_status()
 
         vid_source  = vid_source_request.text
@@ -60,7 +60,7 @@ class ContentX(ExtractorBase):
 
         if i_dublaj := re.search(r',\"([^"]+)\",\"Türkçe"', i_source):
             dublaj_value          = i_dublaj[1]
-            dublaj_source_request = await self.httpx.get(f"{self.main_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or self.main_url})
+            dublaj_source_request = await self.cffi.get(f"{self.main_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or self.main_url})
             dublaj_source_request.raise_for_status()
 
             dublaj_source  = dublaj_source_request.text

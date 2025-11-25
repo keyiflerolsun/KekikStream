@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
-from httpx            import AsyncClient
 from json             import dumps, loads
 import re
 
@@ -12,9 +11,7 @@ class RecTV(PluginBase):
     favicon     = "https://rectvapk.cc/wp-content/uploads/2023/02/Rec-TV.webp"
     description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
-    sw_key  = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
-    http2   = AsyncClient(http2=True)
-    http2.headers.update({"user-agent": "okhttp/4.12.0"})
+    sw_key = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"
 
     main_page   = {
         f"{main_url}/api/channel/by/filtres/0/0/SAYFA/{sw_key}/"      : "Canlı",
@@ -35,7 +32,8 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
+        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
+        istek   = await self.cffi.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
         veriler = istek.json()
 
         return [
@@ -50,7 +48,8 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
+        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
+        istek     = await self.cffi.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
         icerikler = istek.json().get("posters")
@@ -70,11 +69,12 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
+        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
         veri = loads(url)
 
         match veri.get("type"):
             case "serie":
-                dizi_istek = await self.http2.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
+                dizi_istek = await self.cffi.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
                 dizi_veri  = dizi_istek.json()
 
                 episodes = []

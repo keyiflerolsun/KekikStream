@@ -11,10 +11,9 @@ class VidMoly(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
-            self.httpx.headers.update({"Referer": referer})
+            self.cffi.headers.update({"Referer": referer})
 
-        self.httpx.headers.update({
-            "User-Agent"     : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        self.cffi.headers.update({
             "Sec-Fetch-Dest" : "iframe",
         })
 
@@ -22,10 +21,10 @@ class VidMoly(ExtractorBase):
             self.main_url = self.main_url.replace(".me", ".net")
             url = url.replace(".me", ".net")
 
-        response = await self.httpx.get(url)
+        response = await self.cffi.get(url)
         if "Select number" in response.text:
             secici = Selector(response.text)
-            response = await self.httpx.post(
+            response = await self.cffi.post(
                 url  = url,
                 data = {
                     "op"        : secici.css("input[name='op']::attr(value)").get(),
@@ -77,7 +76,6 @@ class VidMoly(ExtractorBase):
         if not video_url:
             raise ValueError("Video URL bulunamadı.")
 
-        await self.close()
         return ExtractResult(
             name      = self.name,
             url       = video_url,

@@ -25,7 +25,7 @@ class UgurFilm(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
+        istek  = await self.cffi.get(f"{url}{page}", allow_redirects=True)
         secici = Selector(istek.text)
 
         return [
@@ -40,7 +40,7 @@ class UgurFilm(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.cffi.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         results = []
@@ -62,7 +62,7 @@ class UgurFilm(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.cffi.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.bilgi h2::text").get().strip()
@@ -84,12 +84,12 @@ class UgurFilm(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek   = await self.httpx.get(url)
+        istek   = await self.cffi.get(url)
         secici  = Selector(istek.text)
         results = []
 
         for idx, part_link in enumerate(secici.css("li.parttab a::attr(href)").getall()):
-            sub_response = await self.httpx.get(part_link)
+            sub_response = await self.cffi.get(part_link)
             sub_selector = Selector(sub_response.text)
 
             iframe = sub_selector.css("div#vast iframe::attr(src)").get()
@@ -99,7 +99,7 @@ class UgurFilm(PluginBase):
                     "alternative" : "vidmoly",
                     "ord"         : "0",
                 }
-                player_response = await self.httpx.post(
+                player_response = await self.cffi.post(
                     url  = f"{self.main_url}/player/ajax_sources.php",
                     data = post_data
                 )

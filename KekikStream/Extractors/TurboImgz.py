@@ -9,9 +9,9 @@ class TurboImgz(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.httpx.headers.update({"Referer": referer})
+            self.cffi.headers.update({"Referer": referer})
 
-        istek = await self.httpx.get(url)
+        istek = await self.cffi.get(url)
         istek.raise_for_status()
 
         if video_match := re.search(r'file: "(.*)",', istek.text):

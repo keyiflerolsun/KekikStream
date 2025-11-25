@@ -9,9 +9,9 @@ class SibNet(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.httpx.headers.update({"Referer": referer})
+            self.cffi.headers.update({"Referer": referer})
 
-        response = await self.httpx.get(url)
+        response = await self.cffi.get(url)
         response.raise_for_status()
 
         match = re.search(r'player\.src\(\[\{src: \"([^\"]+)\"', response.text)
@@ -20,7 +20,6 @@ class SibNet(ExtractorBase):
 
         m3u_link = f"{self.main_url}{match[1]}"
 
-        await self.close()
         return ExtractResult(
             name      = self.name,
             url       = m3u_link,

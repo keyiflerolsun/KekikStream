@@ -57,7 +57,7 @@ class FullHDFilmizlesene(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
+        istek  = await self.cffi.get(f"{self.main_url}/arama/{query}")
         secici = Selector(istek.text)
 
         results = []
@@ -79,7 +79,7 @@ class FullHDFilmizlesene(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.cffi.get(url)
         secici = Selector(istek.text)
 
         title       = secici.xpath("normalize-space(//div[@class='izle-titles'])").get().strip()
@@ -105,7 +105,7 @@ class FullHDFilmizlesene(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.cffi.get(url)
         secici = Selector(istek.text)
 
         script   = secici.xpath("(//script)[1]").get()

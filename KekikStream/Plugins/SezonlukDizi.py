@@ -23,7 +23,7 @@ class SezonlukDizi(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.cffi.get(f"{url}{page}")
         secici = Selector(istek.text)
 
         return [
@@ -38,7 +38,7 @@ class SezonlukDizi(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
+        istek  = await self.cffi.get(f"{self.main_url}/diziler.asp?adi={query}")
         secici = Selector(istek.text)
 
         return [
@@ -52,7 +52,7 @@ class SezonlukDizi(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.cffi.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.header::text").get().strip()
@@ -63,14 +63,14 @@ class SezonlukDizi(PluginBase):
         rating      = secici.css("div.dizipuani a div::text").re_first(r"[\d.,]+")
         actors      = []
 
-        actors_istek  = await self.httpx.get(f"{self.main_url}/oyuncular/{url.split('/')[-1]}")
+        actors_istek  = await self.cffi.get(f"{self.main_url}/oyuncular/{url.split('/')[-1]}")
         actors_secici = Selector(actors_istek.text)
         actors = [
             actor.css("div.header::text").get().strip()
                 for actor in actors_secici.css("div.doubling div.ui")
         ]
 
-        episodes_istek  = await self.httpx.get(f"{self.main_url}/bolumler/{url.split('/')[-1]}")
+        episodes_istek  = await self.cffi.get(f"{self.main_url}/bolumler/{url.split('/')[-1]}")
         episodes_secici = Selector(episodes_istek.text)
         episodes        = []
 
@@ -104,7 +104,7 @@ class SezonlukDizi(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.cffi.get(url)
         secici = Selector(istek.text)
 
         bid = secici.css("div#dilsec::attr(data-id)").get()
@@ -113,7 +113,7 @@ class SezonlukDizi(PluginBase):
 
         results = []
         for dil, label in [("1", "Altyazı"), ("0", "Dublaj")]:
-            dil_istek = await self.httpx.post(
+            dil_istek = await self.cffi.post(
                 url     = f"{self.main_url}/ajax/dataAlternatif22.asp",
                 headers = {"X-Requested-With": "XMLHttpRequest"},
                 data    = {"bid": bid, "dil": dil},
@@ -126,7 +126,7 @@ class SezonlukDizi(PluginBase):
 
             if dil_json.get("status") == "success":
                 for idx, veri in enumerate(dil_json.get("data", [])):
-                    veri_response = await self.httpx.post(
+                    veri_response = await self.cffi.post(
                         url     = f"{self.main_url}/ajax/dataEmbed22.asp",
                         headers = {"X-Requested-With": "XMLHttpRequest"},
                         data    = {"id": veri.get("id")},
