@@ -8,40 +8,39 @@ import json, re
 class FullHDFilmizlesene(PluginBase):
     name        = "FullHDFilmizlesene"
     language    = "tr"
-    main_url    = "https://www.fullhdfilmizlesene.de"
+    main_url    = "https://www.fullhdfilmizlesene.tv"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Sinema zevkini evinize kadar getirdik. Türkiye'nin lider Film sitesinde, en yeni filmleri Full HD izleyin."
 
     main_page   = {
-        f"{main_url}/en-cok-izlenen-filmler-izle-hd/"            : "En Çok izlenen Filmler",
-        f"{main_url}/filmizle/imdb-puani-yuksek-filmler-izle-1/" : "IMDB Puanı Yüksek Filmler",
-        f"{main_url}/filmizle/aile-filmleri-izle-2/"             : "Aile Filmleri",
-        f"{main_url}/filmizle/aksiyon-filmler-izle-1/"           : "Aksiyon Filmleri",
-        f"{main_url}/filmizle/animasyon-filmleri-izle-4/"        : "Animasyon Filmleri",
-        f"{main_url}/filmizle/belgesel-filmleri-izle-2/"         : "Belgeseller",
-        f"{main_url}/filmizle/bilim-kurgu-filmleri-izle-1/"      : "Bilim Kurgu Filmleri",
-        f"{main_url}/filmizle/bluray-filmler-izle-1/"            : "Blu Ray Filmler",
-        f"{main_url}/filmizle/cizgi-filmler-izle-1/"             : "Çizgi Filmler",
-        f"{main_url}/filmizle/dram-filmleri-izle/"               : "Dram Filmleri",
-        f"{main_url}/filmizle/fantastik-filmleri-izle-2/"        : "Fantastik Filmler",
-        f"{main_url}/filmizle/gerilim-filmleri-izle-3/"          : "Gerilim Filmleri",
-        f"{main_url}/filmizle/gizem-filmleri-izle/"              : "Gizem Filmleri",
-        f"{main_url}/filmizle/hint-filmler-fh-hd-izle/"          : "Hint Filmleri",
-        f"{main_url}/filmizle/komedi-filmleri-izle-2/"           : "Komedi Filmleri",
-        f"{main_url}/filmizle/korku-filmleri-izle-2/"            : "Korku Filmleri",
-        f"{main_url}/filmizle/macera-filmleri-izle-1/"           : "Macera Filmleri",
-        f"{main_url}/filmizle/muzikal-filmleri-izle/"            : "Müzikal Filmler",
-        f"{main_url}/filmizle/polisiye-filmleri-izle-1/"         : "Polisiye Filmleri",
-        f"{main_url}/filmizle/psikolojik-filmleri-izle/"         : "Psikolojik Filmler",
-        f"{main_url}/filmizle/romantik-filmler-izle-1/"          : "Romantik Filmler",
-        f"{main_url}/filmizle/savas-filmleri-izle-2/"            : "Savaş Filmleri",
-        f"{main_url}/filmizle/suc-filmleri-izle-3/"              : "Suç Filmleri",
-        f"{main_url}/filmizle/tarih-filmleri-izle/"              : "Tarih Filmleri",
-        f"{main_url}/filmizle/western-filmleri-izle/"            : "Western Filmler",
-        f"{main_url}/filmizle/yerli-filmler-izle-3/"             : "Yerli Filmler",
+        f"{main_url}/en-cok-izlenen-hd-filmler/"            : "En Çok izlenen Filmler",
+        f"{main_url}/filmizle/aile-filmleri-hdf-izle/"      : "Aile Filmleri",
+        f"{main_url}/filmizle/aksiyon-filmleri-hdf-izle/"   : "Aksiyon Filmleri",
+        f"{main_url}/filmizle/animasyon-filmleri-izle/"     : "Animasyon Filmleri",
+        f"{main_url}/filmizle/belgesel-filmleri-izle/"      : "Belgeseller",
+        f"{main_url}/filmizle/bilim-kurgu-filmleri-izle-2/" : "Bilim Kurgu Filmleri",
+        f"{main_url}/filmizle/bluray-filmler-izle/"         : "Blu Ray Filmler",
+        f"{main_url}/filmizle/cizgi-filmler-fhd-izle/"      : "Çizgi Filmler",
+        f"{main_url}/filmizle/dram-filmleri-hd-izle/"       : "Dram Filmleri",
+        f"{main_url}/filmizle/fantastik-filmler-hd-izle/"   : "Fantastik Filmler",
+        f"{main_url}/filmizle/gerilim-filmleri-fhd-izle/"   : "Gerilim Filmleri",
+        f"{main_url}/filmizle/gizem-filmleri-hd-izle/"      : "Gizem Filmleri",
+        f"{main_url}/filmizle/hint-filmleri-fhd-izle/"      : "Hint Filmleri",
+        f"{main_url}/filmizle/komedi-filmleri-fhd-izle/"    : "Komedi Filmleri",
+        f"{main_url}/filmizle/korku-filmleri-izle-3/"       : "Korku Filmleri",
+        f"{main_url}/filmizle/macera-filmleri-fhd-izle/"    : "Macera Filmleri",
+        f"{main_url}/filmizle/muzikal-filmler-izle/"        : "Müzikal Filmler",
+        f"{main_url}/filmizle/polisiye-filmleri-izle/"      : "Polisiye Filmleri",
+        f"{main_url}/filmizle/psikolojik-filmler-izle/"     : "Psikolojik Filmler",
+        f"{main_url}/filmizle/romantik-filmler-fhd-izle/"   : "Romantik Filmler",
+        f"{main_url}/filmizle/savas-filmleri-fhd-izle/"     : "Savaş Filmleri",
+        f"{main_url}/filmizle/suc-filmleri-izle/"           : "Suç Filmleri",
+        f"{main_url}/filmizle/tarih-filmleri-fhd-izle/"     : "Tarih Filmleri",
+        f"{main_url}/filmizle/western-filmler-hd-izle-3/"   : "Western Filmler",
+        f"{main_url}/filmizle/yerli-filmler-hd-izle/"       : "Yerli Filmler"
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")
         secici = Selector(istek.text)
@@ -56,7 +55,7 @@ class FullHDFilmizlesene(PluginBase):
                 for veri in secici.css("li.film")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
         secici = Selector(istek.text)
@@ -78,7 +77,7 @@ class FullHDFilmizlesene(PluginBase):
 
         return results
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -104,8 +103,8 @@ class FullHDFilmizlesene(PluginBase):
             duration    = duration
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -121,7 +120,13 @@ class FullHDFilmizlesene(PluginBase):
             if isinstance(t, dict):
                 link_list.extend(StringCodec.decode(v) for k, v in t.items())
 
-        return [
-            f"https:{link}" if link.startswith("//") else link
-                for link in link_list
-        ]
+        response = []
+        for link in link_list:
+            link = f"https:{link}" if link.startswith("//") else link
+            extractor = self.ex_manager.find_extractor(link)
+            response.append({
+                "url"  : link,
+                "name" : extractor.name if extractor else "Direct Link"
+            })
+
+        return response

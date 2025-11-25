@@ -34,11 +34,11 @@ class MediaHandler:
         if "Cookie" in self.headers or extract_data.subtitles:
             return self.play_with_mpv(extract_data)
 
-        return self.play_with_vlc(extract_data)
+        return self.play_with_vlc(extract_data) or self.play_with_mpv(extract_data)
 
     def play_with_vlc(self, extract_data: ExtractResult):
         konsol.log(f"[yellow][»] VLC ile Oynatılıyor : {extract_data.url}")
-        konsol.print(self.headers)
+        # konsol.print(self.headers)
         try:
             vlc_command = ["vlc", "--quiet"]
 
@@ -62,16 +62,19 @@ class MediaHandler:
             with open(os.devnull, "w") as devnull:
                 subprocess.run(vlc_command, stdout=devnull, stderr=devnull, check=True)
 
+            return True
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]VLC oynatma hatası: {hata}[/red]")
             konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            return False
         except FileNotFoundError:
             konsol.print("[red]VLC bulunamadı! VLC kurulu olduğundan emin olun.[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            # konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            return False
 
     def play_with_mpv(self, extract_data: ExtractResult):
         konsol.log(f"[yellow][»] MPV ile Oynatılıyor : {extract_data.url}")
-        konsol.print(self.headers)
+        # konsol.print(self.headers)
         try:
             mpv_command = ["mpv"]
 
@@ -98,7 +101,7 @@ class MediaHandler:
 
     def play_with_ytdlp(self, extract_data: ExtractResult):
         konsol.log(f"[yellow][»] yt-dlp ile Oynatılıyor : {extract_data.url}")
-        konsol.print(self.headers)
+        # konsol.print(self.headers)
         try:
             ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings"]
 
@@ -131,7 +134,7 @@ class MediaHandler:
 
     def play_with_android_mxplayer(self, extract_data: ExtractResult):
         konsol.log(f"[yellow][»] MxPlayer ile Oynatılıyor : {extract_data.url}")
-        konsol.print(self.headers)
+        # konsol.print(self.headers)
         paketler = [
             "com.mxtech.videoplayer.ad/.ActivityScreen",  # Free sürüm
             "com.mxtech.videoplayer.pro/.ActivityScreen"  # Pro sürüm

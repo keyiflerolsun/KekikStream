@@ -4,11 +4,13 @@ from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResu
 from parsel           import Selector
 from json             import loads
 from urllib.parse     import urlparse, urlunparse
+from Crypto.Cipher    import AES
+from base64           import b64decode
 
 class Dizilla(PluginBase):
     name        = "Dizilla"
     language    = "tr"
-    main_url    = "https://dizilla.nl"
+    main_url    = "https://dizilla40.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Dizilla tüm yabancı dizileri ücretsiz olarak Türkçe Dublaj ve altyazılı seçenekleri ile 1080P kalite izleyebileceğiniz yeni nesil yabancı dizi izleme siteniz."
 
@@ -22,7 +24,7 @@ class Dizilla(PluginBase):
         f"{main_url}/dizi-turu/komedi"      : "Komedi"
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -40,19 +42,19 @@ class Dizilla(PluginBase):
                     for veri in secici.css("div.grid-cols-3 a")
             ])
         else:
-            for veri in secici.css("div.grid a"):
+            for veri in secici.css("div.tab-content > div.grid a"):
                 name    = veri.css("h2::text").get()
-                ep_name = veri.css("div.opacity-80::text").get()
+                ep_name = veri.xpath("normalize-space(//div[contains(@class, 'opacity-80')])").get()
                 if not ep_name:
                     continue
 
                 ep_name = ep_name.replace(". Sezon", "x").replace(". Bölüm", "").replace("x ", "x")
                 title   = f"{name} - {ep_name}"
 
-                ep_req    = await self.httpx.get(veri.css("::attr(href)").get())
+                ep_req    = await self.httpx.get(self.fix_url(veri.css("::attr(href)").get()))
                 ep_secici = Selector(ep_req.text)
-                href      = self.fix_url(ep_secici.css("a.relative::attr(href)").get())
-                poster    = self.fix_url(ep_secici.css("img.imgt::attr(onerror)").get().split("= '")[-1].split("';")[0])
+                href      = self.fix_url(ep_secici.css("nav li:nth-of-type(3) a::attr(href)").get())
+                poster    = self.fix_url(ep_secici.css("img.imgt::attr(src)").get())
 
                 ana_sayfa.append(
                     MainPageResult(
@@ -65,32 +67,32 @@ class Dizilla(PluginBase):
 
         return ana_sayfa
 
-    @kekik_cache(ttl=60*60)
+    async def decrypt_response(self, response: str) -> dict:
+        # 32 bytes key
+        key = "9bYMCNQiWsXIYFWYAu7EkdsSbmGBTyUI".encode("utf-8")
+
+        # IV = 16 bytes of zero
+        iv = bytes([0] * 16)
+
+        # Base64 decode
+        encrypted_bytes = b64decode(response)
+
+        # AES/CBC/PKCS5Padding
+        cipher    = AES.new(key, AES.MODE_CBC, iv)
+        decrypted = cipher.decrypt(encrypted_bytes)
+
+        # PKCS5/PKCS7 padding remove
+        pad_len   = decrypted[-1]
+        decrypted = decrypted[:-pad_len]
+
+        # JSON decode
+        return loads(decrypted.decode("utf-8"))
+
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        ilk_istek  = await self.httpx.get(self.main_url)
-        ilk_secici = Selector(ilk_istek.text)
-        cKey       = ilk_secici.css("input[name='cKey']::attr(value)").get()
-        cValue     = ilk_secici.css("input[name='cValue']::attr(value)").get()
-
-        self.httpx.headers.update({
-            "Accept"           : "application/json, text/javascript, */*; q=0.01",
-            "X-Requested-With" : "XMLHttpRequest",
-            "Referer"          : f"{self.main_url}/"
-        })
-        self.httpx.cookies.update({
-            "showAllDaFull"   : "true",
-            "PHPSESSID"       : ilk_istek.cookies.get("PHPSESSID"),
-        })
-
-        arama_istek = await self.httpx.post(
-            url  = f"{self.main_url}/bg/searchcontent",
-            data = {
-                "cKey"       : cKey,
-                "cValue"     : cValue,
-                "searchterm" : query
-            }
-        )
-        arama_veri = arama_istek.json().get("data", {}).get("result", [])
+        arama_istek = await self.httpx.post(f"{self.main_url}/api/bg/searchcontent?searchterm={query}")
+        decrypted   = await self.decrypt_response(arama_istek.json().get("response"))
+        arama_veri  = decrypted.get("result", [])
 
         return [
             SearchResult(
@@ -101,7 +103,7 @@ class Dizilla(PluginBase):
                 for veri in arama_veri
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def url_base_degis(self, eski_url:str, yeni_base:str) -> str:
         parsed_url       = urlparse(eski_url)
         parsed_yeni_base = urlparse(yeni_base)
@@ -112,7 +114,7 @@ class Dizilla(PluginBase):
 
         return urlunparse(yeni_url)
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -152,15 +154,27 @@ class Dizilla(PluginBase):
             actors      = actors
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
-        istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
+        istek   = await self.httpx.get(url)
+        secici  = Selector(istek.text)
 
-        iframes = [self.fix_url(secici.css("div#playerLsDizilla iframe::attr(src)").get())]
-        for alternatif in secici.css("a[href*='player']"):
-            alt_istek  = await self.httpx.get(self.fix_url(alternatif.css("::attr(href)").get()))
-            alt_secici = Selector(alt_istek.text)
-            iframes.append(self.fix_url(alt_secici.css("div#playerLsDizilla iframe::attr(src)").get()))
+        next_data   = loads(secici.css("script#__NEXT_DATA__::text").get())
+        secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData", {})
+        decrypted   = await self.decrypt_response(secure_data)
+        results     = decrypted.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
 
-        return iframes
+        links = []
+        for result in results:
+            iframe_src = Selector(result.get("source_content")).css("iframe::attr(src)").get()
+            iframe_url = self.fix_url(iframe_src)
+            if not iframe_url:
+                continue
+
+            extractor = self.ex_manager.find_extractor(iframe_url)
+            links.append({
+                "url"  : iframe_url,
+                "name" : f"{extractor.name if extractor else 'Main Player'} | {result.get('language_name')}",
+            })
+
+        return links

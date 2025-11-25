@@ -1,16 +1,16 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from .             import konsol
-from rich.panel    import Panel
-from pkg_resources import get_distribution
-from requests      import get
-from subprocess    import check_call
+from .          import konsol
+from rich.panel import Panel
+from importlib  import metadata
+from requests   import get
+from subprocess import check_call
 import sys
 
 def pypi_kontrol_guncelle(paket_adi: str):
     try:
         konsol.print(f"[bold cyan] {paket_adi} Güncellemesi kontrol ediliyor...[/bold cyan]")
-        mevcut_surum = get_distribution(paket_adi).version
+        mevcut_surum = metadata.version(paket_adi)
         konsol.print(Panel(f"[cyan]Yüklü sürüm:[/cyan] [bold yellow]{mevcut_surum}[/bold yellow]"))
 
         istek = get(f"https://pypi.org/pypi/{paket_adi}/json")

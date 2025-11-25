@@ -2,7 +2,8 @@
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import re, asyncio, contextlib, json
+from parsel           import Selector
+import re, contextlib, json
 
 class VidMoly(ExtractorBase):
     name     = "VidMoly"
@@ -18,24 +19,26 @@ class VidMoly(ExtractorBase):
         })
 
         if self.main_url.endswith(".me"):
-            self.main_url = self.main_url.replace(".me", ".to")
-            url           = url.replace(".me", ".to")
+            self.main_url = self.main_url.replace(".me", ".net")
+            url = url.replace(".me", ".net")
 
-        # Embed URL oluştur
-        embed_url      = url.replace("/w/", "/embed-") + "-920x360.html" if "/w/" in url else url
-        script_content = None
-        attempts       = 0
+        response = await self.httpx.get(url)
+        if "Select number" in response.text:
+            secici = Selector(response.text)
+            response = await self.httpx.post(
+                url  = url,
+                data = {
+                    "op"        : secici.css("input[name='op']::attr(value)").get(),
+                    "file_code" : secici.css("input[name='file_code']::attr(value)").get(),
+                    "answer"    : secici.css("div.vhint b::text").get(),
+                    "ts"        : secici.css("input[name='ts']::attr(value)").get(),
+                    "nonce"     : secici.css("input[name='nonce']::attr(value)").get(),
+                    "ctok"      : secici.css("input[name='ctok']::attr(value)").get()
+                }
+            )
 
-        # Script verisini almak için deneme yap
-        while attempts < 10 and not script_content:
-            attempts += 1
-            response = await self.httpx.get(embed_url)
-            response.raise_for_status()
-
-            script_match   = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)
-            script_content = script_match[1] if script_match else None
-            if not script_content:
-                await asyncio.sleep(0.5)
+        script_match   = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)
+        script_content = script_match[1] if script_match else None
 
         if not script_content:
             raise ValueError("Gerekli script bulunamadı.")

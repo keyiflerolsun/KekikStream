@@ -6,7 +6,7 @@ from parsel           import Selector
 class UgurFilm(PluginBase):
     name        = "UgurFilm"
     language    = "tr"
-    main_url    = "https://ugurfilm8.com"
+    main_url    = "https://ugurfilm3.xyz"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Yabancı film izle, Türkçe dublaj ve Türkçe altyazılı film seçenekleriyle 720p ve 1080p HD kalitesinde film izle - Uğur Film full hd film izle."
 
@@ -23,7 +23,7 @@ class UgurFilm(PluginBase):
         f"{main_url}/category/erotik/page/"          : "Erotik"
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
         secici = Selector(istek.text)
@@ -38,7 +38,7 @@ class UgurFilm(PluginBase):
                 for veri in secici.css("div.icerik div") if veri.css("span:nth-child(1)::text").get()
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -60,7 +60,7 @@ class UgurFilm(PluginBase):
 
         return results
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -82,13 +82,13 @@ class UgurFilm(PluginBase):
             actors      = actors,
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek   = await self.httpx.get(url)
         secici  = Selector(istek.text)
         results = []
 
-        for part_link in secici.css("li.parttab a::attr(href)").getall():
+        for idx, part_link in enumerate(secici.css("li.parttab a::attr(href)").getall()):
             sub_response = await self.httpx.get(part_link)
             sub_selector = Selector(sub_response.text)
 
@@ -103,7 +103,11 @@ class UgurFilm(PluginBase):
                     url  = f"{self.main_url}/player/ajax_sources.php",
                     data = post_data
                 )
-                iframe = player_response.json().get("iframe")
-                results.append(iframe)
+                iframe = self.fix_url(player_response.json().get("iframe"))
+                extractor = self.ex_manager.find_extractor(iframe)
+                results.append({
+                    "url"  : iframe,
+                    "name" : f"{extractor.name if extractor else f'Part {idx + 1}'}"
+                })
 
         return results

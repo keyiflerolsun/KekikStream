@@ -8,7 +8,7 @@ import re
 class RecTV(PluginBase):
     name        = "RecTV"
     language    = "tr"
-    main_url    = "https://b.prectv38.sbs"
+    main_url    = "https://m.prectv60.lol"
     favicon     = "https://rectvapk.cc/wp-content/uploads/2023/02/Rec-TV.webp"
     description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
@@ -33,9 +33,7 @@ class RecTV(PluginBase):
         f"{main_url}/api/movie/by/filtres/5/created/SAYFA/{sw_key}/"  : "Romantik"
     }
 
-    _data = {}
-
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
         veriler = istek.json()
@@ -50,7 +48,7 @@ class RecTV(PluginBase):
                 for veri in veriler
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek     = await self.http2.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
@@ -70,7 +68,7 @@ class RecTV(PluginBase):
                 for veri in tum_veri
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         veri = loads(url)
 
@@ -82,22 +80,21 @@ class RecTV(PluginBase):
                 episodes = []
                 for season in dizi_veri:
                     for episode in season.get("episodes"):
+                        # Bölüm için gerekli bilgileri JSON olarak sakla
+                        ep_data = {
+                            "url"        : self.fix_url(episode.get("sources")[0].get("url")),
+                            "title"      : f"{veri.get('title')} | {season.get('title', '1. Sezon')} {episode.get('title', '1. Bölüm')}",
+                            "is_episode" : True
+                        }
+                        
                         ep_model = Episode(
                             season  = int(re.search(r"(\d+)\.S", season.get("title")).group(1)) if re.search(r"(\d+)\.S", season.get("title")) else 1,
                             episode = int(re.search(r"Bölüm (\d+)", episode.get("title")).group(1)) if re.search(r"Bölüm (\d+)", episode.get("title")) else 1,
                             title   = episode.get("title"),
-                            url     = self.fix_url(episode.get("sources")[0].get("url")),
+                            url     = dumps(ep_data),
                         )
 
                         episodes.append(ep_model)
-
-                        self._data[ep_model.url] = {
-                            "ext_name"  : self.name,
-                            "name"      : f"{veri.get('title')} | {ep_model.season}. Sezon {ep_model.episode}. Bölüm",
-                            "referer"   : "https://twitter.com/",
-                            "headers"   : self.media_handler.headers,
-                            "subtitles" : []
-                        }
 
                 return SeriesInfo(
                     url         = url,
@@ -122,32 +119,39 @@ class RecTV(PluginBase):
                     actors      = []
                 )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         self.media_handler.headers.update({"User-Agent": "googleusercontent"})
 
         try:
             veri = loads(url)
         except Exception:
-            return [url]
+            # JSON değilse düz URL'dir (eski yapı veya hata)
+            return [{"url": url, "name": "Video"}]
 
-        videolar = []
+        # Eğer dizi bölümü ise (bizim oluşturduğumuz yapı)
+        if veri.get("is_episode"):
+            return [{
+                "url"     : veri.get("url"),
+                "name"    : veri.get("title", "Bölüm"),
+                "referer" : "https://twitter.com/"
+            }]
+
+        # Film ise (RecTV API yapısı)
+        results = []
         if veri.get("sources"):
             for kaynak in veri.get("sources"):
                 video_link = kaynak.get("url")
                 if "otolinkaff" in video_link:
                     continue
 
-                self._data[video_link] = {
-                    "ext_name"  : self.name,
-                    "name"      : veri.get("title"),
-                    "referer"   : "https://twitter.com/",
-                    "headers"   : self.media_handler.headers,
-                    "subtitles" : []
-                }
-                videolar.append(video_link)
+                results.append({
+                    "url"     : video_link,
+                    "name"    : f"{veri.get('title')} - {kaynak.get('title')}",
+                    "referer" : "https://twitter.com/"
+                })
 
-        return videolar
+        return results
 
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)

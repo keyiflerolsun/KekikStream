@@ -1,11 +1,12 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from abc                  import ABC, abstractmethod
-from httpx                import AsyncClient, Timeout
-from cloudscraper         import CloudScraper
-from .PluginModels        import MainPageResult, SearchResult, MovieInfo
-from ..Media.MediaHandler import MediaHandler
-from urllib.parse         import urljoin
+from abc                          import ABC, abstractmethod
+from httpx                        import AsyncClient, Timeout
+from cloudscraper                 import CloudScraper
+from .PluginModels                import MainPageResult, SearchResult, MovieInfo
+from ..Media.MediaHandler         import MediaHandler
+from ..Extractor.ExtractorManager import ExtractorManager
+from urllib.parse                 import urljoin
 import re
 
 class PluginBase(ABC):
@@ -16,8 +17,6 @@ class PluginBase(ABC):
     description = "No description provided."
 
     main_page   = {}
-
-    _data       = {}
 
     async def url_update(self, new_url: str):
         self.favicon   = self.favicon.replace(self.main_url, new_url)
@@ -34,6 +33,7 @@ class PluginBase(ABC):
         )
         self.media_handler = MediaHandler()
         self.cloudscraper  = CloudScraper()
+        self.ex_manager    = ExtractorManager()
         self.httpx.headers.update(self.cloudscraper.headers)
         self.httpx.cookies.update(self.cloudscraper.cookies)
 
@@ -53,8 +53,28 @@ class PluginBase(ABC):
         pass
 
     @abstractmethod
-    async def load_links(self, url: str) -> list[str]:
-        """Bir medya öğesi için oynatma bağlantılarını döndürür."""
+    async def load_links(self, url: str) -> list[dict]:
+        """
+        Bir medya öğesi için oynatma bağlantılarını döndürür.
+        
+        Args:
+            url: Medya URL'si
+            
+        Returns:
+            Dictionary listesi, her biri şu alanları içerir:
+            - url (str, zorunlu): Video URL'si
+            - name (str, zorunlu): Gösterim adı (tüm bilgileri içerir)
+            - referer (str, opsiyonel): Referer header
+            - subtitles (list, opsiyonel): Altyazı listesi
+        
+        Example:
+            [
+                {
+                    "url": "https://example.com/video.m3u8",
+                    "name": "HDFilmCehennemi | 1080p TR Dublaj"
+                }
+            ]
+        """
         pass
 
     async def close(self):

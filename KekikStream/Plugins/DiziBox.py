@@ -3,7 +3,7 @@
 from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from Kekik.Sifreleme  import CryptoJS
 from parsel           import Selector
-import re, urllib.parse, base64, contextlib, asyncio
+import re, urllib.parse, base64, contextlib, asyncio, time
 
 class DiziBox(PluginBase):
     name        = "DiziBox"
@@ -40,8 +40,12 @@ class DiziBox(PluginBase):
         f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=yarisma&yil&imdb"    : "Yarışma"
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        self.httpx.cookies.update({
+            "isTrustedUser" : "true",
+            "dbxu"          : str(time.time() * 1000).split(".")[0]
+        })
         istek = await self.httpx.get(
             url              = f"{url.replace('SAYFA', str(page))}",
             follow_redirects = True
@@ -58,12 +62,11 @@ class DiziBox(PluginBase):
                 for veri in secici.css("article.detailed-article")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         self.httpx.cookies.update({
-            "LockUser"      : "true",
             "isTrustedUser" : "true",
-            "dbxu"          : "1722403730363"
+            "dbxu"          : str(time.time() * 1000).split(".")[0]
         })
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -77,7 +80,7 @@ class DiziBox(PluginBase):
                 for item in secici.css("article.detailed-article")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -124,13 +127,18 @@ class DiziBox(PluginBase):
             actors      = actors,
         )
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def _iframe_decode(self, name:str, iframe_link:str, referer:str) -> list[str]:
         results = []
 
+        self.httpx.headers.update({"Referer": referer})
+        self.httpx.cookies.update({
+            "isTrustedUser" : "true",
+            "dbxu"          : str(time.time() * 1000).split(".")[0]
+        })
+
         if "/player/king/king.php" in iframe_link:
             iframe_link = iframe_link.replace("king.php?v=", "king.php?wmode=opaque&v=")
-            self.httpx.headers.update({"Referer": referer})
 
             istek  = await self.httpx.get(iframe_link)
             secici = Selector(istek.text)
@@ -150,7 +158,6 @@ class DiziBox(PluginBase):
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
-            self.httpx.headers.update({"Referer": referer})
             while True:
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
@@ -171,15 +178,20 @@ class DiziBox(PluginBase):
 
         return results
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        iframes = []
+        results = []
         if main_iframe := secici.css("div#video-area iframe::attr(src)").get():
             if decoded := await self._iframe_decode(self.name, main_iframe, url):
-                iframes.extend(decoded)
+                for iframe in decoded:
+                    extractor = self.ex_manager.find_extractor(iframe)
+                    results.append({
+                        "url"  : iframe,
+                        "name" : f"{extractor.name if extractor else 'Main Player'}"
+                    })
 
         for alternatif in secici.css("div.video-toolbar option[value]"):
             alt_name = alternatif.css("::text").get()
@@ -195,6 +207,11 @@ class DiziBox(PluginBase):
             alt_secici = Selector(alt_istek.text)
             if alt_iframe := alt_secici.css("div#video-area iframe::attr(src)").get():
                 if decoded := await self._iframe_decode(alt_name, alt_iframe, url):
-                    iframes.extend(decoded)
+                    for iframe in decoded:
+                        extractor = self.ex_manager.find_extractor(iframe)
+                        results.append({
+                            "url"  : iframe,
+                            "name" : f"{extractor.name if extractor else alt_name}"
+                        })
 
-        return iframes
+        return results

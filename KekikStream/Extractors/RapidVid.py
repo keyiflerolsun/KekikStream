@@ -2,7 +2,7 @@
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 from Kekik.Sifreleme  import Packer, HexCodec
-import re
+import re, base64
 
 class RapidVid(ExtractorBase):
     name     = "RapidVid"
@@ -37,17 +37,11 @@ class RapidVid(ExtractorBase):
                 escaped_hex = extracted_value[1]
                 decoded_url = HexCodec.decode(escaped_hex)
             else:
-                eval_jwsetup = re.search(r'\};\s*(eval\(function[\s\S]*?)var played = \d+;', istek.text)
-                if not eval_jwsetup:
-                    raise ValueError("JWPlayer setup not found.")
+                av_encoded = re.search(r"av\('([^']+)'\)", istek.text)
+                if not av_encoded:
+                    raise ValueError("AV encoding not found.")
 
-                unpacked_jwsetup = Packer.unpack(Packer.unpack(eval_jwsetup[1]))
-                extracted_value  = re.search(r'file":"(.*)","label', unpacked_jwsetup)
-                if not extracted_value:
-                    raise ValueError("File URL not found in unpacked JWPlayer setup.")
-
-                escaped_hex = extracted_value[1].replace("\\\\x", "")
-                decoded_url = bytes.fromhex(escaped_hex).decode("utf-8")
+                decoded_url = self.decode_secret(av_encoded[1])
         except Exception as hata:
             raise RuntimeError(f"Extraction failed: {hata}") from hata
 
@@ -59,3 +53,27 @@ class RapidVid(ExtractorBase):
             headers   = {},
             subtitles = subtitles
         )
+
+    def decode_secret(self, encoded_string: str) -> str:
+        # 1. Base64 ile şifrelenmiş string ters çevrilmiş, önce geri çeviriyoruz
+        reversed_input = encoded_string[::-1]
+
+        # 2. İlk base64 çözme işlemi
+        decoded_once = base64.b64decode(reversed_input).decode("utf-8")
+
+        decrypted_chars = []
+        key = "K9L"
+
+        # 3. Key'e göre karakter kaydırma geri alınıyor
+        for index, encoded_char in enumerate(decoded_once):
+            key_char = key[index % len(key)]
+            offset = (ord(key_char) % 5) + 1  # Her karakter için dinamik offset
+
+            original_char_code = ord(encoded_char) - offset
+            decrypted_chars.append(chr(original_char_code))
+
+        # 4. Karakterleri birleştirip ikinci base64 çözme işlemini yapıyoruz
+        intermediate_string = "".join(decrypted_chars)
+        final_decoded_bytes = base64.b64decode(intermediate_string)
+
+        return final_decoded_bytes.decode("utf-8")

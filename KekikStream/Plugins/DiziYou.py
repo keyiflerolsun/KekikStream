@@ -7,7 +7,7 @@ import re
 class DiziYou(PluginBase):
     name        = "DiziYou"
     language    = "tr"
-    main_url    = "https://www.diziyou3.com"
+    main_url    = "https://www.diziyou.mx"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Diziyou en kaliteli Türkçe dublaj ve altyazılı yabancı dizi izleme sitesidir. Güncel ve efsanevi dizileri 1080p Full HD kalitede izlemek için hemen tıkla!"
 
@@ -29,9 +29,7 @@ class DiziYou(PluginBase):
         f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Vah%C5%9Fi+Bat%C4%B1" : "Vahşi Batı"
     }
 
-    _data = {}
-
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
         secici = Selector(istek.text)
@@ -46,7 +44,7 @@ class DiziYou(PluginBase):
                 for veri in secici.css("div.single-item")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -60,7 +58,7 @@ class DiziYou(PluginBase):
                 for afis in secici.css("div.incontent div#list-series")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -68,7 +66,9 @@ class DiziYou(PluginBase):
         title       = secici.css("h1::text").get().strip()
         poster      = self.fix_url(secici.css("div.category_image img::attr(src)").get().strip())
         year        = secici.xpath("//span[contains(., 'Yapım Yılı')]/following-sibling::text()[1]").get()
-        description = secici.css("div.diziyou_desc::text").get().strip()
+        description = secici.css("div.diziyou_desc::text").get()
+        if description:
+            description = description.strip()
         tags        = secici.css("div.genres a::text").getall()
         rating      = secici.xpath("//span[contains(., 'IMDB')]/following-sibling::text()[1]").get()
         _actors     = secici.xpath("//span[contains(., 'Oyuncular')]/following-sibling::text()[1]").get()
@@ -107,8 +107,8 @@ class DiziYou(PluginBase):
             actors      = actors
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -130,7 +130,7 @@ class DiziYou(PluginBase):
                         url  = self.fix_url(f"{self.main_url.replace('www', 'storage')}/subtitles/{item_id}/tr.vtt"),
                     ))
                     veri = {
-                        "dil": "Orjinal Dil",
+                        "dil": "Orjinal Dil (TR Altyazı)",
                         "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}/play.m3u8"
                     }
                     if veri not in stream_urls:
@@ -141,28 +141,27 @@ class DiziYou(PluginBase):
                         url  = self.fix_url(f"{self.main_url.replace('www', 'storage')}/subtitles/{item_id}/en.vtt"),
                     ))
                     veri = {
-                        "dil": "Orjinal Dil",
+                        "dil": "Orjinal Dil (EN Altyazı)",
                         "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}/play.m3u8"
                     }
                     if veri not in stream_urls:
                         stream_urls.append(veri)
                 case "turkceDublaj":
                     stream_urls.append({
-                        "dil": "Dublaj",
+                        "dil": "Türkçe Dublaj",
                         "url": f"{self.main_url.replace('www', 'storage')}/episodes/{item_id}_tr/play.m3u8"
                     })
 
-
+        results = []
         for stream in stream_urls:
-            self._data[stream.get("url")] = {
-                "ext_name"  : f"{self.name} | {stream.get('dil')}",
-                "name"      : f"{self.name} | {stream.get('dil')} | {item_title} - {ep_name}",
+            results.append({
+                "url"       : stream.get("url"),
+                "name"      : f"{stream.get('dil')}",
                 "referer"   : url,
-                "headers"   : self.media_handler.headers,
                 "subtitles" : subtitles
-            }
+            })
 
-        return [stream.get("url") for stream in stream_urls]
+        return results
 
     async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
         extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)

@@ -6,60 +6,60 @@ from parsel           import Selector
 class FilmMakinesi(PluginBase):
     name        = "FilmMakinesi"
     language    = "tr"
-    main_url    = "https://filmmakinesi.de"
+    main_url    = "https://filmmakinesi.sh"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Film Makinesi, en yeni ve en güncel filmleri sitemizde full HD kalite farkı ile izleyebilirsiniz. HD film izle denildiğinde akla gelen en kaliteli film izleme sitesi."
 
     main_page   = {
-        f"{main_url}/page/"                                        : "Son Filmler",
-        f"{main_url}/film-izle/olmeden-izlenmesi-gerekenler/page/" : "Ölmeden İzle",
-        f"{main_url}/film-izle/aksiyon-filmleri-izle/page/"        : "Aksiyon",
-        f"{main_url}/film-izle/bilim-kurgu-filmi-izle/page/"       : "Bilim Kurgu",
-        f"{main_url}/film-izle/macera-filmleri/page/"              : "Macera",
-        f"{main_url}/film-izle/komedi-filmi-izle/page/"            : "Komedi",
-        f"{main_url}/film-izle/romantik-filmler-izle/page/"        : "Romantik",
-        f"{main_url}/film-izle/belgesel/page/"                     : "Belgesel",
-        f"{main_url}/film-izle/fantastik-filmler-izle/page/"       : "Fantastik",
-        f"{main_url}/film-izle/polisiye-filmleri-izle/page/"       : "Polisiye Suç",
-        f"{main_url}/film-izle/korku-filmleri-izle-hd/page/"       : "Korku",
-        f"{main_url}/film-izle/savas/page/"                        : "Tarihi ve Savaş",
-        f"{main_url}/film-izle/gerilim-filmleri-izle/page/"        : "Gerilim Heyecan",
-        f"{main_url}/film-izle/gizemli/page/"                      : "Gizem",
-        f"{main_url}/film-izle/aile-filmleri/page/"                : "Aile",
-        f"{main_url}/film-izle/animasyon-filmler/page/"            : "Animasyon",
-        f"{main_url}/film-izle/western/page/"                      : "Western",
-        f"{main_url}/film-izle/biyografi/page/"                    : "Biyografik",
-        f"{main_url}/film-izle/dram/page/"                         : "Dram",
-        f"{main_url}/film-izle/muzik/page/"                        : "Müzik",
-        f"{main_url}/film-izle/spor/page/"                         : "Spor"
+        f"{main_url}/filmler-1/"                : "Son Filmler",
+        f"{main_url}/tur/aksiyon-fm1/film/"     : "Aksiyon",
+        f"{main_url}/tur/aile-fm1/film/"        : "Aile",
+        f"{main_url}/tur/animasyon-fm2/film/"   : "Animasyon",
+        f"{main_url}/tur/belgesel/film/"        : "Belgesel",
+        f"{main_url}/tur/biyografi/film/"       : "Biyografi",
+        f"{main_url}/tur/bilim-kurgu-fm3/film/" : "Bilim Kurgu",
+        f"{main_url}/tur/dram-fm1/film/"        : "Dram",
+        f"{main_url}/tur/fantastik-fm1/film/"   : "Fantastik",
+        f"{main_url}/tur/gerilim-fm1/film/"     : "Gerilim",
+        f"{main_url}/tur/gizem/film/"           : "Gizem",
+        f"{main_url}/tur/komedi-fm1/film/"      : "Komedi",
+        f"{main_url}/tur/korku-fm1/film/"       : "Korku",
+        f"{main_url}/tur/macera-fm1/film/"      : "Macera",
+        f"{main_url}/tur/muzik/film/"           : "Müzik",
+        f"{main_url}/tur/polisiye/film/"        : "Polisiye",
+        f"{main_url}/tur/romantik-fm1/film/"    : "Romantik",
+        f"{main_url}/tur/savas-fm1/film/"       : "Savaş",
+        f"{main_url}/tur/spor/film/"            : "Spor",
+        f"{main_url}/tur/tarih/film/"           : "Tarih",
+        f"{main_url}/tur/western-fm1/film/"     : "Western"
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = self.cloudscraper.get(f"{url}{page}")
+        istek  = self.cloudscraper.get(f"{url}{'' if page == 1 else f'page/{page}/'}")
         secici = Selector(istek.text)
 
-        veriler = secici.css("section#film_posts article") if "/film-izle/" in url else secici.css("section#film_posts div.tooltip")
+        veriler = secici.css("div.item-relative")
 
         return [
             MainPageResult(
                 category = category,
-                title    = veri.css("h6 a::text").get(),
-                url      = self.fix_url(veri.css("h6 a::attr(href)").get()),
+                title    = veri.css("div.title::text").get(),
+                url      = self.fix_url(veri.css("a::attr(href)").get()),
                 poster   = self.fix_url(veri.css("img::attr(data-src)").get() or veri.css("img::attr(src)").get()),
             )
                 for veri in veriler
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
         secici = Selector(istek.text)
 
         results = []
-        for article in secici.css("section#film_posts article"):
-            title  = article.css("h6 a::text").get()
-            href   = article.css("h6 a::attr(href)").get()
+        for article in secici.css("div.item-relative"):
+            title  = article.css("div.title::text").get()
+            href   = article.css("a::attr(href)").get()
             poster = article.css("img::attr(data-src)").get() or article.css("img::attr(src)").get()
 
             if title and href:
@@ -73,40 +73,51 @@ class FilmMakinesi(PluginBase):
 
         return results
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        title       = secici.css("h1.single_h1 a::text").get().strip()
-        poster      = secici.css("[property='og:image']::attr(content)").get().strip()
-        description = secici.css("section#film_single article p:last-of-type::text").get().strip()
-        tags        = secici.css("dt:contains('Tür:') + dd a::text").get().strip()
-        rating      = secici.css("dt:contains('IMDB Puanı:') + dd::text").get().strip()
-        year        = secici.css("dt:contains('Yapım Yılı:') + dd a::text").get().strip()
-        actors      = secici.css("dt:contains('Oyuncular:') + dd::text").get().strip()
-        duration    = secici.css("dt:contains('Film Süresi:') + dd time::attr(datetime)").get().strip()
-
-        duration_minutes = 0
-        if duration and duration.startswith("PT") and duration.endswith("M"):
-            duration_minutes = int(duration[2:-1])
+        title       = secici.css("h1.title::text").get().strip()
+        poster      = secici.css("img.cover-img::attr(src)").get().strip()
+        description = secici.css("div.info-description p::text").get().strip()
+        rating      = secici.css("div.score::text").get()
+        if rating:
+            rating = rating.strip().split()[0]
+        year        = secici.css("span.date a::text").get().strip()
+        actors      = secici.css("div.cast-name::text").getall()
+        duration    = secici.css("div.time::text").get()
+        if duration:
+            duration = duration.split()[1].strip()
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
-            title       = title,
+            title       = self.clean_title(title),
             description = description,
-            tags        = tags,
             rating      = rating,
             year        = year,
             actors      = actors,
-            duration    = duration_minutes
+            duration    = duration
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        iframe_src = secici.css("div.player-div iframe::attr(src)").get() or secici.css("div.player-div iframe::attr(data-src)").get()
-        return [self.fix_url(iframe_src)] if iframe_src else []
+        iframe_src = secici.css("iframe::attr(data-src)").get()
+
+        all_links = [iframe_src] if iframe_src else []
+        for link in secici.css("div.video-parts a[data-video_url]"):
+            all_links.append(link.attrib.get("data-video_url"))
+
+        response = []
+        for idx, link in enumerate(all_links):
+            extractor = self.ex_manager.find_extractor(link)
+            response.append({
+                "url"  : link,
+                "name" : f"{extractor.name if extractor else f'Player {idx + 1}'}",
+            })
+
+        return response

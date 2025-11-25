@@ -6,7 +6,7 @@ from parsel           import Selector
 class SezonlukDizi(PluginBase):
     name        = "SezonlukDizi"
     language    = "tr"
-    main_url    = "https://sezonlukdizi6.com"
+    main_url    = "https://sezonlukdizi8.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Güncel ve eski dizileri en iyi görüntü kalitesiyle bulabileceğiniz yabancı dizi izleme siteniz."
 
@@ -21,7 +21,7 @@ class SezonlukDizi(PluginBase):
         f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="    : "Belgeseller",
     }
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}")
         secici = Selector(istek.text)
@@ -36,7 +36,7 @@ class SezonlukDizi(PluginBase):
                 for veri in secici.css("div.afis a") if veri.css("div.description::text").get()
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
         secici = Selector(istek.text)
@@ -50,7 +50,7 @@ class SezonlukDizi(PluginBase):
                 for afis in secici.css("div.afis a.column")
         ]
 
-    @kekik_cache(ttl=60*60)
+    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -102,8 +102,8 @@ class SezonlukDizi(PluginBase):
             actors      = actors
         )
 
-    @kekik_cache(ttl=15*60)
-    async def load_links(self, url: str) -> list[str]:
+    #@kekik_cache(ttl=15*60)
+    async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -111,8 +111,8 @@ class SezonlukDizi(PluginBase):
         if not bid:
             return []
 
-        links = []
-        for dil, label in [("1", "AltYazı"), ("0", "Dublaj")]:
+        results = []
+        for dil, label in [("1", "Altyazı"), ("0", "Dublaj")]:
             dil_istek = await self.httpx.post(
                 url     = f"{self.main_url}/ajax/dataAlternatif22.asp",
                 headers = {"X-Requested-With": "XMLHttpRequest"},
@@ -125,7 +125,7 @@ class SezonlukDizi(PluginBase):
                 continue
 
             if dil_json.get("status") == "success":
-                for veri in dil_json.get("data", []):
+                for idx, veri in enumerate(dil_json.get("data", [])):
                     veri_response = await self.httpx.post(
                         url     = f"{self.main_url}/ajax/dataEmbed22.asp",
                         headers = {"X-Requested-With": "XMLHttpRequest"},
@@ -134,7 +134,10 @@ class SezonlukDizi(PluginBase):
                     secici = Selector(veri_response.text)
 
                     if iframe := secici.css("iframe::attr(src)").get():
-                        video_url = self.fix_url(iframe)
-                        links.append(video_url)
+                        extractor = self.ex_manager.find_extractor(self.fix_url(iframe))
+                        results.append({
+                            "url"  : self.fix_url(iframe),
+                            "name" : f"{extractor.name if extractor else f'{label} - Player {idx + 1}'}"
+                        })
 
-        return links
+        return results
