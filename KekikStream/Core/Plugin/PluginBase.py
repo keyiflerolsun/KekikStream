@@ -35,6 +35,7 @@ class PluginBase(ABC):
         self.cloudscraper  = CloudScraper()
         self.ex_manager    = ExtractorManager()
         self.httpx.headers.update(self.cloudscraper.headers)
+        self.httpx.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.3"})
         self.httpx.cookies.update(self.cloudscraper.cookies)
 
     # @abstractmethod
