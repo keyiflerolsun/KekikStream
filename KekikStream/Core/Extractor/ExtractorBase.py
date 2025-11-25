@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from abc              import ABC, abstractmethod
-from httpx            import AsyncClient, Timeout
+from curl_cffi        import AsyncSession
 from cloudscraper     import CloudScraper
 from typing           import Optional
 from .ExtractorModels import ExtractResult
@@ -14,15 +14,10 @@ class ExtractorBase(ABC):
 
     def __init__(self):
         # HTTP istekleri için oturum oluştur
-        self.httpx = AsyncClient(
-            headers = {
-                "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)",
-                "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            },
-            timeout = Timeout(10.0)
-        )
-        # CloudFlare korumalı siteler için scraper ayarla
-        self.cloudscraper  = CloudScraper()
+        self.cffi         = AsyncSession(impersonate="firefox135")
+        self.cloudscraper = CloudScraper()
+        self.cffi.cookies.update(self.cloudscraper.cookies)
+        self.cffi.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
 
     def can_handle_url(self, url: str) -> bool:
         # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
@@ -35,7 +30,7 @@ class ExtractorBase(ABC):
 
     async def close(self):
         # HTTP oturumunu güvenli bir şekilde kapat
-        await self.httpx.aclose()
+        await self.cffi.close()
 
     def fix_url(self, url: str) -> str:
         # Eksik URL'leri düzelt ve tam URL formatına çevir

@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from abc                          import ABC, abstractmethod
-from httpx                        import AsyncClient, Timeout
+from curl_cffi                    import AsyncSession
 from cloudscraper                 import CloudScraper
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo
 from ..Media.MediaHandler         import MediaHandler
@@ -24,19 +24,12 @@ class PluginBase(ABC):
         self.main_url  = new_url
 
     def __init__(self):
-        self.httpx = AsyncClient(
-            headers = {
-                "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)",
-                "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            },
-            timeout = Timeout(10.0),
-        )
+        self.cffi         = AsyncSession(impersonate="firefox135")
+        self.cloudscraper = CloudScraper()
+        self.cffi.cookies.update(self.cloudscraper.cookies)
+        self.cffi.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
         self.media_handler = MediaHandler()
-        self.cloudscraper  = CloudScraper()
         self.ex_manager    = ExtractorManager()
-        self.httpx.headers.update(self.cloudscraper.headers)
-        self.httpx.headers.update({"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.3"})
-        self.httpx.cookies.update(self.cloudscraper.cookies)
 
     # @abstractmethod
     # async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -79,7 +72,7 @@ class PluginBase(ABC):
         pass
 
     async def close(self):
-        await self.httpx.aclose()
+        await self.cffi.close()
 
     def fix_url(self, url: str) -> str:
         if not url:

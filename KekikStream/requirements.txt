@@ -2,7 +2,7 @@ setuptools
 wheel
 
 Kekik
-httpx[http2]
+curl-cffi
 cloudscraper
 parsel
 
