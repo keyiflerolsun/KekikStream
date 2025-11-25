@@ -1,7 +1,7 @@
 # <img src="https://github.com/keyiflerolsun/KekikStream/raw/master/.github/icons/KekikStream.png?raw=True" height="32" align="center"> KekikStream
 
 [![Boyut](https://img.shields.io/github/repo-size/keyiflerolsun/KekikStream?logo=git&logoColor=white&label=Boyut)](#)
-[![Görüntülenme](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https://github.com/keyiflerolsun/KekikStream&title=Görüntülenme)](#)
+[![Görüntülenme](https://visitor-badge.laobi.icu/badge?page_id=keyiflerolsun/KekikStream&title=Görüntülenme)](#)
 <a href="https://KekikAkademi.org/Kahve" target="_blank"><img src="https://img.shields.io/badge/☕️-Kahve Ismarla-ffdd00" title="☕️ Kahve Ismarla" style="padding-left:5px;"></a>
 
 [![PyPI](https://img.shields.io/pypi/v/KekikStream?logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/KekikStream)

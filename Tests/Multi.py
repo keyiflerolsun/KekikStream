@@ -1,5 +1,14 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+# -- Ana dizine geçip path ekle
+import sys, os
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir   = os.path.dirname(script_dir)
+os.chdir(root_dir)
+sys.path.append(root_dir)
+# ---------------------------------------------------------->
+
 from KekikStream.CLI  import konsol
 from asyncio          import run
 from KekikStream.Core import PluginManager, ExtractorManager, MediaManager, MovieInfo, SeriesInfo
@@ -39,18 +48,17 @@ async def main():
                     icerikler = await plugin.load_links(bolum.url)
 
                 for link in icerikler:
-                    konsol.log(f"[red]icerik_link » [purple]{link}")
+                    konsol.log(f"[red]icerik_link » [purple]{link.get('url')}")
 
                     if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
-                        data = plugin._data.get(link, {})
                         await plugin.play(
-                            name      = data.get("name"),
-                            url       = link,
-                            referer   = data.get("referer"),
-                            subtitles = data.get("subtitles")
+                            name      = link.get("name"),
+                            url       = link.get("url"),
+                            referer   = link.get("referer"),
+                            subtitles = link.get("subtitles")
                         )
-                    elif extractor := ext.find_extractor(link):
-                        sonuc = await extractor.extract(link, referer=plugin.main_url)
+                    elif extractor := ext.find_extractor(link.get("url")):
+                        sonuc = await extractor.extract(link.get("url"), referer=plugin.main_url)
                         konsol.log(sonuc)
                         if isinstance(detay, SeriesInfo):
                             media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title} - {bolum.title or f'{bolum.season}x{bolum.episode}'}")
@@ -58,7 +66,7 @@ async def main():
                             media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title}")
                         media.play_media(sonuc)
                     else:
-                        konsol.print(f"[red]Önerilen araç bulunamadı: {link}")
+                        konsol.print(f"[red]Önerilen araç bulunamadı: {link.get('url')}")
 
                     break
                 break

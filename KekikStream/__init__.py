@@ -7,363 +7,330 @@ from contextlib import suppress
 
 class KekikStream:
     def __init__(self):
-        """
-        KekikStream sınıfı, eklenti, çıkarıcı, arayüz ve medya yönetimini yürütür.
-        """
-        self.eklentiler_yonetici        = PluginManager()
-        self.cikaricilar_yonetici       = ExtractorManager()
-        self.arayuz_yonetici            = UIManager()
-        self.medya_yonetici             = MediaManager()
-        self.suanki_eklenti: PluginBase = None
-        self.secilen_sonuc              = None
-        self.dizi                       = False
-        self.bolum_baslik               = ""
+        self.plugin    = PluginManager()
+        self.extractor = ExtractorManager()
+        self.ui        = UIManager()
+        self.media     = MediaManager()
+        
+        self.current_plugin: PluginBase = None
+        self.is_series                  = False
+        self.series_info: SeriesInfo    = None
+        self.current_episode_index      = -1
+        self.episode_title              = ""
 
-    async def _temizle_ve_baslik_goster(self, baslik: str):
-        """
-        Konsolu temizler ve verilen başlıkla bir kural (separator) gösterir.
-        """
-        self.arayuz_yonetici.clear_console()
-        konsol.rule(baslik)
+    async def show_header(self, title: str):
+        """Konsolu temizle ve başlık göster"""
+        self.ui.clear_console()
+        konsol.rule(title)
 
-    async def baslat(self):
-        """
-        Uygulamayı başlatır: konsolu temizler, başlığı gösterir ve eklenti seçimiyle devam eder.
-        """
-        await self._temizle_ve_baslik_goster("[bold cyan]KekikStream Başlatılıyor[/bold cyan]")
-        # Eklenti kontrolü
-        if not self.eklentiler_yonetici.get_plugin_names():
-            return konsol.print("[bold red]Hiçbir eklenti bulunamadı![/bold red]")
+    def update_title(self, new_info: str):
+        """Medya başlığına yeni bilgi ekle"""
+        if not new_info:
+            return
+        current = self.media.get_title()
+        if new_info not in current:
+            self.media.set_title(f"{current} | {new_info}")
 
-        try:
-            await self.eklenti_secimi()
-        finally:
-            # Program kapanırken tüm eklentileri kapat
-            await self.eklentiler_yonetici.close_plugins()
-
-    async def bi_bolum_daha(self):
-        await self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} » Bi Bölüm Daha?[/bold cyan]")
-        return await self.sonuc_detaylari_goster(self.secilen_sonuc)
-
-    async def icerik_bitti(self):
-        return await self.bi_bolum_daha() if self.dizi else await self.baslat()
-
-    async def sonuc_bulunamadi(self):
-        """
-        Arama sonucunda hiçbir içerik bulunamadığında kullanıcıya seçenekler sunar.
-        """
-        secim = await self.arayuz_yonetici.select_from_list(
-            message = "Ne yapmak istersiniz?",
-            choices = ["Tüm Eklentilerde Ara", "Ana Menü", "Çıkış"]
-        )
-
-        match secim:
-            case "Tüm Eklentilerde Ara":
-                await self.tum_eklentilerde_arama()
-            case "Ana Menü":
-                await self.baslat()
-            case "Çıkış":
-                cikis_yap(False)
-
-    async def eklenti_secimi(self):
-        """
-        Kullanıcıdan eklenti seçimi alır ve seçime göre arama işlemini başlatır.
-        """
-        eklenti_adi = await self.arayuz_yonetici.select_from_fuzzy(
-            message = "Arama yapılacak eklentiyi seçin:",
-            choices = ["Tüm Eklentilerde Ara", *self.eklentiler_yonetici.get_plugin_names()]
-        )
-
-        if eklenti_adi == "Tüm Eklentilerde Ara":
-            await self.tum_eklentilerde_arama()
-        else:
-            self.suanki_eklenti = self.eklentiler_yonetici.select_plugin(eklenti_adi)
-            await self.eklenti_ile_arama()
-
-    async def eklenti_ile_arama(self):
-        """
-        Seçilen eklentiyle arama yapar; kullanıcıdan sorgu alır, sonuçları listeler ve seçim sonrası detayları gösterir.
-        """
-        await self._temizle_ve_baslik_goster(f"[bold cyan]{self.suanki_eklenti.name} Eklentisinde Arama Yapın[/bold cyan]")
-
-        # Kullanıcıdan sorgu al ve ara
-        sorgu    = await self.arayuz_yonetici.prompt_text("Arama sorgusu girin:")
-        sonuclar = await self.suanki_eklenti.search(sorgu)
-
-        if not sonuclar:
-            konsol.print("[bold red]Arama sonucu bulunamadı![/bold red]")
-            return await self.sonuc_bulunamadi()
-
-        secilen_sonuc = await self.eklenti_sonuc_secimi(sonuclar)
-        if secilen_sonuc:
-            await self.sonuc_detaylari_goster({"plugin": self.suanki_eklenti.name, "url": secilen_sonuc})
-
-    async def eklenti_sonuc_secimi(self, sonuclar: list):
-        """
-        Arama sonuçlarından kullanıcıya seçim yaptırır.
-        """
-        return await self.arayuz_yonetici.select_from_fuzzy(
-            message = "İçerik sonuçlarından birini seçin:",
-            choices = [{"name": sonuc.title, "value": sonuc.url} for sonuc in sonuclar]
-        )
-
-    async def tum_eklentilerde_arama(self):
-        """
-        Tüm eklentilerde arama yapar ve sonuçlara göre işlem yapar.
-        """
-        await self._temizle_ve_baslik_goster("[bold cyan]Tüm Eklentilerde Arama Yapın[/bold cyan]")
-        sorgu    = await self.arayuz_yonetici.prompt_text("Arama sorgusu girin:")
-        sonuclar = await self.tum_eklentilerde_arama_sorgula(sorgu)
-
-        if not sonuclar:
-            return await self.sonuc_bulunamadi()
-
-        secilen_sonuc = await self.tum_sonuc_secimi(sonuclar)
-
-        if secilen_sonuc:
-            await self.sonuc_detaylari_goster(secilen_sonuc)
-
-    async def tum_eklentilerde_arama_sorgula(self, sorgu: str) -> list:
-        """
-        Tüm eklentilerde arama yapar ve bulunan sonuçları listeler.
-        """
-        tum_sonuclar = []
-        # Her eklentide arama yap
-        for eklenti_adi, eklenti in self.eklentiler_yonetici.plugins.items():
-            # Eklenti türü kontrolü
-            if not isinstance(eklenti, PluginBase):
-                konsol.print(f"[yellow][!] {eklenti_adi} geçerli bir PluginBase değil, atlanıyor...[/yellow]")
-                continue
-
-            if eklenti_adi in ["Shorten"]:
-                continue
-
-            konsol.log(f"[yellow][~] {eklenti_adi:<19} aranıyor...[/]")
-            try:
-                sonuclar = await eklenti.search(sorgu)
-                if sonuclar:
-                    # Sonuçları listeye ekle
-                    tum_sonuclar.extend(
-                        [
-                            {
-                                "plugin" : eklenti_adi,
-                                "title"  : sonuc.title,
-                                "url"    : sonuc.url,
-                                "poster" : sonuc.poster
-                            }
-                                for sonuc in sonuclar
-                        ]
-                    )
-            except Exception as hata:
-                konsol.print(f"[bold red]{eklenti_adi} » hata oluştu: {hata}[/bold red]")
-
-        if not tum_sonuclar:
-            konsol.print("[bold red]Hiçbir sonuç bulunamadı![/bold red]")
-            await self.sonuc_bulunamadi()
-        return tum_sonuclar
-
-    async def tum_sonuc_secimi(self, sonuclar: list):
-        """
-        Tüm arama sonuçlarından kullanıcıya seçim yaptırır.
-        """
-        secenekler = [
-            {"name": f"[{sonuc['plugin']}]".ljust(21) + f" » {sonuc['title']}", "value": sonuc}
-                for sonuc in sonuclar
-        ]
-
-        return await self.arayuz_yonetici.select_from_fuzzy(
-            message = "Arama sonuçlarından bir içerik seçin:",
-            choices = secenekler
-        )
-
-    async def __medya_bilgisi_yukle(self, url: str, deneme: int = 3):
-        """
-        Belirtilen URL için medya bilgilerini, belirlenen deneme sayısı kadar yüklemeye çalışır.
-        """
-        for _ in range(deneme):
+    async def load_media_info(self, url: str, retries=3):
+        """Medya bilgilerini yükle"""
+        for _ in range(retries):
             with suppress(Exception):
-                return await self.suanki_eklenti.load_item(url)
-
+                return await self.current_plugin.load_item(url)
         konsol.print("[bold red]Medya bilgileri yüklenemedi![/bold red]")
         return None
 
-    async def sonuc_detaylari_goster(self, secilen_sonuc):
-        """
-        Seçilen sonucun detaylarını gösterir; medya bilgilerini yükler, dizi ise bölüm seçimi sağlar.
-        """
-        self.secilen_sonuc = secilen_sonuc
-        try:
-            # Seçilen sonucun detaylarını al
-            if isinstance(secilen_sonuc, dict) and "plugin" in secilen_sonuc:
-                eklenti_adi = secilen_sonuc["plugin"]
-                url         = secilen_sonuc["url"]
-
-                self.suanki_eklenti = self.eklentiler_yonetici.select_plugin(eklenti_adi)
-            else:
-                url = secilen_sonuc
-
-            medya_bilgi = await self.__medya_bilgisi_yukle(url)
-            if not medya_bilgi:
-                return await self.sonuc_bulunamadi()
-
-        except Exception as hata:
-            konsol.log(secilen_sonuc)
-            return hata_yakala(hata)
-
-        # Medya bilgilerini göster ve başlığı ayarla
-        self.medya_yonetici.set_title(f"{self.suanki_eklenti.name} | {medya_bilgi.title}")
-        self.arayuz_yonetici.display_media_info(f"{self.suanki_eklenti.name} | {medya_bilgi.title}", medya_bilgi)
-
-        # Eğer medya bilgisi dizi ise bölüm seçimi yapılır
-        if isinstance(medya_bilgi, SeriesInfo):
-            self.dizi = True
-            await self.dizi_bolum_secimi(medya_bilgi)
-        else:
-            self.dizi         = False
-            self.bolum_baslik = ""
-            baglantilar       = await self.suanki_eklenti.load_links(medya_bilgi.url)
-            await self.baglanti_secenekleri_goster(baglantilar)
-
-    async def dizi_bolum_secimi(self, medya_bilgi: SeriesInfo):
-        """
-        Dizi içeriği için bölüm seçimi yapar ve seçilen bölümün bağlantılarını yükler.
-        """
-        bolumler = {
-            bolum.url: f"{bolum.season}. Sezon {bolum.episode}. Bölüm" + (f" - {bolum.title}" if bolum.title else "")
-                for bolum in medya_bilgi.episodes
-        }
-        secilen_bolum = await self.arayuz_yonetici.select_from_fuzzy(
-            message = "İzlemek istediğiniz bölümü seçin:",
-            choices = [
-                {"name": f"{bolum.season}. Sezon {bolum.episode}. Bölüm" + (f" - {bolum.title}" if bolum.title else ""), "value": bolum.url}
-                    for bolum in medya_bilgi.episodes
-            ]
-        )
-        if secilen_bolum:
-            self.bolum_baslik = bolumler[secilen_bolum]
-
-            baglantilar = await self.suanki_eklenti.load_links(secilen_bolum)
-            await self.baglanti_secenekleri_goster(baglantilar)
-
-    async def baglanti_secenekleri_goster(self, baglantilar):
-        """
-        Bağlantı seçeneklerini kullanıcıya sunar ve seçilen bağlantıya göre oynatma işlemini gerçekleştirir.
-        """
-        if not baglantilar:
-            konsol.print("[bold red]Hiçbir bağlantı bulunamadı![/bold red]")
-            return await self.sonuc_bulunamadi()
-
-        # Doğrudan oynatma seçeneği
-        if hasattr(self.suanki_eklenti, "play") and callable(getattr(self.suanki_eklenti, "play", None)):
-            return await self.direkt_oynat(baglantilar)
-
-        # Bağlantıları çıkarıcılarla eşleştir
-        haritalama = self.cikaricilar_yonetici.map_links_to_extractors(baglantilar)
-
-        # Uygun çıkarıcı kontrolü
-        if not haritalama:
-            konsol.print("[bold red]Hiçbir Extractor bulunamadı![/bold red]")
-            konsol.print(baglantilar)
-            return await self.sonuc_bulunamadi()
-
-        # Kullanıcı seçenekleri
-        secim = await self.arayuz_yonetici.select_from_list(
-            message = "Ne yapmak istersiniz?",
-            choices = ["İzle", "Tüm Eklentilerde Ara", "Ana Menü"]
-        )
-
-        match secim:
-            case "İzle":
-                secilen_link = await self.arayuz_yonetici.select_from_list(
-                    message = "İzlemek için bir bağlantı seçin:",
-                    choices = [{"name": cikarici_adi, "value": link} for link, cikarici_adi in haritalama.items()]
-                )
-                if secilen_link:
-                    await self.extractor_ile_oynat(secilen_link)
-
-            case "Tüm Eklentilerde Ara":
-                await self.tum_eklentilerde_arama()
-
-            case _:
-                await self.baslat()
-
-    async def direkt_oynat(self, baglantilar):
-        """
-        Extractor eşleşmesi yoksa, doğrudan oynatma seçeneği sunar.
-        """
-        secilen_link = await self.arayuz_yonetici.select_from_list(
-            message = "Doğrudan oynatmak için bir bağlantı seçin:",
-            choices = [
-                {"name": value["ext_name"], "value": key} 
-                    for key, value in self.suanki_eklenti._data.items() if key in baglantilar
-            ]
-        )
-        if not secilen_link:
-            return await self.icerik_bitti()
-
-        data = self.suanki_eklenti._data.get(secilen_link, {})
-        await self.suanki_eklenti.play(
-            name      = data.get("name"),
-            url       = secilen_link,
-            referer   = data.get("referer"),
-            subtitles = data.get("subtitles")
-        )
-
-        return await self.icerik_bitti()
-
-    async def extractor_ile_oynat(self, secilen_link: str):
-        """
-        Seçilen bağlantıya göre medya oynatma işlemini gerçekleştirir.
-        """
-        # Uygun çıkarıcıyı bul
-        cikarici: ExtractorBase = self.cikaricilar_yonetici.find_extractor(secilen_link)
-        if not cikarici:
-            return konsol.print("[bold red]Uygun Extractor bulunamadı.[/bold red]")
-
-        try:
-            # Medya bilgilerini çıkar
-            extract_data = await cikarici.extract(secilen_link, referer=self.suanki_eklenti.main_url)
-        except Exception as hata:
-            konsol.print(f"[bold red]{cikarici.name} » hata oluştu: {hata}[/bold red]")
-            return await self.sonuc_bulunamadi()
-
-        secilen_data = await self.__baglanti_secimi_yap(extract_data)
-        if not secilen_data:
+    async def start(self):
+        """Uygulamayı başlat"""
+        await self.show_header("[bold cyan]KekikStream[/bold cyan]")
+        
+        if not self.plugin.get_plugin_names():
+            konsol.print("[bold red]Eklenti bulunamadı![/bold red]")
             return
 
-        await self.__medya_ayarla(secilen_data)
-        self.medya_yonetici.play_media(secilen_data)
-    
-        await self.icerik_bitti()
+        try:
+            await self.select_plugin()
+        finally:
+            await self.plugin.close_plugins()
 
-    async def __baglanti_secimi_yap(self, extract_data):
-        """
-        Birden fazla bağlantı varsa seçim yapar.
-        """
+    async def select_plugin(self):
+        """Eklenti seçimi"""
+        plugin_name = await self.ui.select_from_fuzzy(
+            message = "Eklenti seçin:",
+            choices = ["Tüm Eklentilerde Ara", *self.plugin.get_plugin_names()]
+        )
+
+        if plugin_name == "Tüm Eklentilerde Ara":
+            await self.search_all_plugins()
+        else:
+            self.current_plugin = self.plugin.select_plugin(plugin_name)
+            await self.search_in_plugin()
+
+    async def search_in_plugin(self):
+        """Seçili eklentide ara"""
+        await self.show_header(f"[bold cyan]{self.current_plugin.name}[/bold cyan]")
+        
+        query   = await self.ui.prompt_text("Arama sorgusu:")
+        results = await self.current_plugin.search(query)
+
+        if not results:
+            konsol.print("[bold red]Sonuç bulunamadı![/bold red]")
+            return await self.handle_no_results()
+
+        choice = await self.ui.select_from_fuzzy(
+            message = "Sonuç seçin:",
+            choices = [{"name": r.title, "value": r.url} for r in results]
+        )
+        
+        if choice:
+            await self.show_media_details({"plugin": self.current_plugin.name, "url": choice})
+
+    async def search_all_plugins(self):
+        """Tüm eklentilerde ara"""
+        await self.show_header("[bold cyan]Tüm Eklentilerde Ara[/bold cyan]")
+        
+        query = await self.ui.prompt_text("Arama sorgusu:")
+        all_results = []
+
+        for name, plugin in self.plugin.plugins.items():
+            if not isinstance(plugin, PluginBase) or name == "Shorten":
+                continue
+
+            konsol.log(f"[yellow][~] {name:<19} aranıyor...[/]")
+            try:
+                results = await plugin.search(query)
+                if results:
+                    all_results.extend([
+                        {"plugin": name, "title": r.title, "url": r.url, "poster": r.poster}
+                        for r in results
+                    ])
+            except Exception as e:
+                konsol.print(f"[bold red]{name} hatası: {e}[/bold red]")
+
+        if not all_results:
+            return await self.handle_no_results()
+
+        choice = await self.ui.select_from_fuzzy(
+            message = "Sonuç seçin:",
+            choices = [
+                {"name": f"[{r['plugin']}]".ljust(21) + f" » {r['title']}", "value": r}
+                    for r in all_results
+            ]
+        )
+        
+        if choice:
+            await self.show_media_details(choice)
+
+    async def show_media_details(self, choice):
+        """Seçilen medyanın detaylarını göster"""
+        try:
+            if isinstance(choice, dict) and "plugin" in choice:
+                self.current_plugin = self.plugin.select_plugin(choice["plugin"])
+                url = choice["url"]
+            else:
+                url = choice
+
+            media_info = await self.load_media_info(url)
+            if not media_info:
+                return await self.handle_no_results()
+
+        except Exception as e:
+            return hata_yakala(e)
+
+        self.media.set_title(f"{self.current_plugin.name} | {media_info.title}")
+        self.ui.display_media_info(f"{self.current_plugin.name} | {media_info.title}", media_info)
+
+        if isinstance(media_info, SeriesInfo):
+            self.is_series   = True
+            self.series_info = media_info
+            await self.select_episode(media_info)
+        else:
+            self.reset_series_state()
+            links = await self.current_plugin.load_links(media_info.url)
+            await self.show_link_options(links)
+
+    def reset_series_state(self):
+        """Dizi durumunu sıfırla"""
+        self.is_series             = False
+        self.series_info           = None
+        self.current_episode_index = -1
+        self.episode_title         = ""
+
+    async def select_episode(self, series_info: SeriesInfo):
+        """Bölüm seç"""
+        selected = await self.ui.select_from_fuzzy(
+            message = "Bölüm seçin:",
+            choices = [
+                {
+                    "name"  : f"{ep.season}. Sezon {ep.episode}. Bölüm" +  (f" - {ep.title}" if ep.title else ""),
+                    "value" : ep.url
+                }
+                    for ep in series_info.episodes
+            ]
+        )
+
+        if not selected:
+            return await self.content_finished()
+
+        # Bölüm bilgilerini kaydet
+        for idx, ep in enumerate(series_info.episodes):
+            if ep.url == selected:
+                self.current_episode_index = idx
+                self.episode_title = (f"{ep.season}. Sezon {ep.episode}. Bölüm" +  (f" - {ep.title}" if ep.title else ""))
+                break
+
+        links = await self.current_plugin.load_links(selected)
+        await self.show_link_options(links)
+
+    async def play_next_episode(self):
+        """Sonraki bölümü oynat"""
+        self.current_episode_index += 1
+        next_ep = self.series_info.episodes[self.current_episode_index]
+        self.episode_title = (f"{next_ep.season}. Sezon {next_ep.episode}. Bölüm" +  (f" - {next_ep.title}" if next_ep.title else ""))
+        links = await self.current_plugin.load_links(next_ep.url)
+        await self.show_link_options(links)
+
+    async def ask_next_episode(self):
+        """Dizi bittikten sonra ne yapılsın?"""
+        await self.show_header(f"[bold cyan]{self.current_plugin.name}[/bold cyan]")
+        self.ui.display_media_info(f"{self.current_plugin.name} | {self.series_info.title}",  self.series_info)
+        konsol.print(f"[yellow][+][/yellow] [bold green]{self.episode_title}[/bold green] izlendi!")
+
+        options = ["Bölüm Seç", "Ana Menü", "Çıkış"]
+        if self.current_episode_index + 1 < len(self.series_info.episodes):
+            options.insert(0, "Sonraki Bölüm")
+        else:
+            konsol.print("[bold yellow]Son bölümdü![/bold yellow]")
+
+        choice = await self.ui.select_from_list("Ne yapmak istersiniz?", options)
+
+        match choice:
+            case "Sonraki Bölüm":
+                await self.play_next_episode()
+            case "Bölüm Seç":
+                await self.select_episode(self.series_info)
+            case "Ana Menü":
+                await self.start()
+            case "Çıkış":
+                cikis_yap(False)
+
+    async def show_link_options(self, links: list[dict]):
+        """Bağlantı seçeneklerini göster"""
+        if not links:
+            konsol.print("[bold red]Bağlantı bulunamadı![/bold red]")
+            return await self.handle_no_results()
+
+        # Direkt oynatma varsa
+        if hasattr(self.current_plugin, "play"):
+            return await self.play_direct(links)
+
+        # Extractor ile oynat
+        url_list = [link["url"] for link in links]
+        mapping  = self.extractor.map_links_to_extractors(url_list)
+
+        if not mapping:
+            konsol.print("[bold red]Extractor bulunamadı![/bold red]")
+            return await self.handle_no_results()
+
+        choice = await self.ui.select_from_list("Ne yapmak istersiniz?", ["İzle", "Tüm Eklentilerde Ara", "Ana Menü"])
+
+        match choice:
+            case "İzle":
+                await self.play_with_extractor(links, mapping)
+            case "Tüm Eklentilerde Ara":
+                await self.search_all_plugins()
+            case "Ana Menü":
+                await self.start()
+
+    async def play_direct(self, links: list[dict]):
+        """Plugin'in kendi metoduyla oynat"""
+        selected = await self.ui.select_from_list(
+            message = "Bağlantı seçin:",
+            choices = [{"name": link.get("name", "Bilinmiyor"), "value": link} for link in links]
+        )
+
+        if not selected:
+            return await self.content_finished()
+
+        self.update_title(self.episode_title)
+        self.update_title(selected.get("name"))
+
+        await self.current_plugin.play(
+            name      = selected.get("name"),
+            url       = selected.get("url"),
+            referer   = selected.get("referer"),
+            subtitles = selected.get("subtitles", [])
+        )
+        return await self.content_finished()
+
+    async def play_with_extractor(self, links: list[dict], mapping: dict):
+        """Extractor ile oynat"""
+        options = [
+            {"name": link.get("name", mapping[link["url"]]), "value": link}
+                for link in links if link["url"] in mapping
+        ]
+
+        if not options:
+            konsol.print("[bold red]İzlenebilir bağlantı yok![/bold red]")
+            return await self.content_finished()
+
+        selected = await self.ui.select_from_list("Bağlantı seçin:", options)
+        if not selected:
+            return await self.content_finished()
+
+        url = selected.get("url")
+        extractor: ExtractorBase = self.extractor.find_extractor(url)
+        
+        if not extractor:
+            konsol.print("[bold red]Extractor bulunamadı![/bold red]")
+            return await self.handle_no_results()
+
+        try:
+            referer = selected.get("referer", self.current_plugin.main_url)
+            extract_data = await extractor.extract(url, referer=referer)
+        except Exception as e:
+            konsol.print(f"[bold red]{extractor.name} hatası: {e}[/bold red]")
+            return await self.handle_no_results()
+
+        # Birden fazla link varsa seç
         if isinstance(extract_data, list):
-            return await self.arayuz_yonetici.select_from_list(
-                message = "Birden fazla bağlantı bulundu, lütfen birini seçin:",
-                choices = [{"name": data.name, "value": data} for data in extract_data]
+            extract_data = await self.ui.select_from_list(
+                message = "Bağlantı seçin:",
+                choices = [{"name": d.name, "value": d} for d in extract_data]
             )
-        return extract_data
 
-    async def __medya_ayarla(self, secilen_data):
-        """
-        Medya bilgilerini ayarlar.
-        """
-        self.medya_yonetici.set_headers(secilen_data.headers)
+        if not extract_data:
+            return await self.content_finished()
 
-        if secilen_data.referer and not secilen_data.headers.get("Referer"):
-            self.medya_yonetici.set_headers({"Referer": secilen_data.referer})
+        # Başlıkları güncelle ve oynat
+        self.update_title(self.episode_title)
+        self.update_title(selected.get("name"))
+        self.update_title(extract_data.name)
 
-        if self.suanki_eklenti.name not in self.medya_yonetici.get_title():
-            self.medya_yonetici.set_title(f"{self.suanki_eklenti.name} | {self.medya_yonetici.get_title()}")
+        self.media.set_headers(extract_data.headers)
+        if extract_data.referer and not extract_data.headers.get("Referer"):
+            self.media.set_headers({"Referer": extract_data.referer})
 
-        if self.bolum_baslik:
-            self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {self.bolum_baslik}")
+        self.media.play_media(extract_data)
+        await self.content_finished()
 
-        if secilen_data.name not in self.medya_yonetici.get_title():
-            self.medya_yonetici.set_title(f"{self.medya_yonetici.get_title()} | {secilen_data.name}")
+    async def content_finished(self):
+        """İçerik bittiğinde ne yapsın?"""
+        if self.is_series:
+            await self.ask_next_episode()
+        else:
+            await self.start()
+
+    async def handle_no_results(self):
+        """Sonuç bulunamadığında"""
+        choice = await self.ui.select_from_list("Ne yapmak istersiniz?", ["Tüm Eklentilerde Ara", "Ana Menü", "Çıkış"])
+        match choice:
+            case "Tüm Eklentilerde Ara":
+                await self.search_all_plugins()
+            case "Ana Menü":
+                await self.start()
+            case "Çıkış":
+                cikis_yap(False)
+
 
 def basla():
     try:
@@ -372,7 +339,7 @@ def basla():
 
         # Uygulamayı başlat
         app = KekikStream()
-        run(app.baslat())
+        run(app.start())
         cikis_yap(False)
     except KeyboardInterrupt:
         cikis_yap(True)
