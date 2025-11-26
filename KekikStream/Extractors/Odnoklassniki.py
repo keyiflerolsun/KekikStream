@@ -8,11 +8,19 @@ class Odnoklassniki(ExtractorBase):
     main_url = "https://odnoklassniki.ru"
 
     async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.cffi.headers.update({"Referer": referer})
-
         if "/video/" in url:
             url = url.replace("/video/", "/videoembed/")
+
+        headers = {
+            "Accept"         : "*/*",
+            "Connection"     : "keep-alive",
+            "Sec-Fetch-Dest" : "empty",
+            "Sec-Fetch-Mode" : "cors",
+            "Sec-Fetch-Site" : "cross-site",
+            "Origin"         : self.main_url,
+            "User-Agent"     : "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0",
+        }
+        self.cffi.headers.update(headers)
 
         try:
             istek = await self.fetch_with_redirects(url)
@@ -76,8 +84,8 @@ class Odnoklassniki(ExtractorBase):
         return ExtractResult(
             name      = self.name,
             url       = best_video,
-            referer   = self.main_url,
-            headers   = {},
+            referer   = referer,
+            headers   = headers,
             subtitles = []
         )
 
