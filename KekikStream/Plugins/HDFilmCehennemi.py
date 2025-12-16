@@ -8,7 +8,7 @@ import random, string, re
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
     language    = "tr"
-    main_url    = "https://www.hdfilmcehennemi.la"
+    main_url    = "https://www.hdfilmcehennemi.ws"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en hızlı hd film izleme sitesi"
 
