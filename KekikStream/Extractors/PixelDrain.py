@@ -9,7 +9,7 @@ class PixelDrain(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
         pixel_id_match = re.search(r"/u/([^/?]+)|([^\/]+)(?=\?download)", url)
         if not pixel_id_match:

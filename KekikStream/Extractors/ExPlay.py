@@ -18,9 +18,9 @@ class ExPlay(ExtractorBase):
         clean_url = url.split("?partKey=")[0]
 
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.cffi.get(clean_url)
+        istek = await self.httpx.get(clean_url)
         istek.raise_for_status()
 
         # videoUrl çıkar

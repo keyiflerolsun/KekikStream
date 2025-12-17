@@ -37,7 +37,7 @@ class SineWix(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.cffi.get(f"{url}/{page}")
+        istek   = await self.httpx.get(f"{url}/{page}")
         veriler = istek.json()
 
         return [
@@ -52,7 +52,7 @@ class SineWix(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.cffi.get(f"{self.main_url}/sinewix/search/{query}")
+        istek = await self.httpx.get(f"{self.main_url}/sinewix/search/{query}")
 
         return [
             SearchResult(
@@ -68,7 +68,7 @@ class SineWix(PluginBase):
         item_type = url.split("?type=")[-1].split("&id=")[0]
         item_id   = url.split("&id=")[-1]
 
-        istek = await self.cffi.get(f"{self.main_url}/sinewix/{item_type}/{item_id}")
+        istek = await self.httpx.get(f"{self.main_url}/sinewix/{item_type}/{item_id}")
         veri  = istek.json()
 
         match item_type:
@@ -143,7 +143,7 @@ class SineWix(PluginBase):
         if not url.startswith(self.main_url) and not url.startswith("{"):
              return [{"url": url, "name": "Video"}]
 
-        istek = await self.cffi.get(url)
+        istek = await self.httpx.get(url)
         veri  = istek.json()
 
         org_title = veri.get("title")

@@ -27,7 +27,7 @@ class VidPapi(ExtractorBase):
         
         subtitles = []
         try:
-            sub_istek = await self.cffi.post(
+            sub_istek = await self.httpx.post(
                 url     = sub_url,
                 headers = sub_headers,
                 data    = {"hash": vid_id, "r": "https://kultfilmler.pro/"}
@@ -62,7 +62,7 @@ class VidPapi(ExtractorBase):
         video_url = f"{self.main_url}/player/index.php?data={vid_id}&do=getVideo"
         video_headers = sub_headers.copy()
         
-        response = await self.cffi.post(
+        response = await self.httpx.post(
             url     = video_url,
             headers = video_headers,
             data    = {"hash": vid_id, "r": "https://kultfilmler.pro/"}

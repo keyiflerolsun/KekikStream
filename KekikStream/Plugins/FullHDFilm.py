@@ -36,12 +36,12 @@ class FullHDFilm(PluginBase):
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         page_url = url if page == 1 else f"{url}/page/{page}"
 
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer"    : f"{self.main_url}/"
         })
 
-        istek  = await self.cffi.get(page_url)
+        istek  = await self.httpx.get(page_url)
         secici = Selector(istek.text)
 
         return [
@@ -56,7 +56,7 @@ class FullHDFilm(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -70,7 +70,7 @@ class FullHDFilm(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("h1::text").get()
@@ -132,12 +132,12 @@ class FullHDFilm(PluginBase):
         return None
 
     async def load_links(self, url: str) -> list[dict]:
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer"    : self.main_url
         })
 
-        istek       = await self.cffi.get(url)
+        istek       = await self.httpx.get(url)
         source_code = istek.text
 
         # Ana sayfadan altyazı URL'sini çek
@@ -147,7 +147,7 @@ class FullHDFilm(PluginBase):
         iframe_src = self._get_iframe(source_code)
 
         if not subtitle_url and iframe_src:
-            iframe_istek = await self.cffi.get(iframe_src)
+            iframe_istek = await self.httpx.get(iframe_src)
             subtitle_url = self._extract_subtitle_url(iframe_istek.text)
 
         results = []

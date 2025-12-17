@@ -53,7 +53,7 @@ class FilmMakinesi(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}/arama/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
         secici = Selector(istek.text)
 
         results = []
@@ -75,7 +75,7 @@ class FilmMakinesi(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("h1.title::text").get().strip()
@@ -103,7 +103,7 @@ class FilmMakinesi(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframe_src = secici.css("iframe::attr(data-src)").get()

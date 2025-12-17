@@ -4,12 +4,11 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 import re, json
 
 class JetTv(ExtractorBase):
-    name             = "JetTv"
-    main_url         = "https://jetv.xyz"
-    requires_referer = False
+    name     = "JetTv"
+    main_url = "https://jetv.xyz"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        istek    = await self.cffi.get(url)
+        istek    = await self.httpx.get(url)
         document = istek.text
 
         # 1. Yöntem: API üzerinden alma
@@ -21,7 +20,7 @@ class JetTv(ExtractorBase):
             api_url = f"https://jetv.xyz/apollo/get_video.php?id={vid_id}"
             try:
                 # Referer olarak video sayfasının kendisi gönderilmeli
-                api_resp = await self.cffi.get(api_url, headers={"Referer": url})
+                api_resp = await self.httpx.get(api_url, headers={"Referer": url})
                 api_json = api_resp.json()
                 
                 if api_json.get("success"):

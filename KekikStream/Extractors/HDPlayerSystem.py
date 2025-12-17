@@ -16,7 +16,7 @@ class HDPlayerSystem(ExtractorBase):
 
         post_url = f"{self.main_url}/player/index.php?data={vid_id}&do=getVideo"
 
-        response = await self.cffi.post(
+        response = await self.httpx.post(
             url     = post_url,
             data    = {"hash": vid_id, "r": ext_ref},
             headers = {

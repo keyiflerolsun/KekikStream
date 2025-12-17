@@ -35,7 +35,7 @@ class FilmBip(PluginBase):
         page_url = url.replace("SAYFA", "") if page == 1 else url.replace("SAYFA", str(page))
         page_url = page_url.rstrip("/")
 
-        istek  = await self.cffi.get(page_url)
+        istek  = await self.httpx.get(page_url)
         secici = Selector(istek.text)
 
         results = []
@@ -56,7 +56,7 @@ class FilmBip(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.cffi.post(
+        istek = await self.httpx.post(
             url     = f"{self.main_url}/search",
             headers = {
                 "Accept"           : "application/json, text/javascript, */*; q=0.01",
@@ -95,7 +95,7 @@ class FilmBip(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.page-title h1::text").get()
@@ -126,7 +126,7 @@ class FilmBip(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []

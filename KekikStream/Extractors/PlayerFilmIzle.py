@@ -4,16 +4,15 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 import re, json
 
 class PlayerFilmIzle(ExtractorBase):
-    name            = "PlayerFilmIzle"
-    main_url        = "https://player.filmizle.in"
-    requires_referer = True
+    name     = "PlayerFilmIzle"
+    main_url = "https://player.filmizle.in"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         # Kotlin tarafında referer mainUrl olarak zorlanmış
         ext_ref = self.main_url
-        self.cffi.headers.update({"Referer": ext_ref})
+        self.httpx.headers.update({"Referer": ext_ref})
         
-        istek     = await self.cffi.get(url)
+        istek     = await self.httpx.get(url)
         video_req = istek.text
 
         subtitles = []
@@ -44,7 +43,7 @@ class PlayerFilmIzle(ExtractorBase):
         # Kotlin'de post data: "hash" -> data, "r" -> ""
         post_data = {"hash": data_val, "r": ""}
         
-        response = await self.cffi.post(url_post, data=post_data, headers=post_headers)
+        response = await self.httpx.post(url_post, data=post_data, headers=post_headers)
         get_url  = response.text.replace("\\", "")
 
         m3u8_url = ""
@@ -58,6 +57,6 @@ class PlayerFilmIzle(ExtractorBase):
             name      = self.name,
             url       = m3u8_url,
             referer   = ext_ref,
-            headers   = dict(self.cffi.headers),
+            headers   = dict(self.httpx.headers),
             subtitles = subtitles
         )

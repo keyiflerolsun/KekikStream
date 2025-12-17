@@ -9,9 +9,9 @@ class Sobreatsesuyp(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.cffi.get(url)
+        istek = await self.httpx.get(url)
         istek.raise_for_status()
 
         file_match = re.search(r'file\":\"([^\"]+)', istek.text)
@@ -21,7 +21,7 @@ class Sobreatsesuyp(ExtractorBase):
         file_path = file_match[1].replace("\\", "")
         post_link = f"{self.main_url}/{file_path}"
 
-        post_istek = await self.cffi.post(post_link)
+        post_istek = await self.httpx.post(post_link)
         post_istek.raise_for_status()
 
         try:
@@ -41,7 +41,7 @@ class Sobreatsesuyp(ExtractorBase):
                 continue
 
             playlist_url     = f"{self.main_url}/playlist/{file.lstrip('/')}.txt"
-            playlist_request = await self.cffi.post(playlist_url, headers={"Referer": referer or self.main_url})
+            playlist_request = await self.httpx.post(playlist_url, headers={"Referer": referer or self.main_url})
             playlist_request.raise_for_status()
 
             all_results.append(

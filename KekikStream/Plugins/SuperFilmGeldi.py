@@ -26,7 +26,7 @@ class SuperFilmGeldi(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url.replace("SAYFA", str(page)))
+        istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
         secici = Selector(istek.text)
 
         return [
@@ -41,7 +41,7 @@ class SuperFilmGeldi(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -55,7 +55,7 @@ class SuperFilmGeldi(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.title h1::text").get()
@@ -77,7 +77,7 @@ class SuperFilmGeldi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframe = self.fix_url(secici.css("div#vast iframe::attr(src)").get())
@@ -88,7 +88,7 @@ class SuperFilmGeldi(PluginBase):
 
         # Mix player özel işleme
         if "mix" in iframe and "index.php?data=" in iframe:
-            iframe_istek = await self.cffi.get(iframe, headers={"Referer": f"{self.main_url}/"})
+            iframe_istek = await self.httpx.get(iframe, headers={"Referer": f"{self.main_url}/"})
             mix_point    = re.search(r'videoUrl":"(.*)","videoServer', iframe_istek.text)
 
             if mix_point:

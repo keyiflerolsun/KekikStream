@@ -29,7 +29,7 @@ class SinemaCX(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url.replace("SAYFA", str(page)))
+        istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
         secici = Selector(istek.text)
 
         return [
@@ -44,7 +44,7 @@ class SinemaCX(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -58,7 +58,7 @@ class SinemaCX(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         duration_match = re.search(r"Süre:.*?(\d+)\s*Dakika", istek.text)
@@ -76,7 +76,7 @@ class SinemaCX(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframe_list = [iframe.css("::attr(data-vsrc)").get() for iframe in secici.css("iframe")]
@@ -90,7 +90,7 @@ class SinemaCX(PluginBase):
 
         if has_only_trailer:
             alt_url   = url.rstrip("/") + "/2/"
-            alt_istek = await self.cffi.get(alt_url)
+            alt_istek = await self.httpx.get(alt_url)
             alt_sec   = Selector(alt_istek.text)
             iframe_list = [iframe.css("::attr(data-vsrc)").get() for iframe in alt_sec.css("iframe")]
             iframe_list = [i for i in iframe_list if i]
@@ -105,8 +105,8 @@ class SinemaCX(PluginBase):
         results = []
 
         # Altyazı kontrolü
-        self.cffi.headers.update({"Referer": f"{self.main_url}/"})
-        iframe_istek = await self.cffi.get(iframe)
+        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
+        iframe_istek = await self.httpx.get(iframe)
         iframe_text  = iframe_istek.text
 
         subtitles = []
@@ -123,8 +123,8 @@ class SinemaCX(PluginBase):
                 base_url = base_match[1]
                 vid_id   = iframe.split("/")[-1]
 
-                self.cffi.headers.update({"X-Requested-With": "XMLHttpRequest"})
-                vid_istek = await self.cffi.post(
+                self.httpx.headers.update({"X-Requested-With": "XMLHttpRequest"})
+                vid_istek = await self.httpx.post(
                     f"https://{base_url}/player/index.php?data={vid_id}&do=getVideo",
                 )
                 vid_data = vid_istek.json()

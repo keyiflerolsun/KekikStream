@@ -18,7 +18,7 @@ class SetPrime(ExtractorBase):
         # POST URL: embed?i= -> embed/get?i=
         post_url = clean_url.replace("embed?i=", "embed/get?i=")
         
-        response = await self.cffi.post(
+        response = await self.httpx.post(
             url     = post_url,
             headers = {"Referer": clean_url}
         )

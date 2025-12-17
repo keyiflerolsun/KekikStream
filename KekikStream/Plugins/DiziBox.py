@@ -42,11 +42,11 @@ class DiziBox(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        self.cffi.cookies.update({
+        self.httpx.cookies.update({
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
         })
-        istek = await self.cffi.get(
+        istek = await self.httpx.get(
             url              = f"{url.replace('SAYFA', str(page))}",
             allow_redirects = True
         )
@@ -64,11 +64,11 @@ class DiziBox(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        self.cffi.cookies.update({
+        self.httpx.cookies.update({
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
         })
-        istek  = await self.cffi.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -82,7 +82,7 @@ class DiziBox(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.tv-overview h1 a::text").get()
@@ -96,7 +96,7 @@ class DiziBox(PluginBase):
         episodes = []
         for sezon_link in secici.css("div#seasons-list a::attr(href)").getall():
             sezon_url    = self.fix_url(sezon_link)
-            sezon_istek  = await self.cffi.get(sezon_url)
+            sezon_istek  = await self.httpx.get(sezon_url)
             sezon_secici = Selector(sezon_istek.text)
 
             for bolum in sezon_secici.css("article.grid-box"):
@@ -131,8 +131,8 @@ class DiziBox(PluginBase):
     async def _iframe_decode(self, name:str, iframe_link:str, referer:str) -> list[str]:
         results = []
 
-        self.cffi.headers.update({"Referer": referer})
-        self.cffi.cookies.update({
+        self.httpx.headers.update({"Referer": referer})
+        self.httpx.cookies.update({
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
         })
@@ -140,12 +140,12 @@ class DiziBox(PluginBase):
         if "/player/king/king.php" in iframe_link:
             iframe_link = iframe_link.replace("king.php?v=", "king.php?wmode=opaque&v=")
 
-            istek  = await self.cffi.get(iframe_link)
+            istek  = await self.httpx.get(iframe_link)
             secici = Selector(istek.text)
             iframe = secici.css("div#Player iframe::attr(src)").get()
 
-            self.cffi.headers.update({"Referer": self.main_url})
-            istek = await self.cffi.get(iframe)
+            self.httpx.headers.update({"Referer": self.main_url})
+            istek = await self.httpx.get(iframe)
 
             crypt_data = re.search(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", istek.text)[1]
             crypt_pass = re.search(r"\",\"(.*)\"\);", istek.text)[1]
@@ -161,7 +161,7 @@ class DiziBox(PluginBase):
             while True:
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
-                    istek  = await self.cffi.get(iframe_link)
+                    istek  = await self.httpx.get(iframe_link)
 
                     if atob_data := re.search(r"unescape\(\"(.*)\"\)", istek.text):
                         decoded_atob = urllib.parse.unquote(atob_data[1])
@@ -180,7 +180,7 @@ class DiziBox(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []
@@ -200,8 +200,8 @@ class DiziBox(PluginBase):
             if not alt_link:
                 continue
 
-            self.cffi.headers.update({"Referer": url})
-            alt_istek = await self.cffi.get(alt_link)
+            self.httpx.headers.update({"Referer": url})
+            alt_istek = await self.httpx.get(alt_link)
             alt_istek.raise_for_status()
 
             alt_secici = Selector(alt_istek.text)

@@ -32,8 +32,8 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
-        istek   = await self.cffi.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
+        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
+        istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
         veriler = istek.json()
 
         return [
@@ -48,8 +48,8 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
-        istek     = await self.cffi.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
+        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
+        istek     = await self.httpx.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
 
         kanallar  = istek.json().get("channels")
         icerikler = istek.json().get("posters")
@@ -69,12 +69,12 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
-        self.cffi.headers.update({"user-agent": "okhttp/4.12.0"})
+        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         veri = loads(url)
 
         match veri.get("type"):
             case "serie":
-                dizi_istek = await self.cffi.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
+                dizi_istek = await self.httpx.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
                 dizi_veri  = dizi_istek.json()
 
                 episodes = []

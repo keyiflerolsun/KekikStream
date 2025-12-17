@@ -20,7 +20,7 @@ class FirePlayer(ExtractorBase):
             "Referer": referer
         }
 
-        istek  = await self.cffi.get(url, headers=headers)
+        istek  = await self.httpx.get(url, headers=headers)
         
         # Unpack usage similar to VidMoxy / suggestion
         # Find the packed code block

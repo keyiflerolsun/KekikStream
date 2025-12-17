@@ -26,7 +26,7 @@ class Dizilla(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         ana_sayfa = []
@@ -51,7 +51,7 @@ class Dizilla(PluginBase):
                 ep_name = ep_name.replace(". Sezon", "x").replace(". Bölüm", "").replace("x ", "x")
                 title   = f"{name} - {ep_name}"
 
-                ep_req    = await self.cffi.get(self.fix_url(veri.css("::attr(href)").get()))
+                ep_req    = await self.httpx.get(self.fix_url(veri.css("::attr(href)").get()))
                 ep_secici = Selector(ep_req.text)
                 href      = self.fix_url(ep_secici.css("nav li:nth-of-type(3) a::attr(href)").get())
                 poster    = self.fix_url(ep_secici.css("img.imgt::attr(src)").get())
@@ -90,7 +90,7 @@ class Dizilla(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        arama_istek = await self.cffi.post(f"{self.main_url}/api/bg/searchcontent?searchterm={query}")
+        arama_istek = await self.httpx.post(f"{self.main_url}/api/bg/searchcontent?searchterm={query}")
         decrypted   = await self.decrypt_response(arama_istek.json().get("response"))
         arama_veri  = decrypted.get("result", [])
 
@@ -116,7 +116,7 @@ class Dizilla(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
         veri   = loads(secici.xpath("//script[@type='application/ld+json']/text()").getall()[-1])
 
@@ -160,7 +160,7 @@ class Dizilla(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek   = await self.cffi.get(url)
+        istek   = await self.httpx.get(url)
         secici  = Selector(istek.text)
 
         next_data   = loads(secici.css("script#__NEXT_DATA__::text").get())

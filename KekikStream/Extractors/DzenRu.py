@@ -12,9 +12,9 @@ class DzenRu(ExtractorBase):
         video_url = f"{self.main_url}/embed/{video_key}"
 
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.cffi.get(video_url)
+        istek = await self.httpx.get(video_url)
         istek.raise_for_status()
 
         # okcdn.ru linklerini bul

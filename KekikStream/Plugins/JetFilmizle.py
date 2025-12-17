@@ -21,7 +21,7 @@ class JetFilmizle(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(f"{url}{page}", allow_redirects=True)
+        istek  = await self.httpx.get(f"{url}{page}", allow_redirects=True)
         secici = Selector(istek.text)
 
         return [
@@ -36,7 +36,7 @@ class JetFilmizle(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.post(
+        istek  = await self.httpx.post(
             url     = f"{self.main_url}/filmara.php",
             data    = {"s": query},
             headers = {"Referer": f"{self.main_url}/"}
@@ -62,7 +62,7 @@ class JetFilmizle(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = self.clean_title(secici.css("div.movie-exp-title::text").get())
@@ -94,7 +94,7 @@ class JetFilmizle(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframes = []
@@ -106,7 +106,7 @@ class JetFilmizle(PluginBase):
             if not part_href:
                 continue
 
-            part_istek  = await self.cffi.get(part_href)
+            part_istek  = await self.httpx.get(part_href)
             part_secici = Selector(part_istek.text)
 
             if iframe := part_secici.css("div#movie iframe::attr(data-src), div#movie iframe::attr(data), div#movie iframe::attr(src)").get():
@@ -119,7 +119,7 @@ class JetFilmizle(PluginBase):
         processed_iframes = []
         for iframe in iframes:
             if "jetv.xyz" in iframe:
-                jetv_istek  = await self.cffi.get(iframe)
+                jetv_istek  = await self.httpx.get(iframe)
                 jetv_secici = Selector(jetv_istek.text)
 
                 if jetv_iframe := jetv_secici.css("iframe::attr(src)").get():

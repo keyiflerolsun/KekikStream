@@ -8,12 +8,12 @@ class TauVideo(ExtractorBase):
 
     async def extract(self, url, referer=None) -> list[ExtractResult]:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
         video_key = url.split("/")[-1]
         api_url   = f"{self.main_url}/api/video/{video_key}"
 
-        response = await self.cffi.get(api_url)
+        response = await self.httpx.get(api_url)
         response.raise_for_status()
 
         api_data = response.json()

@@ -4,15 +4,14 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 import re, json
 
 class TurkeyPlayer(ExtractorBase):
-    name            = "TurkeyPlayer"
-    main_url        = "https://watch.turkeyplayer.com/"
-    requires_referer = True
+    name     = "TurkeyPlayer"
+    main_url = "https://watch.turkeyplayer.com/"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
         
-        istek       = await self.cffi.get(url)
+        istek       = await self.httpx.get(url)
         page_content = istek.text
 
         video_json_match = re.search(r'var\s+video\s*=\s*(\{.*?\});', page_content, re.DOTALL)
@@ -30,6 +29,6 @@ class TurkeyPlayer(ExtractorBase):
             name      = self.name,
             url       = master_url,
             referer   = referer or url,
-            headers   = dict(self.cffi.headers),
+            headers   = dict(self.httpx.headers),
             subtitles = []
         )

@@ -31,7 +31,7 @@ class DiziYou(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(f"{url.replace('SAYFA', str(page))}")
+        istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
         secici = Selector(istek.text)
 
         return [
@@ -46,7 +46,7 @@ class DiziYou(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}/?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
 
         return [
@@ -60,7 +60,7 @@ class DiziYou(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("h1::text").get().strip()
@@ -109,7 +109,7 @@ class DiziYou(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         item_title = secici.css("div.title h1::text").get()

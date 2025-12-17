@@ -9,18 +9,18 @@ class VideoSeyred(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
         video_id  = url.split("embed/")[1].split("?")[0]
         if len(video_id) > 10:
-            kontrol = await self.cffi.get(url)
+            kontrol = await self.httpx.get(url)
             kontrol.raise_for_status()
 
             video_id = re.search(r"playlist\/(.*)\.json", kontrol.text)[1]
 
         video_url = f"{self.main_url}/playlist/{video_id}.json"
 
-        response = await self.cffi.get(video_url)
+        response = await self.httpx.get(video_url)
         response.raise_for_status()
 
         try:

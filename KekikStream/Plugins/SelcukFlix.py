@@ -15,7 +15,7 @@ class SelcukFlix(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{self.main_url}/{url}"
-        resp = await self.cffi.get(full_url)
+        resp = await self.httpx.get(full_url)
         sel = Selector(resp.text)
         
         results = []
@@ -50,7 +50,7 @@ class SelcukFlix(PluginBase):
             "Referer": f"{self.main_url}/"
         }
         
-        post_resp = await self.cffi.post(search_url, headers=headers)
+        post_resp = await self.httpx.post(search_url, headers=headers)
         
         try:
             resp_json = post_resp.json()
@@ -84,7 +84,7 @@ class SelcukFlix(PluginBase):
             return []
 
     async def load_item(self, url: str) -> SeriesInfo:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         next_data = sel.css("script#__NEXT_DATA__::text").get()
@@ -143,7 +143,7 @@ class SelcukFlix(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         next_data = sel.css("script#__NEXT_DATA__::text").get()

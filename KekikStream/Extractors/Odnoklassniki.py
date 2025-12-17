@@ -20,7 +20,7 @@ class Odnoklassniki(ExtractorBase):
             "Origin"         : self.main_url,
             "User-Agent"     : "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0",
         }
-        self.cffi.headers.update(headers)
+        self.httpx.headers.update(headers)
 
         try:
             istek = await self.fetch_with_redirects(url)
@@ -93,7 +93,7 @@ class Odnoklassniki(ExtractorBase):
         """Yönlendirmeleri takip eden bir fonksiyon"""
         redirects = 0
         while redirects < max_redirects:
-            istek = await self.cffi.get(url, allow_redirects=False)
+            istek = await self.httpx.get(url, allow_redirects=False)
 
             if istek.status_code not in [301, 302]:
                 break  # Yönlendirme yoksa çık

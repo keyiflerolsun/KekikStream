@@ -8,7 +8,10 @@ class RoketDizi(PluginBase):
     name        = "RoketDizi"
     lang        = "tr"
     main_url    = "https://flatscher.net"
-    
+
+    # Domain doğrulama ve anti-bot mekanizmaları var
+    requires_cffi = True
+
     main_page = {
        "dizi/tur/aksiyon"     : "Aksiyon",
        "dizi/tur/bilim-kurgu" : "Bilim Kurgu",
@@ -24,9 +27,9 @@ class RoketDizi(PluginBase):
         full_url = f"{self.main_url}/{url}?&page={page}"
         resp = await self.cffi.get(full_url)
         sel = Selector(resp.text)
-        
+
         results = []
-        
+
         for item in sel.css("div.w-full.p-4 span.bg-\\[\\#232323\\]"):
              title = item.css("span.font-normal.line-clamp-1::text").get()
              href  = item.css("a::attr(href)").get()

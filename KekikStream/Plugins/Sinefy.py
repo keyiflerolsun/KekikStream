@@ -24,7 +24,7 @@ class Sinefy(PluginBase):
         else:
              full_url = f"{self.main_url}/{url}&page={page}"
              
-        resp = await self.cffi.get(full_url)
+        resp = await self.httpx.get(full_url)
         sel = Selector(resp.text)
         
         results = []
@@ -51,7 +51,7 @@ class Sinefy(PluginBase):
         c_value = "MTc0NzI2OTAwMDU3ZTEwYmZjMDViNWFmOWIwZDViODg0MjU4MjA1ZmYxOThmZTYwMDdjMWQzMzliNzY5NzFlZmViMzRhMGVmNjgwODU3MGIyZA=="
         
         try:
-             resp = await self.cffi.get(self.main_url)
+             resp = await self.httpx.get(self.main_url)
              sel = Selector(resp.text)
              cke = sel.css("input[name='cKey']::attr(value)").get()
              cval = sel.css("input[name='cValue']::attr(value)").get()
@@ -75,7 +75,7 @@ class Sinefy(PluginBase):
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
         }
         
-        response = await self.cffi.post(post_url, data=data, headers=headers)
+        response = await self.httpx.post(post_url, data=data, headers=headers)
         
         try:
             # Extract JSON data from response (might contain garbage chars at start)
@@ -114,7 +114,7 @@ class Sinefy(PluginBase):
         return []
 
     async def load_item(self, url: str) -> SeriesInfo:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         title       = sel.css("h1::text").get()
@@ -149,7 +149,7 @@ class Sinefy(PluginBase):
                  target_url = s_url if "/bolum-" in s_url else f"{s_url}/bolum-1"
                  
                  try:
-                     s_resp = await self.cffi.get(target_url)
+                     s_resp = await self.httpx.get(target_url)
                      s_sel  = Selector(s_resp.text)
                      ep_links = s_sel.css("div.ui.list.celled a.item")
                      
@@ -200,7 +200,7 @@ class Sinefy(PluginBase):
             )
 
     async def load_links(self, url: str) -> list[dict]:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         iframe = sel.css("iframe::attr(src)").get()

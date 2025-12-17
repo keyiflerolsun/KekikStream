@@ -41,7 +41,7 @@ class FilmModu(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url.replace("SAYFA", str(page)))
+        istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
         secici = Selector(istek.text)
 
         return [
@@ -56,7 +56,7 @@ class FilmModu(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}/film-ara?term={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/film-ara?term={query}")
         secici = Selector(istek.text)
 
         return [
@@ -70,7 +70,7 @@ class FilmModu(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         org_title = secici.css("div.titles h1::text").get()
@@ -88,7 +88,7 @@ class FilmModu(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []
@@ -100,7 +100,7 @@ class FilmModu(PluginBase):
             if alt_name == "Fragman" or not alt_link:
                 continue
 
-            alt_istek = await self.cffi.get(alt_link)
+            alt_istek = await self.httpx.get(alt_link)
             alt_text  = alt_istek.text
 
             vid_id   = re.search(r"var videoId = '(.*)'", alt_text)
@@ -109,7 +109,7 @@ class FilmModu(PluginBase):
             if not vid_id or not vid_type:
                 continue
 
-            source_istek = await self.cffi.get(
+            source_istek = await self.httpx.get(
                 f"{self.main_url}/get-source?movie_id={vid_id[1]}&type={vid_type[1]}"
             )
             source_data = source_istek.json()

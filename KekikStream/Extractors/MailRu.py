@@ -11,9 +11,9 @@ class MailRuExtractor(ExtractorBase):
         video_meta_url = f"{self.main_url}/+/video/meta/{vid_id}"
 
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.cffi.get(video_meta_url)
+        istek = await self.httpx.get(video_meta_url)
         istek.raise_for_status()
 
         video_key = istek.cookies.get("video_key")

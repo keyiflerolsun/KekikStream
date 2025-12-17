@@ -37,7 +37,7 @@ class KultFilmler(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []
@@ -57,7 +57,7 @@ class KultFilmler(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.cffi.get(f"{self.main_url}?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}?s={query}")
         secici = Selector(istek.text)
 
         results = []
@@ -76,7 +76,7 @@ class KultFilmler(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         title       = secici.css("div.film-bilgileri img::attr(alt)").get() or secici.css("[property='og:title']::attr(content)").get()
@@ -161,7 +161,7 @@ class KultFilmler(PluginBase):
         return match[1] if match else None
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframes = set()
@@ -175,7 +175,7 @@ class KultFilmler(PluginBase):
         for player in secici.css("div.container#player"):
             alt_iframe = self.fix_url(player.css("iframe::attr(src)").get())
             if alt_iframe:
-                alt_istek = await self.cffi.get(alt_iframe)
+                alt_istek = await self.httpx.get(alt_iframe)
                 alt_frame = self._get_iframe(alt_istek.text)
                 if alt_frame:
                     iframes.add(alt_frame)
@@ -191,7 +191,7 @@ class KultFilmler(PluginBase):
                     "User-Agent"     : "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
                     "Sec-Fetch-Dest" : "iframe"
                 }
-                iframe_istek = await self.cffi.get(iframe, headers=headers)
+                iframe_istek = await self.httpx.get(iframe, headers=headers)
                 m3u_match    = re.search(r'file:"([^"]+)"', iframe_istek.text)
 
                 if m3u_match:

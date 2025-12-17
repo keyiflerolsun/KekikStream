@@ -11,6 +11,9 @@ class HDFilmCehennemi(PluginBase):
     main_url    = "https://www.hdfilmcehennemi.ws"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en hızlı hd film izleme sitesi"
+    
+    # Bu site domain değişikliği yapıyor ve potansiyel anti-bot koruması var
+    requires_cffi = True
 
     main_page   = {
         f"{main_url}"                                      : "Yeni Eklenen Filmler",

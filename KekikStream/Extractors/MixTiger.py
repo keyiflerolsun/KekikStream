@@ -11,7 +11,7 @@ class MixTiger(ExtractorBase):
         post_url = f"{url}?do=getVideo"
         vid_id   = url.split("video/")[-1] if "video/" in url else ""
 
-        response = await self.cffi.post(
+        response = await self.httpx.post(
             url     = post_url,
             data    = {"hash": vid_id, "r": ext_ref, "s": ""},
             headers = {

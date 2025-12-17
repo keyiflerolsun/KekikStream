@@ -6,9 +6,8 @@ from parsel           import Selector
 import re
 
 class VidHide(ExtractorBase):
-    name            = "VidHide"
-    main_url        = "https://vidhidepro.com"
-    requires_referer = True
+    name     = "VidHide"
+    main_url = "https://vidhidepro.com"
 
     def get_embed_url(self, url: str) -> str:
         if "/d/" in url:
@@ -22,9 +21,9 @@ class VidHide(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "Sec-Fetch-Dest" : "empty",
             "Sec-Fetch-Mode" : "cors",
             "Sec-Fetch-Site" : "cross-site",
@@ -32,7 +31,7 @@ class VidHide(ExtractorBase):
         })
         
         embed_url = self.get_embed_url(url)
-        istek     = await self.cffi.get(embed_url)
+        istek     = await self.httpx.get(embed_url)
         response  = istek.text
 
         script = None
@@ -68,6 +67,6 @@ class VidHide(ExtractorBase):
             name      = self.name,
             url       = self.fix_url(m3u8_url),
             referer   = f"{self.main_url}/",
-            headers   = dict(self.cffi.headers),
+            headers   = dict(self.httpx.headers),
             subtitles = []
         )

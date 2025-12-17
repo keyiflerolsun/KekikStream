@@ -11,9 +11,9 @@ class VidMoly(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
-            self.cffi.headers.update({"Referer": referer})
+            self.httpx.headers.update({"Referer": referer})
 
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "Sec-Fetch-Dest" : "iframe",
         })
 
@@ -21,10 +21,10 @@ class VidMoly(ExtractorBase):
             self.main_url = self.main_url.replace(".me", ".net")
             url = url.replace(".me", ".net")
 
-        response = await self.cffi.get(url)
+        response = await self.httpx.get(url)
         if "Select number" in response.text:
             secici = Selector(response.text)
-            response = await self.cffi.post(
+            response = await self.httpx.post(
                 url  = url,
                 data = {
                     "op"        : secici.css("input[name='op']::attr(value)").get(),

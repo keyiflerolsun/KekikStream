@@ -16,7 +16,7 @@ class Sinezy(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{self.main_url}/{url}page/{page}/"
-        resp = await self.cffi.get(full_url)
+        resp = await self.httpx.get(full_url)
         sel = Selector(resp.text)
         
         results = []
@@ -36,7 +36,7 @@ class Sinezy(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         url = f"{self.main_url}/arama/?s={query}"
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel = Selector(resp.text)
         
         results = []
@@ -54,7 +54,7 @@ class Sinezy(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         title       = sel.css("div.detail::attr(title)").get()
@@ -76,7 +76,7 @@ class Sinezy(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         
         match = re.search(r"ilkpartkod\s*=\s*'([^']+)'", resp.text, re.IGNORECASE)
         if match:

@@ -26,7 +26,7 @@ class DiziPal(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []
@@ -67,12 +67,12 @@ class DiziPal(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "Accept"           : "application/json, text/javascript, */*; q=0.01",
             "X-Requested-With" : "XMLHttpRequest"
         })
 
-        istek = await self.cffi.post(
+        istek = await self.httpx.post(
             url  = f"{self.main_url}/api/search-autocomplete",
             data = {"query": query}
         )
@@ -106,12 +106,12 @@ class DiziPal(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         # Reset headers to get HTML response
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         })
-        self.cffi.headers.pop("X-Requested-With", None)
+        self.httpx.headers.pop("X-Requested-With", None)
 
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(text=istek.text, type="html")
 
         poster      = self.fix_url(secici.css("meta[property='og:image']::attr(content)").get())
@@ -179,12 +179,12 @@ class DiziPal(PluginBase):
 
     async def load_links(self, url: str) -> list[dict]:
         # Reset headers to get HTML response
-        self.cffi.headers.update({
+        self.httpx.headers.update({
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         })
-        self.cffi.headers.pop("X-Requested-With", None)
+        self.httpx.headers.pop("X-Requested-With", None)
 
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         iframe = secici.css(".series-player-container iframe::attr(src)").get()
@@ -196,8 +196,8 @@ class DiziPal(PluginBase):
 
         results = []
 
-        self.cffi.headers.update({"Referer": f"{self.main_url}/"})
-        i_istek = await self.cffi.get(iframe)
+        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
+        i_istek = await self.httpx.get(iframe)
         i_text  = i_istek.text
 
         # m3u link çıkar
