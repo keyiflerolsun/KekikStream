@@ -2,7 +2,7 @@
 
 from .CLI       import konsol, cikis_yap, hata_yakala, pypi_kontrol_guncelle
 from .Core      import PluginManager, ExtractorManager, UIManager, MediaManager, PluginBase, ExtractorBase, SeriesInfo
-from asyncio    import run
+from asyncio    import run, TaskGroup, Semaphore
 from contextlib import suppress
 
 class KekikStream:
@@ -90,21 +90,34 @@ class KekikStream:
         
         query = await self.ui.prompt_text("Arama sorgusu:")
         all_results = []
+        
+        # Maksimum 5 eşzamanlı arama için semaphore
+        semaphore = Semaphore(5)
 
-        for name, plugin in self.plugin.plugins.items():
-            if not isinstance(plugin, PluginBase) or name == "Shorten":
-                continue
+        async def search_plugin(name: str, plugin: PluginBase):
+            """Tek bir plugin'de ara (semaphore ile sınırlandırılmış)"""
+            async with semaphore:
+                konsol.log(f"[yellow][~] {name:<19} aranıyor...[/]")
+                try:
+                    results = await plugin.search(query)
+                    if results:
+                        return [
+                            {"plugin": name, "title": r.title, "url": r.url, "poster": r.poster}
+                            for r in results
+                        ]
+                except Exception as e:
+                    konsol.print(f"[bold red]{name} hatası: {e}[/bold red]")
+                return []
 
-            konsol.log(f"[yellow][~] {name:<19} aranıyor...[/]")
-            try:
-                results = await plugin.search(query)
-                if results:
-                    all_results.extend([
-                        {"plugin": name, "title": r.title, "url": r.url, "poster": r.poster}
-                        for r in results
-                    ])
-            except Exception as e:
-                konsol.print(f"[bold red]{name} hatası: {e}[/bold red]")
+        # Tüm plugin'leri paralel olarak ara
+        async with TaskGroup() as tg:
+            tasks = []
+            for name, plugin in self.plugin.plugins.items():
+                tasks.append(tg.create_task(search_plugin(name, plugin)))
+
+        # Sonuçları topla
+        for task in tasks:
+            all_results.extend(task.result())
 
         if not all_results:
             return await self.handle_no_results()
