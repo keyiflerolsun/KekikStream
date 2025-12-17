@@ -66,6 +66,7 @@ class SeriesInfo(BaseModel):
     rating       : Optional[str]           = None
     year         : Optional[str]           = None
     actors       : Optional[str]           = None
+    duration     : Optional[int]           = None
     episodes     : Optional[List[Episode]] = None
 
     @field_validator("tags", "actors", mode="before")
