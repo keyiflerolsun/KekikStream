@@ -3,6 +3,7 @@
 from abc                          import ABC, abstractmethod
 from curl_cffi                    import AsyncSession
 from cloudscraper                 import CloudScraper
+from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
@@ -16,6 +17,8 @@ class PluginBase(ABC):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "No description provided."
 
+    requires_cffi = False
+
     main_page   = {}
 
     async def url_update(self, new_url: str):
@@ -24,17 +27,32 @@ class PluginBase(ABC):
         self.main_url  = new_url
 
     def __init__(self):
-        self.cffi         = AsyncSession(impersonate="firefox135")
+        # cloudscraper - for bypassing Cloudflare
         self.cloudscraper = CloudScraper()
-        self.cffi.cookies.update(self.cloudscraper.cookies)
-        self.cffi.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
+
+        # httpx - lightweight and safe for most HTTP requests
+        self.httpx = AsyncClient(
+            timeout          = 3,
+            follow_redirects = True,
+        )
+        self.httpx.headers.update(self.cloudscraper.headers)
+        self.httpx.cookies.update(self.cloudscraper.cookies)
+
+        # curl_cffi - only initialize if needed for anti-bot bypass
+        self.cffi = None
+
+        if self.requires_cffi:
+            self.cffi = AsyncSession(impersonate="firefox135")
+            self.cffi.cookies.update(self.cloudscraper.cookies)
+            self.cffi.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
+
         self.media_handler = MediaHandler()
         self.ex_manager    = ExtractorManager()
 
-    # @abstractmethod
-    # async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-    #     """Ana sayfadaki popüler içerikleri döndürür."""
-    #     pass
+    @abstractmethod
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        """Ana sayfadaki popüler içerikleri döndürür."""
+        pass
 
     @abstractmethod
     async def search(self, query: str) -> list[SearchResult]:
@@ -72,7 +90,10 @@ class PluginBase(ABC):
         pass
 
     async def close(self):
-        await self.cffi.close()
+        """Close both HTTP clients if they exist."""
+        await self.httpx.aclose()
+        if self.cffi:
+            await self.cffi.close()
 
     def fix_url(self, url: str) -> str:
         if not url:
