@@ -66,10 +66,17 @@ class JetFilmizle(PluginBase):
         secici = Selector(istek.text)
 
         title       = self.clean_title(secici.css("div.movie-exp-title::text").get())
-        poster      = secici.css("section.movie-exp img::attr(data-src), section.movie-exp img::attr(src)").get().strip()
-        description = secici.css("section.movie-exp p.aciklama::text").get().strip()
+        poster_raw  = secici.css("section.movie-exp img::attr(data-src), section.movie-exp img::attr(src)").get()
+        poster      = poster_raw.strip() if poster_raw else None
+        
+        desc_raw    = secici.css("section.movie-exp p.aciklama::text").get()
+        description = desc_raw.strip() if desc_raw else None
+        
         tags        = secici.css("section.movie-exp div.catss a::text").getall()
-        rating      = secici.css("section.movie-exp div.imdb_puan span::text").get().strip()
+        
+        rating_raw  = secici.css("section.movie-exp div.imdb_puan span::text").get()
+        rating      = rating_raw.strip() if rating_raw else None
+        
         year        = secici.xpath("//div[@class='yap' and (contains(., 'Vizyon') or contains(., 'Yapım'))]/text()").get()
         year        = year.strip() if year else None
         actors      = secici.css("div[itemprop='actor'] a span::text").getall()

@@ -134,6 +134,9 @@ class SezonlukDizi(PluginBase):
                     secici = Selector(veri_response.text)
 
                     if iframe := secici.css("iframe::attr(src)").get():
+                        if "link.asp" in iframe:
+                            continue
+                            
                         extractor = self.ex_manager.find_extractor(self.fix_url(iframe))
                         results.append({
                             "url"  : self.fix_url(iframe),

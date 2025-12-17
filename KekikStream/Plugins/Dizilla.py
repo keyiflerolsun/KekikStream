@@ -134,7 +134,11 @@ class Dizilla(PluginBase):
         bolumler = []
         sezonlar = veri.get("containsSeason") if isinstance(veri.get("containsSeason"), list) else [veri.get("containsSeason")]
         for sezon in sezonlar:
-            for bolum in sezon.get("episode"):
+            episodes = sezon.get("episode")
+            if isinstance(episodes, dict):
+                episodes = [episodes]
+            
+            for bolum in episodes:
                 bolumler.append(Episode(
                     season  = sezon.get("seasonNumber"),
                     episode = bolum.get("episodeNumber"),

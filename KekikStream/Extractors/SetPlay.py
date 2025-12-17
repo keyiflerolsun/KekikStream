@@ -1,0 +1,58 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
+from KekikStream.Core import ExtractorBase, ExtractResult
+import re
+
+class SetPlay(ExtractorBase):
+    name     = "SetPlay"
+    main_url = "https://setplay.cfd"
+
+    async def extract(self, url, referer=None) -> ExtractResult:
+        ext_ref = referer or ""
+
+        if referer:
+            self.cffi.headers.update({"Referer": referer})
+
+        istek = await self.cffi.get(url)
+        istek.raise_for_status()
+
+        # videoUrl çıkar
+        video_url_match = re.search(r'videoUrl":"([^",]+)"', istek.text)
+        if not video_url_match:
+            raise ValueError("videoUrl not found")
+        video_url = video_url_match[1].replace("\\", "")
+
+        # videoServer çıkar
+        video_server_match = re.search(r'videoServer":"([^",]+)"', istek.text)
+        if not video_server_match:
+            raise ValueError("videoServer not found")
+        video_server = video_server_match[1]
+
+        # title çıkar (opsiyonel)
+        title_match = re.search(r'title":"([^",]+)"', istek.text)
+        title_base = title_match[1].split(".")[-1] if title_match else "Unknown"
+        
+        # partKey logic
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+        part_key = params.get("partKey", [""])[0]
+        
+        name_suffix = ""
+        if "turkcedublaj" in part_key.lower():
+            name_suffix = "Dublaj"
+        elif "turkcealtyazi" in part_key.lower():
+            name_suffix = "Altyazı"
+        else:
+            name_suffix = title_base
+
+        # M3U8 link oluştur
+        m3u_link = f"{self.main_url}{video_url}?s={video_server}"
+
+        return ExtractResult(
+            name      = f"{self.name} - {name_suffix}",
+            url       = m3u_link,
+            referer   = url,
+            headers   = {},
+            subtitles = []
+        )
