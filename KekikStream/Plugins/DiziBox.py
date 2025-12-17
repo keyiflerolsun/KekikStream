@@ -48,7 +48,7 @@ class DiziBox(PluginBase):
         })
         istek = await self.httpx.get(
             url              = f"{url.replace('SAYFA', str(page))}",
-            allow_redirects = True
+            follow_redirects = True
         )
         secici = Selector(istek.text)
 

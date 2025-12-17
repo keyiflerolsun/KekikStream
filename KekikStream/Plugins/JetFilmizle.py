@@ -21,7 +21,7 @@ class JetFilmizle(PluginBase):
 
     #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}", allow_redirects=True)
+        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
         secici = Selector(istek.text)
 
         return [

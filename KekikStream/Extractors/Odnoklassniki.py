@@ -93,7 +93,7 @@ class Odnoklassniki(ExtractorBase):
         """Yönlendirmeleri takip eden bir fonksiyon"""
         redirects = 0
         while redirects < max_redirects:
-            istek = await self.httpx.get(url, allow_redirects=False)
+            istek = await self.httpx.get(url, follow_redirects=False)
 
             if istek.status_code not in [301, 302]:
                 break  # Yönlendirme yoksa çık
