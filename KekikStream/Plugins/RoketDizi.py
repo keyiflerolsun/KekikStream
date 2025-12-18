@@ -7,7 +7,7 @@ import re, base64, json, urllib.parse
 class RoketDizi(PluginBase):
     name        = "RoketDizi"
     lang        = "tr"
-    main_url    = "https://flatscher.net"
+    main_url    = "https://roketdizi.to"
 
     # Domain doğrulama ve anti-bot mekanizmaları var
     requires_cffi = True
@@ -25,56 +25,40 @@ class RoketDizi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{self.main_url}/{url}?&page={page}"
-        resp = await self.cffi.get(full_url)
-        sel = Selector(resp.text)
+        resp     = await self.cffi.get(full_url)
+        sel      = Selector(resp.text)
 
         results = []
 
         for item in sel.css("div.w-full.p-4 span.bg-\\[\\#232323\\]"):
-             title = item.css("span.font-normal.line-clamp-1::text").get()
-             href  = item.css("a::attr(href)").get()
-             poster= item.css("img::attr(src)").get()
+             title  = item.css("span.font-normal.line-clamp-1::text").get()
+             href   = item.css("a::attr(href)").get()
+             poster = item.css("img::attr(src)").get()
              
              if title and href:
                  results.append(MainPageResult(
-                     category=category,
-                     title=title,
-                     url=self.fix_url(href),
-                     poster=self.fix_url(poster)
+                     category = category,
+                     title    = title,
+                     url      = self.fix_url(href),
+                     poster   = self.fix_url(poster)
                  ))
         return results
 
-    async def get_domain(self):
-        try:
-            domain_list = await self.cffi.get("https://raw.githubusercontent.com/Kraptor123/domainListesi/refs/heads/main/eklenti_domainleri.txt")
-            if domain_list.status_code == 200:
-                for line in domain_list.text.split("|"):
-                    if line.strip().startswith("RoketDizi"):
-                        domain = line.split(":")[-1].strip()
-                        if "http" not in domain:
-                            domain = f"https://{domain}"
-                        return domain
-        except Exception:
-            pass
-        return self.main_url
-
     async def search(self, query: str) -> list[SearchResult]:
-        current_domain = await self.get_domain()
-        
         # Get Cookies and Keys
-        main_req = await self.cffi.get(current_domain)
+        main_req = await self.cffi.get(self.main_url)
         sel = Selector(main_req.text)
         
         c_key   = sel.css("input[name='cKey']::attr(value)").get()
         c_value = sel.css("input[name='cValue']::attr(value)").get()
         
-        post_url = f"{current_domain}/api/bg/searchContent?searchterm={query}"
+        post_url = f"{self.main_url}/api/bg/searchContent?searchterm={query}"
         
         headers = {
-            "Accept": "application/json, text/javascript, */*; q=0.01",
-            "X-Requested-With": "XMLHttpRequest",
-            "Referer": f"{current_domain}/",
-            "CNT": "vakTR"
+            "Accept"           : "application/json, text/javascript, */*; q=0.01",
+            "X-Requested-With" : "XMLHttpRequest",
+            "Referer"          : f"{self.main_url}/",
+            "CNT"              : "vakTR"
         }
 
         data = {}
@@ -96,9 +80,9 @@ class RoketDizi(PluginBase):
             
             for href, poster, title in items:
                  results.append(SearchResult(
-                     title=title.strip(),
-                     url=self.fix_url(href.strip(), current_domain),
-                     poster=self.fix_url(poster.strip(), current_domain)
+                     title  = title.strip(),
+                     url    = self.fix_url(href.strip()),
+                     poster = self.fix_url(poster.strip())
                  ))
             
             return results
@@ -141,22 +125,22 @@ class RoketDizi(PluginBase):
                     episode_num = int(ep_match.group(1)) if ep_match else 1
                     
                     episodes.append(Episode(
-                        season=season,
-                        episode=episode_num,
-                        title=f"{season}. Sezon {episode_num}. Bölüm", # Placeholder title
-                        url=self.fix_url(u, self.get_domain_sync(url))
+                        season  = season,
+                        episode = episode_num,
+                        title   = f"{season}. Sezon {episode_num}. Bölüm", # Placeholder title
+                        url     = self.fix_url(u)
                     ))
         
         return SeriesInfo(
-            title=title,
-            url=url,
-            poster=self.fix_url(poster),
-            description=description,
-            tags=tags,
-            rating=rating,
-            actors=actors,
-            episodes=episodes,
-            year=year
+            title       = title,
+            url         = url,
+            poster      = self.fix_url(poster),
+            description = description,
+            tags        = tags,
+            rating      = rating,
+            actors      = actors,
+            episodes    = episodes,
+            year        = year
         )
 
     async def load_links(self, url: str) -> list[dict]:
@@ -195,13 +179,3 @@ class RoketDizi(PluginBase):
 
         except Exception:
             return []
-
-    def fix_url(self, url: str, domain:str=None) -> str:
-        if not url: return ""
-        if url.startswith("http"): return url
-        base = domain or self.main_url
-        return f"https:{url}" if url.startswith("//") else urllib.parse.urljoin(base, url)
-
-    def get_domain_sync(self, url:str):
-        parsed = urllib.parse.urlparse(url)
-        return f"{parsed.scheme}://{parsed.netloc}"

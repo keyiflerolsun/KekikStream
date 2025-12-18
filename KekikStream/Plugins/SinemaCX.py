@@ -7,7 +7,7 @@ import re
 class SinemaCX(PluginBase):
     name        = "SinemaCX"
     language    = "tr"
-    main_url    = "https://www.sinema.now"
+    main_url    = "https://www.sinema.onl"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "HD Film izle, Türkçe Dublaj ve Altyazılı filmler."
 

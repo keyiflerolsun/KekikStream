@@ -7,7 +7,7 @@ import re
 class DiziPal(PluginBase):
     name        = "DiziPal"
     language    = "tr"
-    main_url    = "https://dizipal1222.com"
+    main_url    = "https://dizipal1223.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Yabancı Dizi ve Film izle."
 
