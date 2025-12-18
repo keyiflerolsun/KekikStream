@@ -268,10 +268,11 @@ class KekikStream:
         self.update_title(selected.get("name"))
 
         await self.current_plugin.play(
-            name      = self.media.get_title(),
-            url       = selected.get("url"),
-            referer   = selected.get("referer"),
-            subtitles = selected.get("subtitles", [])
+            name       = self.media.get_title(),
+            url        = selected.get("url"),
+            user_agent = selected.get("user_agent"),
+            referer    = selected.get("referer"),
+            subtitles  = selected.get("subtitles", [])
         )
         return await self.content_finished()
 
@@ -318,10 +319,6 @@ class KekikStream:
         self.update_title(self.episode_title)
         self.update_title(selected.get("name"))
         self.update_title(extract_data.name)
-
-        self.media.set_headers(extract_data.headers)
-        if extract_data.referer and not extract_data.headers.get("Referer"):
-            self.media.set_headers({"Referer": extract_data.referer})
 
         self.media.play_media(extract_data)
         await self.content_finished()

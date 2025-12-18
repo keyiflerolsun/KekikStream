@@ -12,8 +12,5 @@ class MediaManager:
     def get_title(self):
         return self.media_handler.title
 
-    def set_headers(self, headers):
-        self.media_handler.headers.update(headers)
-
     def play_media(self, extract_data):
         self.media_handler.play_media(extract_data)

@@ -1,34 +1,33 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from pydantic import BaseModel, field_validator, model_validator
-from typing   import List, Optional
 
 class MainPageResult(BaseModel):
     """Ana sayfa sonucunda dönecek veri modeli."""
     category : str
     title    : str
     url      : str
-    poster   : Optional[str] = None
+    poster   : str | None = None
 
 
 class SearchResult(BaseModel):
     """Arama sonucunda dönecek veri modeli."""
     title  : str
     url    : str
-    poster : Optional[str] = None
+    poster : str | None = None
 
 
 class MovieInfo(BaseModel):
     """Bir medya öğesinin bilgilerini tutan model."""
     url         : str
-    poster      : Optional[str] = None
-    title       : Optional[str] = None
-    description : Optional[str] = None
-    tags        : Optional[str] = None
-    rating      : Optional[str] = None
-    year        : Optional[str] = None
-    actors      : Optional[str] = None
-    duration    : Optional[int] = None
+    poster      : str | None = None
+    title       : str | None = None
+    description : str | None = None
+    tags        : str | None = None
+    rating      : str | None = None
+    year        : str | None = None
+    actors      : str | None = None
+    duration    : int | None = None
 
     @field_validator("tags", "actors", mode="before")
     @classmethod
@@ -42,10 +41,10 @@ class MovieInfo(BaseModel):
 
 
 class Episode(BaseModel):
-    season  : Optional[int] = None
-    episode : Optional[int] = None
-    title   : Optional[str] = None
-    url     : Optional[str] = None
+    season  : int | None = None
+    episode : int | None = None
+    title   : str | None = None
+    url     : str | None = None
 
     @model_validator(mode="after")
     def check_title(self) -> "Episode":
@@ -58,16 +57,16 @@ class Episode(BaseModel):
         return self
 
 class SeriesInfo(BaseModel):
-    url          : Optional[str]           = None
-    poster       : Optional[str]           = None
-    title        : Optional[str]           = None
-    description  : Optional[str]           = None
-    tags         : Optional[str]           = None
-    rating       : Optional[str]           = None
-    year         : Optional[str]           = None
-    actors       : Optional[str]           = None
-    duration     : Optional[int]           = None
-    episodes     : Optional[List[Episode]] = None
+    url          : str | None           = None
+    poster       : str | None           = None
+    title        : str | None           = None
+    description  : str | None           = None
+    tags         : str | None           = None
+    rating       : str | None           = None
+    year         : str | None           = None
+    actors       : str | None           = None
+    duration     : int | None           = None
+    episodes     : list[Episode] | None = None
 
     @field_validator("tags", "actors", mode="before")
     @classmethod
