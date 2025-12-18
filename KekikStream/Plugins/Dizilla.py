@@ -16,7 +16,6 @@ class Dizilla(PluginBase):
 
     main_page   = {
         f"{main_url}/tum-bolumler"          : "Altyazılı Bölümler",
-        f"{main_url}/dublaj-bolumler"       : "Dublaj Bölümler",
         f"{main_url}/dizi-turu/aile"        : "Aile",
         f"{main_url}/dizi-turu/aksiyon"     : "Aksiyon",
         f"{main_url}/dizi-turu/bilim-kurgu" : "Bilim Kurgu",
@@ -35,11 +34,11 @@ class Dizilla(PluginBase):
             ana_sayfa.extend([
                 MainPageResult(
                     category = category,
-                    title    = veri.css("h2::text").get(),
-                    url      = self.fix_url(veri.css("::attr(href)").get()),
+                    title    = veri.css("span.font-normal::text").get(),
+                    url      = self.fix_url(veri.css("a::attr(href)").get()),
                     poster   = self.fix_url(veri.css("img::attr(src)").get() or veri.css("img::attr(data-src)").get())
                 )
-                    for veri in secici.css("div.grid-cols-3 a")
+                    for veri in secici.css("span.watchlistitem-")
             ])
         else:
             for veri in secici.css("div.tab-content > div.grid a"):
@@ -127,7 +126,11 @@ class Dizilla(PluginBase):
         poster      = self.fix_url(veri.get("image"))
         description = veri.get("description")
         year        = veri.get("datePublished").split("-")[0]
-        tags        = []
+        
+        # Tags extraction from page content (h3 tag)
+        tags_raw = secici.css("h3.text-white.opacity-60::text").get()
+        tags     = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
+
         rating      = veri.get("aggregateRating", {}).get("ratingValue")
         actors      = [actor.get("name") for actor in veri.get("actor", []) if actor.get("name")]
 

@@ -2,12 +2,14 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo
 from parsel           import Selector
-import re, base64, json, urllib.parse
+import re, base64, json
 
 class RoketDizi(PluginBase):
     name        = "RoketDizi"
     lang        = "tr"
     main_url    = "https://roketdizi.to"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "Türkiye'nin en tatlış yabancı dizi izleme sitesi. Türkçe dublaj, altyazılı, eski ve yeni yabancı dizilerin yanı sıra kore (asya) dizileri izleyebilirsiniz."
 
     # Domain doğrulama ve anti-bot mekanizmaları var
     requires_cffi = True
@@ -45,45 +47,50 @@ class RoketDizi(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        # Get Cookies and Keys
-        main_req = await self.cffi.get(self.main_url)
-        sel = Selector(main_req.text)
-        
-        c_key   = sel.css("input[name='cKey']::attr(value)").get()
-        c_value = sel.css("input[name='cValue']::attr(value)").get()
-        
         post_url = f"{self.main_url}/api/bg/searchContent?searchterm={query}"
         
         headers = {
             "Accept"           : "application/json, text/javascript, */*; q=0.01",
             "X-Requested-With" : "XMLHttpRequest",
             "Referer"          : f"{self.main_url}/",
-            "CNT"              : "vakTR"
         }
-
-        data = {}
-        if c_key and c_value:
-            data = {"cKey": c_key, "cValue": c_value}
         
-        search_req = await self.cffi.post(post_url, data=data, headers=headers)
+        search_req = await self.cffi.post(post_url, headers=headers)
         
         try:
             resp_json = search_req.json()
-            if not resp_json.get("state"):
+            
+            # Response is base64 encoded!
+            if not resp_json.get("success"):
                 return []
             
-            html_content = resp_json.get("html", "").strip()
-            sel_results = Selector(html_content)
-
-            results = []
-            items = re.findall(r'<a href="([^"]+)".*?data-srcset="([^"]+).*?<span class="text-white">([^<]+)', html_content, re.DOTALL)
+            encoded_response = resp_json.get("response", "")
+            if not encoded_response:
+                return []
             
-            for href, poster, title in items:
-                 results.append(SearchResult(
-                     title  = title.strip(),
-                     url    = self.fix_url(href.strip()),
-                     poster = self.fix_url(poster.strip())
-                 ))
+            # Decode base64
+            decoded = base64.b64decode(encoded_response).decode('utf-8')
+            data = json.loads(decoded)
+            
+            if not data.get("state"):
+                return []
+            
+            results = []
+            result_items = data.get("result", [])
+            
+            for item in result_items:
+                title = item.get("object_name", "")
+                slug = item.get("used_slug", "")
+                poster = item.get("object_poster_url", "")
+                
+                if title and slug:
+                    # Construct full URL from slug
+                    full_url = f"{self.main_url}/{slug}"
+                    results.append(SearchResult(
+                        title  = title.strip(),
+                        url    = full_url,
+                        poster = self.fix_url(poster) if poster else None
+                    ))
             
             return results
 
@@ -99,14 +106,41 @@ class RoketDizi(PluginBase):
         poster      = sel.css("div.w-full.page-top img::attr(src)").get()
         description = sel.css("div.mt-2.text-sm::text").get()
         
-        year = None # Implement if critical
+        # Tags - genre bilgileri (Detaylar bölümünde)
+        tags = []
+        genre_text = sel.css("h3.text-white.opacity-90::text").get()
+        if genre_text:
+            tags = [t.strip() for t in genre_text.split(",")]
         
-        tags = sel.css("h3.text-white.opacity-60::text").get()
-        if tags:
-            tags = [t.strip() for t in tags.split(",")]
-            
+        # Rating
         rating = sel.css("div.flex.items-center span.text-white.text-sm::text").get()
-        actors = sel.css("div.global-box h5::text").getall()
+        
+        # Year ve Actors - Detaylar (Details) bölümünden
+        year = None
+        actors = []
+        
+        # Detaylar bölümündeki tüm flex-col div'leri al
+        detail_items = sel.css("div.flex.flex-col")
+        for item in detail_items:
+            # Label ve value yapısı: span.text-base ve span.text-sm.opacity-90
+            label = item.css("span.text-base::text").get()
+            value = item.css("span.text-sm.opacity-90::text").get()
+            
+            if label and value:
+                label = label.strip()
+                value = value.strip()
+                
+                # Yayın tarihi (yıl)
+                if label == "Yayın tarihi":
+                    # "16 Ekim 2018" formatından yılı çıkar
+                    year_match = re.search(r'\d{4}', value)
+                    if year_match:
+                        year = year_match.group()
+                
+                # Yaratıcılar veya Oyuncular
+                elif label in ["Yaratıcılar", "Oyuncular"]:
+                    if value:
+                        actors.append(value)
 
         # Check urls for episodes
         all_urls = re.findall(r'"url":"([^"]*)"', resp.text)
@@ -114,22 +148,27 @@ class RoketDizi(PluginBase):
         
         episodes = []
         if is_series:
-            seen_eps = set()
+            # Dict kullanarak duplicate'leri önle ama sıralı tut
+            episodes_dict = {}
             for u in all_urls:
-                if "bolum" in u and u not in seen_eps:
-                    seen_eps.add(u)
+                if "bolum" in u and u not in episodes_dict:
                     season_match = re.search(r'/sezon-(\d+)', u)
                     ep_match     = re.search(r'/bolum-(\d+)', u)
                     
                     season = int(season_match.group(1)) if season_match else 1
                     episode_num = int(ep_match.group(1)) if ep_match else 1
                     
-                    episodes.append(Episode(
+                    # Key olarak (season, episode) tuple kullan
+                    key = (season, episode_num)
+                    episodes_dict[key] = Episode(
                         season  = season,
                         episode = episode_num,
-                        title   = f"{season}. Sezon {episode_num}. Bölüm", # Placeholder title
+                        title   = f"{season}. Sezon {episode_num}. Bölüm",
                         url     = self.fix_url(u)
-                    ))
+                    )
+            
+            # Sıralı liste oluştur
+            episodes = [episodes_dict[key] for key in sorted(episodes_dict.keys())]
         
         return SeriesInfo(
             title       = title,

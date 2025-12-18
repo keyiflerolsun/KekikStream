@@ -8,7 +8,7 @@ class FilmBip(PluginBase):
     language    = "tr"
     main_url    = "https://filmbip.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Film izleme sitesi."
+    description = "FilmBip adlı film sitemizde Full HD film izle. Yerli ve yabancı filmleri Türkçe dublaj veya altyazılı şekilde 1080p yüksek kalite film izle"
 
     main_page   = {
         f"{main_url}/filmler/SAYFA"                 : "Yeni Filmler",

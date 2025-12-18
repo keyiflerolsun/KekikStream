@@ -53,7 +53,7 @@ class DiziYou(PluginBase):
             SearchResult(
                 title  = afis.css("div#categorytitle a::text").get().strip(),
                 url    = self.fix_url(afis.css("div#categorytitle a::attr(href)").get()),
-                poster = self.fix_url(afis.css("img::attr(src)").get()),
+                poster = self.fix_url(afis.css("img::attr(src)").get() or afis.css("img::attr(data-src)").get())
             )
                 for afis in secici.css("div.incontent div#list-series")
         ]
@@ -63,8 +63,19 @@ class DiziYou(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        title       = secici.css("h1::text").get().strip()
-        poster      = self.fix_url(secici.css("div.category_image img::attr(src)").get().strip())
+        # Title - div.title h1 içinde
+        title_raw   = secici.css("div.title h1::text").get()
+        title       = title_raw.strip() if title_raw else ""
+        
+        # Fallback: Eğer title boşsa URL'den çıkar (telif kısıtlaması olan sayfalar için)
+        if not title:
+            # URL'den slug'ı al: https://www.diziyou.one/jasmine/ -> jasmine -> Jasmine
+            slug = url.rstrip('/').split('/')[-1]
+            title = slug.replace('-', ' ').title()
+        
+        # Poster
+        poster_raw  = secici.css("div.category_image img::attr(src)").get()
+        poster      = self.fix_url(poster_raw) if poster_raw else ""
         year        = secici.xpath("//span[contains(., 'Yapım Yılı')]/following-sibling::text()[1]").get()
         description = secici.css("div.diziyou_desc::text").get()
         if description:
@@ -75,13 +86,21 @@ class DiziYou(PluginBase):
         actors      = [actor.strip() for actor in _actors.split(",")] if _actors else []
 
         episodes    = []
-        for it in secici.css("div.bolumust"):
-            ep_name = it.css("div.baslik::text").get().strip()
-            ep_href = it.xpath("ancestor::a/@href").get()
-            if not ep_name or not ep_href:
+        # Episodes - bolumust her bölüm için bir <a> içinde
+        # :has() parsel'de çalışmıyor, XPath kullanıyoruz
+        for link in secici.xpath('//a[div[@class="bolumust"]]'):
+            ep_name_raw = link.css("div.baslik::text").get()
+            if not ep_name_raw:
+                continue
+            ep_name = ep_name_raw.strip()
+            
+            ep_href = self.fix_url(link.css("::attr(href)").get())
+            if not ep_href:
                 continue
 
-            ep_name_clean = it.css("div.bolumismi::text").get().strip().replace("(", "").replace(")", "").strip() if it.css("div.bolumismi::text").get() else ep_name
+            # Bölüm ismi varsa al
+            ep_name_raw_clean = link.css("div.bolumismi::text").get()
+            ep_name_clean = ep_name_raw_clean.strip().replace("(", "").replace(")", "").strip() if ep_name_raw_clean else ep_name
 
             ep_episode = re.search(r"(\d+)\. Bölüm", ep_name)[1]
             ep_season  = re.search(r"(\d+)\. Sezon", ep_name)[1]
@@ -112,9 +131,19 @@ class DiziYou(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        item_title = secici.css("div.title h1::text").get()
-        ep_name    = secici.css("div#bolum-ismi::text").get().strip()
-        item_id    = secici.css("iframe#diziyouPlayer::attr(src)").get().split("/")[-1].replace(".html", "")
+        # Title ve episode name - None kontrolü ekle
+        item_title_raw = secici.css("div.title h1::text").get()
+        item_title = item_title_raw.strip() if item_title_raw else ""
+        
+        ep_name_raw = secici.css("div#bolum-ismi::text").get()
+        ep_name = ep_name_raw.strip() if ep_name_raw else ""
+        
+        # Player src'den item_id çıkar
+        player_src = secici.css("iframe#diziyouPlayer::attr(src)").get()
+        if not player_src:
+            return []  # Player bulunamadıysa boş liste döndür
+        
+        item_id = player_src.split("/")[-1].replace(".html", "")
 
         subtitles   = []
         stream_urls = []
