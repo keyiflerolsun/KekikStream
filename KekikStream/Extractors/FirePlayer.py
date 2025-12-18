@@ -53,9 +53,8 @@ class FirePlayer(ExtractorBase):
              raise ValueError("Could not find video URL in unpacked content")
 
         return ExtractResult(
-            name      = self.name,
-            url       = video_url,
-            referer   = url,
-            headers   = headers
+            name       = self.name,
+            url        = video_url,
+            referer    = url,
+            user_agent = headers.get("User-Agent", "")
         )
-

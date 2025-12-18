@@ -37,6 +37,5 @@ class YildizKisaFilm(ExtractorBase):
             name      = self.name,
             url       = m3u_link,
             referer   = ext_ref,
-            headers   = {},
             subtitles = []
         )

@@ -5,40 +5,38 @@ from ..Extractor.ExtractorModels import ExtractResult
 import subprocess, os
 
 class MediaHandler:
-    def __init__(self, title: str = "KekikStream", headers: dict = None):
-        # Varsayılan HTTP başlıklarını ayarla
-        if headers is None:
-            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"}
-
-        self.headers = headers
-        self.title   = title
+    def __init__(self, title: str = "KekikStream"):
+        self.title = title
 
     def play_media(self, extract_data: ExtractResult):
-        # Referer varsa headers'a ekle
+        # Headers dict'ini user_agent ve referer'dan oluştur
+        headers = {}
+        
+        # user-agent ekle (varsayılan veya extract_data'dan)
+        user_agent = extract_data.user_agent or "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
+        headers["user-agent"] = user_agent
+        
+        # referer ekle
         if extract_data.referer:
-            self.headers.update({"Referer": extract_data.referer})
-
-        # ExtractResult'tan gelen headers'ları ekle
-        if extract_data.headers:
-            self.headers.update(extract_data.headers)
-
+            headers["referer"] = extract_data.referer
+        
         # Google Drive gibi özel durumlar için yt-dlp kullan
-        if self.headers.get("User-Agent") in ["googleusercontent", "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"]:
-            return self.play_with_ytdlp(extract_data)
+        if user_agent in ["googleusercontent", "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"]:
+            return self.play_with_ytdlp(extract_data, headers)
 
         # İşletim sistemine göre oynatıcı seç
         if subprocess.check_output(['uname', '-o']).strip() == b'Android':
-            return self.play_with_android_mxplayer(extract_data)
+            return self.play_with_android_mxplayer(extract_data, headers)
 
-        # Cookie veya alt yazılar varsa mpv kullan
-        if "Cookie" in self.headers or extract_data.subtitles:
-            return self.play_with_mpv(extract_data)
+        # Alt yazılar varsa mpv kullan
+        if extract_data.subtitles:
+            return self.play_with_mpv(extract_data, headers)
 
-        return self.play_with_vlc(extract_data) or self.play_with_mpv(extract_data)
+        return self.play_with_vlc(extract_data, headers) or self.play_with_mpv(extract_data, headers)
 
-    def play_with_vlc(self, extract_data: ExtractResult):
+    def play_with_vlc(self, extract_data: ExtractResult, headers: dict):
         konsol.log(f"[yellow][»] VLC ile Oynatılıyor : {extract_data.url}")
-        # konsol.print(self.headers)
+        # konsol.print(headers)
         try:
             vlc_command = ["vlc", "--quiet"]
 
@@ -48,11 +46,11 @@ class MediaHandler:
                     f"--input-title-format={self.title}"
                 ])
 
-            if "User-Agent" in self.headers:
-                vlc_command.append(f"--http-user-agent={self.headers.get('User-Agent')}")
+            if "user-agent" in headers:
+                vlc_command.append(f"--http-user-agent={headers.get('user-agent')}")
 
-            if "Referer" in self.headers:
-                vlc_command.append(f"--http-referrer={self.headers.get('Referer')}")
+            if "referer" in headers:
+                vlc_command.append(f"--http-referrer={headers.get('referer')}")
 
             vlc_command.extend(
                 f"--sub-file={subtitle.url}" for subtitle in extract_data.subtitles
@@ -65,23 +63,23 @@ class MediaHandler:
             return True
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]VLC oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
             return False
         except FileNotFoundError:
             konsol.print("[red]VLC bulunamadı! VLC kurulu olduğundan emin olun.[/red]")
-            # konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            # konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
             return False
 
-    def play_with_mpv(self, extract_data: ExtractResult):
+    def play_with_mpv(self, extract_data: ExtractResult, headers: dict):
         konsol.log(f"[yellow][»] MPV ile Oynatılıyor : {extract_data.url}")
-        # konsol.print(self.headers)
+        # konsol.print(headers)
         try:
             mpv_command = ["mpv"]
 
             if self.title:
                 mpv_command.append(f"--force-media-title={self.title}")
 
-            for key, value in self.headers.items():
+            for key, value in headers.items():
                 mpv_command.append(f"--http-header-fields={key}: {value}")
 
             mpv_command.extend(
@@ -94,18 +92,18 @@ class MediaHandler:
 
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]mpv oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
         except FileNotFoundError:
             konsol.print("[red]mpv bulunamadı! mpv kurulu olduğundan emin olun.[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
 
-    def play_with_ytdlp(self, extract_data: ExtractResult):
+    def play_with_ytdlp(self, extract_data: ExtractResult, headers: dict):
         konsol.log(f"[yellow][»] yt-dlp ile Oynatılıyor : {extract_data.url}")
-        # konsol.print(self.headers)
+        # konsol.print(headers)
         try:
             ytdlp_command = ["yt-dlp", "--quiet", "--no-warnings"]
 
-            for key, value in self.headers.items():
+            for key, value in headers.items():
                 ytdlp_command.extend(["--add-header", f"{key}: {value}"])
 
             ytdlp_command.extend([
@@ -127,14 +125,14 @@ class MediaHandler:
 
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]Oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
         except FileNotFoundError:
             konsol.print("[red]yt-dlp veya mpv bulunamadı! Kurulumlarından emin olun.[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
 
-    def play_with_android_mxplayer(self, extract_data: ExtractResult):
+    def play_with_android_mxplayer(self, extract_data: ExtractResult, headers: dict):
         konsol.log(f"[yellow][»] MxPlayer ile Oynatılıyor : {extract_data.url}")
-        # konsol.print(self.headers)
+        # konsol.print(headers)
         paketler = [
             "com.mxtech.videoplayer.ad/.ActivityScreen",  # Free sürüm
             "com.mxtech.videoplayer.pro/.ActivityScreen"  # Pro sürüm
@@ -159,7 +157,7 @@ class MediaHandler:
 
             except subprocess.CalledProcessError as hata:
                 konsol.print(f"[red]{paket} oynatma hatası: {hata}[/red]")
-                konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+                konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})
             except FileNotFoundError:
                 konsol.print(f"Paket: {paket}, Hata: MX Player kurulu değil")
-                konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+                konsol.print({"title": self.title, "url": extract_data.url, "headers": headers})

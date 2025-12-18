@@ -41,6 +41,5 @@ class SetPrime(ExtractorBase):
             name      = display_name,
             url       = m3u_link,
             referer   = clean_url,
-            headers   = {},
             subtitles = []
         )

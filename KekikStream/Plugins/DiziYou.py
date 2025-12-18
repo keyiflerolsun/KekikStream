@@ -163,9 +163,9 @@ class DiziYou(PluginBase):
 
         return results
 
-    async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
-        extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)
-        self.media_handler.title = name
+    async def play(self, **kwargs):
+        extract_result = ExtractResult(**kwargs)
+        self.media_handler.title = kwargs.get("name")
         if self.name not in self.media_handler.title:
             self.media_handler.title = f"{self.name} | {self.media_handler.title}"
 

@@ -26,9 +26,9 @@ class TurkeyPlayer(ExtractorBase):
         master_url = f"https://watch.turkeyplayer.com/m3u8/8/{video_md5}/master.txt?s=1&id={video_id}&cache=1"
         
         return ExtractResult(
-            name      = self.name,
-            url       = master_url,
-            referer   = referer or url,
-            headers   = dict(self.httpx.headers),
-            subtitles = []
+            name       = self.name,
+            url        = master_url,
+            referer    = referer or url,
+            user_agent = self.httpx.headers.get("User-Agent", ""),
+            subtitles  = []
         )

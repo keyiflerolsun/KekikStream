@@ -23,6 +23,5 @@ class PixelDrain(ExtractorBase):
             name      = f"{self.name} - {pixel_id}",
             url       = download_link,
             referer   = referer_link,
-            headers   = {},
             subtitles = []
         )

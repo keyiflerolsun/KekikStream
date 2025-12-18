@@ -53,6 +53,5 @@ class SetPlay(ExtractorBase):
             name      = f"{self.name} - {name_suffix}",
             url       = m3u_link,
             referer   = url,
-            headers   = {},
             subtitles = []
         )

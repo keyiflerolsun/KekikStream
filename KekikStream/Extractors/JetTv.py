@@ -41,6 +41,5 @@ class JetTv(ExtractorBase):
             name      = self.name,
             url       = master_url,
             referer   = final_ref,
-            headers   = {},
             subtitles = []
         )

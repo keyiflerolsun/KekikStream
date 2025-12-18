@@ -49,6 +49,5 @@ class ExPlay(ExtractorBase):
             name      = f"{self.name} - {title}",
             url       = m3u_link,
             referer   = clean_url, 
-            headers   = {},
             subtitles = []
         )

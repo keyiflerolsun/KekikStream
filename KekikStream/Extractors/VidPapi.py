@@ -85,6 +85,5 @@ class VidPapi(ExtractorBase):
             name      = self.name,
             url       = stream_url,
             referer   = ext_ref or self.main_url,
-            headers   = {},
             subtitles = subtitles
         )

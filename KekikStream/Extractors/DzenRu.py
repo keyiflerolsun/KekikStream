@@ -34,6 +34,5 @@ class DzenRu(ExtractorBase):
             name      = self.name,
             url       = best_link,
             referer   = self.main_url,
-            headers   = {},
             subtitles = []
         )

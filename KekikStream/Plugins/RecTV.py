@@ -121,8 +121,6 @@ class RecTV(PluginBase):
 
     #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
-        self.media_handler.headers.update({"User-Agent": "googleusercontent"})
-
         try:
             veri = loads(url)
         except Exception:
@@ -132,9 +130,10 @@ class RecTV(PluginBase):
         # Eğer dizi bölümü ise (bizim oluşturduğumuz yapı)
         if veri.get("is_episode"):
             return [{
-                "url"     : veri.get("url"),
-                "name"    : veri.get("title", "Bölüm"),
-                "referer" : "https://twitter.com/"
+                "url"        : veri.get("url"),
+                "name"       : veri.get("title", "Bölüm"),
+                "user_agent" : "googleusercontent",
+                "referer"    : "https://twitter.com/"
             }]
 
         # Film ise (RecTV API yapısı)
@@ -146,16 +145,17 @@ class RecTV(PluginBase):
                     continue
 
                 results.append({
-                    "url"     : video_link,
-                    "name"    : f"{veri.get('title')} - {kaynak.get('title')}",
-                    "referer" : "https://twitter.com/"
+                    "url"        : video_link,
+                    "name"       : f"{veri.get('title')} - {kaynak.get('title')}",
+                    "user_agent" : "googleusercontent",
+                    "referer"    : "https://twitter.com/"
                 })
 
         return results
 
-    async def play(self, name: str, url: str, referer: str, subtitles: list[Subtitle]):
-        extract_result = ExtractResult(name=name, url=url, referer=referer, subtitles=subtitles)
-        self.media_handler.title = name
+    async def play(self, **kwargs):
+        extract_result = ExtractResult(**kwargs)
+        self.media_handler.title = kwargs.get("name")
         if self.name not in self.media_handler.title:
             self.media_handler.title = f"{self.name} | {self.media_handler.title}"
 

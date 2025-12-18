@@ -54,9 +54,9 @@ class PlayerFilmIzle(ExtractorBase):
             raise ValueError("PlayerFilmIzle: M3U8 linki bulunamadı")
 
         return ExtractResult(
-            name      = self.name,
-            url       = m3u8_url,
-            referer   = ext_ref,
-            headers   = dict(self.httpx.headers),
-            subtitles = subtitles
+            name       = self.name,
+            url        = m3u8_url,
+            referer    = ext_ref,
+            user_agent = self.httpx.headers.get("User-Agent", None),
+            subtitles  = subtitles
         )

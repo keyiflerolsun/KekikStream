@@ -34,6 +34,5 @@ class MailRuExtractor(ExtractorBase):
             name      = self.name,
             url       = video_url,
             referer   = self.main_url,
-            headers   = {"Cookie": f"video_key={video_key}"},
             subtitles = []
         )

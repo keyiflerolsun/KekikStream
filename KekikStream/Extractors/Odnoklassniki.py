@@ -82,11 +82,11 @@ class Odnoklassniki(ExtractorBase):
             best_video = f"https:{best_video}"
 
         return ExtractResult(
-            name      = self.name,
-            url       = best_video,
-            referer   = referer,
-            headers   = headers,
-            subtitles = []
+            name       = self.name,
+            url        = best_video,
+            referer    = referer,
+            user_agent = headers.get("User-Agent", None),
+            subtitles  = []
         )
 
     async def fetch_with_redirects(self, url, max_redirects=5):

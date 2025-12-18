@@ -22,6 +22,5 @@ class CloseLoadExtractor(ExtractorBase):
             name      = self.name,
             url       = m3u_link,
             referer   = self.main_url,
-            headers   = {},
             subtitles = []
         )

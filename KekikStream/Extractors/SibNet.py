@@ -24,6 +24,5 @@ class SibNet(ExtractorBase):
             name      = self.name,
             url       = m3u_link,
             referer   = url,
-            headers   = {},
             subtitles = []
         )

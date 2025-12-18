@@ -43,7 +43,6 @@ class VideoSeyred(ExtractorBase):
                 name      = self.name,
                 url       = self.fix_url(source["file"]),
                 referer   = self.main_url,
-                headers   = {},
                 subtitles = subtitles,
             )
                 for source in response_data.get("sources", [])

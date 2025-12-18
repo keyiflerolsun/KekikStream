@@ -36,7 +36,6 @@ class MixPlayHD(ExtractorBase):
                 name      = self.name,
                 url       = video_url_match[1],
                 referer   = self.main_url,
-                headers   = {},
                 subtitles = []
             )
         else:

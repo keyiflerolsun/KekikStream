@@ -64,9 +64,9 @@ class VidHide(ExtractorBase):
             raise ValueError(f"VidHide: Video URL bulunamadı. {url}")
 
         return ExtractResult(
-            name      = self.name,
-            url       = self.fix_url(m3u8_url),
-            referer   = f"{self.main_url}/",
-            headers   = dict(self.httpx.headers),
-            subtitles = []
+            name       = self.name,
+            url        = self.fix_url(m3u8_url),
+            referer    = f"{self.main_url}/",
+            user_agent = self.httpx.headers.get("User-Agent", ""),
+            subtitles  = []
         )

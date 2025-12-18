@@ -26,9 +26,9 @@ class MolyStream(ExtractorBase):
         ]
 
         return ExtractResult(
-            name      = self.name,
-            url       = video,
-            referer   = video.replace("/sheila", ""),
-            headers   = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"},
-            subtitles = subtitles
+            name       = self.name,
+            url        = video,
+            referer    = video.replace("/sheila", ""),
+            user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0",
+            subtitles  = subtitles
         )

@@ -80,7 +80,6 @@ class VidMoly(ExtractorBase):
             name      = self.name,
             url       = video_url,
             referer   = self.main_url,
-            headers   = {},
             subtitles = subtitles
         )
 

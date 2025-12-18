@@ -49,7 +49,6 @@ class RapidVid(ExtractorBase):
             name      = self.name,
             url       = decoded_url,
             referer   = self.main_url,
-            headers   = {},
             subtitles = subtitles
         )
 

@@ -19,7 +19,6 @@ class TurboImgz(ExtractorBase):
                 name      = self.name,
                 url       = video_match[1],
                 referer   = referer or self.main_url,
-                headers   = {},
                 subtitles = []
             )
         else:

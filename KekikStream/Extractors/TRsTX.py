@@ -57,7 +57,6 @@ class TRsTX(ExtractorBase):
                     name      = f"{self.name} - {title}",
                     url       = video_data,
                     referer   = self.main_url,
-                    headers   = {},
                     subtitles = []
                 )
             )

@@ -53,7 +53,6 @@ class ContentX(ExtractorBase):
                 name      = self.name,
                 url       = m3u_link,
                 referer   = url,
-                headers   = {},
                 subtitles = subtitles
             )
         ]
@@ -74,7 +73,6 @@ class ContentX(ExtractorBase):
                     name      = f"{self.name} Türkçe Dublaj",
                     url       = dublaj_link,
                     referer   = url,
-                    headers   = {},
                     subtitles = []
                 )
             )
