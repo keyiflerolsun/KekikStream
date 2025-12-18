@@ -40,7 +40,6 @@ class FullHDFilmizlesene(PluginBase):
         f"{main_url}/filmizle/yerli-filmler-hd-izle/"       : "Yerli Filmler"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")
         secici = Selector(istek.text)
@@ -55,7 +54,6 @@ class FullHDFilmizlesene(PluginBase):
                 for veri in secici.css("li.film")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
         secici = Selector(istek.text)
@@ -77,7 +75,6 @@ class FullHDFilmizlesene(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

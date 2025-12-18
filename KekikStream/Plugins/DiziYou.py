@@ -29,7 +29,6 @@ class DiziYou(PluginBase):
         f"{main_url}/dizi-arsivi/page/SAYFA/?tur=Vah%C5%9Fi+Bat%C4%B1" : "Vahşi Batı"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
         secici = Selector(istek.text)
@@ -44,7 +43,6 @@ class DiziYou(PluginBase):
                 for veri in secici.css("div.single-item")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -58,7 +56,6 @@ class DiziYou(PluginBase):
                 for afis in secici.css("div.incontent div#list-series")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

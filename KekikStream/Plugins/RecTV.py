@@ -30,7 +30,6 @@ class RecTV(PluginBase):
         f"{main_url}/api/movie/by/filtres/5/created/SAYFA/{sw_key}/"  : "Romantik"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
@@ -46,7 +45,6 @@ class RecTV(PluginBase):
                 for veri in veriler
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         istek     = await self.httpx.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
@@ -67,7 +65,6 @@ class RecTV(PluginBase):
                 for veri in tum_veri
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         veri = loads(url)

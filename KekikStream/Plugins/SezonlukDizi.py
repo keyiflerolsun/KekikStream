@@ -21,7 +21,6 @@ class SezonlukDizi(PluginBase):
         f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="    : "Belgeseller",
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}")
         secici = Selector(istek.text)
@@ -36,7 +35,6 @@ class SezonlukDizi(PluginBase):
                 for veri in secici.css("div.afis a") if veri.css("div.description::text").get()
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
         secici = Selector(istek.text)
@@ -50,7 +48,6 @@ class SezonlukDizi(PluginBase):
                 for afis in secici.css("div.afis a.column")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from Kekik.Sifreleme  import CryptoJS
 from parsel           import Selector
 import re, urllib.parse, base64, contextlib, asyncio, time
@@ -40,7 +40,6 @@ class DiziBox(PluginBase):
         f"{main_url}/dizi-arsivi/page/SAYFA/?tur[0]=yarisma&yil&imdb"    : "Yarışma"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         self.httpx.cookies.update({
             "isTrustedUser" : "true",
@@ -62,7 +61,6 @@ class DiziBox(PluginBase):
                 for veri in secici.css("article.detailed-article")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         self.httpx.cookies.update({
             "isTrustedUser" : "true",
@@ -80,7 +78,6 @@ class DiziBox(PluginBase):
                 for item in secici.css("article.detailed-article")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -127,7 +124,6 @@ class DiziBox(PluginBase):
             actors      = actors,
         )
 
-    #@kekik_cache(ttl=60*60)
     async def _iframe_decode(self, name:str, iframe_link:str, referer:str) -> list[str]:
         results = []
 

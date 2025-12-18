@@ -34,7 +34,6 @@ class FilmMakinesi(PluginBase):
         f"{main_url}/tur/western-fm1/film/"     : "Western"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{'' if page == 1 else f'page/{page}/'}")
         secici = Selector(istek.text)
@@ -51,7 +50,6 @@ class FilmMakinesi(PluginBase):
                 for veri in veriler
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
         secici = Selector(istek.text)
@@ -73,7 +71,6 @@ class FilmMakinesi(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

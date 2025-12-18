@@ -19,7 +19,6 @@ class JetFilmizle(PluginBase):
         f"{main_url}/kategoriler/yesilcam-filmleri-izlee/page/" : "Yeşilçam Filmleri"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
         secici = Selector(istek.text)
@@ -34,7 +33,6 @@ class JetFilmizle(PluginBase):
                 for veri in secici.css("article.movie") if veri.css("h2 a::text, h3 a::text, h4 a::text, h5 a::text, h6 a::text").get()
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.post(
             url     = f"{self.main_url}/filmara.php",
@@ -60,7 +58,6 @@ class JetFilmizle(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

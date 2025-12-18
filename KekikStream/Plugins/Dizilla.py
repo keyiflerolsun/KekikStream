@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from Kekik.cli import konsol
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
 from urllib.parse     import urlparse, urlunparse
@@ -12,35 +13,47 @@ class Dizilla(PluginBase):
     language    = "tr"
     main_url    = "https://dizilla40.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Dizilla tüm yabancı dizileri ücretsiz olarak Türkçe Dublaj ve altyazılı seçenekleri ile 1080P kalite izleyebileceğiniz yeni nesil yabancı dizi izleme siteniz."
+    description = "1080p yabancı dizi izle. Türkçe altyazılı veya dublaj seçenekleriyle 1080p çözünürlükte yabancı dizilere anında ulaş. Popüler dizileri kesintisiz izle."
 
     main_page   = {
-        f"{main_url}/tum-bolumler"          : "Altyazılı Bölümler",
-        f"{main_url}/dizi-turu/aile"        : "Aile",
-        f"{main_url}/dizi-turu/aksiyon"     : "Aksiyon",
-        f"{main_url}/dizi-turu/bilim-kurgu" : "Bilim Kurgu",
-        f"{main_url}/dizi-turu/romantik"    : "Romantik",
-        f"{main_url}/dizi-turu/komedi"      : "Komedi"
+        f"{main_url}/tum-bolumler" : "Altyazılı Bölümler",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=15&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Aile",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=9&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Aksiyon",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=17&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Animasyon",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=5&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Bilim Kurgu",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=2&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Dram",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=12&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Fantastik",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=18&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Gerilim",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=3&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Gizem",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=4&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Komedi",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=8&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Korku",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=24&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Macera",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=7&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Romantik",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=26&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Savaş",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=1&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Suç",
+        f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=11&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Western",
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
-
         ana_sayfa = []
 
-        if "dizi-turu" in url:
+        if "api/bg" in url:
+            istek     = await self.httpx.post(url.replace("SAYFA", str(page)))
+            decrypted = await self.decrypt_response(istek.json().get("response"))
+            veriler   = decrypted.get("result", [])
             ana_sayfa.extend([
                 MainPageResult(
                     category = category,
-                    title    = veri.css("span.font-normal::text").get(),
-                    url      = self.fix_url(veri.css("a::attr(href)").get()),
-                    poster   = self.fix_url(veri.css("img::attr(src)").get() or veri.css("img::attr(data-src)").get())
+                    title    = veri.get("original_title"),
+                    url      = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
+                    poster   = self.fix_url(veri.get("object_poster_url")),
                 )
-                    for veri in secici.css("span.watchlistitem-")
+                    for veri in veriler
             ])
         else:
+            istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
+            secici = Selector(istek.text)
+
             for veri in secici.css("div.tab-content > div.grid a"):
                 name    = veri.css("h2::text").get()
                 ep_name = veri.xpath("normalize-space(//div[contains(@class, 'opacity-80')])").get()
@@ -87,7 +100,6 @@ class Dizilla(PluginBase):
         # JSON decode
         return loads(decrypted.decode("utf-8"))
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         arama_istek = await self.httpx.post(f"{self.main_url}/api/bg/searchcontent?searchterm={query}")
         decrypted   = await self.decrypt_response(arama_istek.json().get("response"))
@@ -102,7 +114,6 @@ class Dizilla(PluginBase):
                 for veri in arama_veri
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def url_base_degis(self, eski_url:str, yeni_base:str) -> str:
         parsed_url       = urlparse(eski_url)
         parsed_yeni_base = urlparse(yeni_base)
@@ -113,13 +124,12 @@ class Dizilla(PluginBase):
 
         return urlunparse(yeni_url)
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
         veri   = loads(secici.xpath("//script[@type='application/ld+json']/text()").getall()[-1])
 
-        title       = veri.get("name")
+        title = veri.get("name")
         if alt_title := veri.get("alternateName"):
             title += f" - ({alt_title})"
 
@@ -131,8 +141,8 @@ class Dizilla(PluginBase):
         tags_raw = secici.css("h3.text-white.opacity-60::text").get()
         tags     = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
 
-        rating      = veri.get("aggregateRating", {}).get("ratingValue")
-        actors      = [actor.get("name") for actor in veri.get("actor", []) if actor.get("name")]
+        rating = veri.get("aggregateRating", {}).get("ratingValue")
+        actors = [actor.get("name") for actor in veri.get("actor", []) if actor.get("name")]
 
         bolumler = []
         sezonlar = veri.get("containsSeason") if isinstance(veri.get("containsSeason"), list) else [veri.get("containsSeason")]

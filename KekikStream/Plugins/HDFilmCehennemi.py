@@ -32,7 +32,6 @@ class HDFilmCehennemi(PluginBase):
         f"{main_url}/tur/romantik-filmleri-izle-1"         : "Romantik Filmleri"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.cffi.get(f"{url}", allow_redirects=True)
         secici = Selector(istek.text)
@@ -47,7 +46,6 @@ class HDFilmCehennemi(PluginBase):
                 for veri in secici.css("div.section-content a.poster")
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek = await self.cffi.get(
             url     = f"{self.main_url}/search/?q={query}",
@@ -76,7 +74,6 @@ class HDFilmCehennemi(PluginBase):
             
         return results
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.cffi.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = Selector(istek.text)

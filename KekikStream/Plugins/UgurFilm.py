@@ -23,7 +23,6 @@ class UgurFilm(PluginBase):
         f"{main_url}/category/erotik/page/"          : "Erotik"
     }
 
-    #@kekik_cache(ttl=60*60)
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
         secici = Selector(istek.text)
@@ -38,7 +37,6 @@ class UgurFilm(PluginBase):
                 for veri in secici.css("div.icerik div") if veri.css("span:nth-child(1)::text").get()
         ]
 
-    #@kekik_cache(ttl=60*60)
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = Selector(istek.text)
@@ -60,7 +58,6 @@ class UgurFilm(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=60*60)
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
