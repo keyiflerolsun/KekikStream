@@ -174,7 +174,6 @@ class DiziBox(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

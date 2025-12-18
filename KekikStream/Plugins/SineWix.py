@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
 import json
 
 class SineWix(PluginBase):
@@ -123,7 +123,6 @@ class SineWix(PluginBase):
                     episodes    = episodes,
                 )
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         try:
             veri = json.loads(url)

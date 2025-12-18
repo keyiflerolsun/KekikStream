@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
 from parsel           import Selector
 from Kekik.Sifreleme  import Packer, StreamDecoder
 import random, string, re
@@ -108,7 +108,6 @@ class HDFilmCehennemi(PluginBase):
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
-    #@kekik_cache(ttl=15*60)
     async def cehennempass(self, video_id: str) -> list[dict]:
         results = []
         
@@ -148,7 +147,6 @@ class HDFilmCehennemi(PluginBase):
 
         return results
 
-    #@kekik_cache(ttl=15*60)
     async def invoke_local_source(self, iframe: str, source: str, url: str):
         self.cffi.headers.update({"Referer": f"{self.main_url}/"})
         istek = await self.cffi.get(iframe)
@@ -179,7 +177,6 @@ class HDFilmCehennemi(PluginBase):
             "subtitles" : subtitles
         }]
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         istek  = await self.cffi.get(url)
         secici = Selector(istek.text)

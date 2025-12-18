@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, MovieInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 from parsel           import Selector
 from Kekik.Sifreleme  import StringCodec
 import json, re
@@ -100,7 +100,6 @@ class FullHDFilmizlesene(PluginBase):
             duration    = duration
         )
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

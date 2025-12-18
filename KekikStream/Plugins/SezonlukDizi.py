@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import kekik_cache, PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 
 class SezonlukDizi(PluginBase):
@@ -99,7 +99,6 @@ class SezonlukDizi(PluginBase):
             actors      = actors
         )
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)

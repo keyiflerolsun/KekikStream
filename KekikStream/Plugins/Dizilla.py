@@ -1,6 +1,5 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from Kekik.cli import konsol
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
 from json             import loads
@@ -171,7 +170,6 @@ class Dizilla(PluginBase):
             actors      = actors
         )
 
-    #@kekik_cache(ttl=15*60)
     async def load_links(self, url: str) -> list[dict]:
         istek   = await self.httpx.get(url)
         secici  = Selector(istek.text)
