@@ -13,11 +13,11 @@ class MediaHandler:
         # user-agent ekle (varsayılan veya extract_data'dan)
         user_agent = extract_data.user_agent or "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5)"
         self.headers["user-agent"] = user_agent
-        
+
         # referer ekle
         if extract_data.referer:
             self.headers["referer"] = extract_data.referer
-        
+
         # Google Drive gibi özel durumlar için yt-dlp kullan
         if user_agent in ["googleusercontent", "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"]:
             return self.play_with_ytdlp(extract_data)
