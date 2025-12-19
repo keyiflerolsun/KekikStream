@@ -12,8 +12,7 @@ class HDFilmCehennemi(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en hızlı hd film izleme sitesi"
     
-    # Bu site domain değişikliği yapıyor ve potansiyel anti-bot koruması var
-    requires_cffi = True
+
 
     main_page   = {
         f"{main_url}"                                      : "Yeni Eklenen Filmler",
@@ -33,7 +32,7 @@ class HDFilmCehennemi(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.cffi.get(f"{url}", allow_redirects=True)
+        istek  = await self.httpx.get(f"{url}", follow_redirects=True)
         secici = Selector(istek.text)
 
         return [
@@ -47,7 +46,7 @@ class HDFilmCehennemi(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.cffi.get(
+        istek = await self.httpx.get(
             url     = f"{self.main_url}/search/?q={query}",
             headers = {
                 "Referer"          : f"{self.main_url}/",
@@ -75,7 +74,7 @@ class HDFilmCehennemi(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.cffi.get(url, headers = {"Referer": f"{self.main_url}/"})
+        istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = Selector(istek.text)
 
         title       = secici.css("h1.section-title::text").get().strip()
@@ -111,7 +110,7 @@ class HDFilmCehennemi(PluginBase):
     async def cehennempass(self, video_id: str) -> list[dict]:
         results = []
         
-        istek = await self.cffi.post(
+        istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
                 "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
@@ -128,7 +127,7 @@ class HDFilmCehennemi(PluginBase):
                 "referer" : f"https://cehennempass.pw/download/{video_id}"
             })
 
-        istek = await self.cffi.post(
+        istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
             headers = {
                 "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
@@ -148,8 +147,8 @@ class HDFilmCehennemi(PluginBase):
         return results
 
     async def invoke_local_source(self, iframe: str, source: str, url: str):
-        self.cffi.headers.update({"Referer": f"{self.main_url}/"})
-        istek = await self.cffi.get(iframe)
+        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
+        istek = await self.httpx.get(iframe)
 
         try:
             eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
@@ -178,7 +177,7 @@ class HDFilmCehennemi(PluginBase):
         }]
 
     async def load_links(self, url: str) -> list[dict]:
-        istek  = await self.cffi.get(url)
+        istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
         results = []
@@ -189,7 +188,7 @@ class HDFilmCehennemi(PluginBase):
                 source   = f"{link.css('::text').get().replace('(HDrip Xbet)', '').strip()} {lang_code}"
                 video_id = link.css("::attr(data-video)").get()
 
-                api_get = await self.cffi.get(
+                api_get = await self.httpx.get(
                     url     = f"{self.main_url}/video/{video_id}/",
                     headers = {
                         "Content-Type"     : "application/json",

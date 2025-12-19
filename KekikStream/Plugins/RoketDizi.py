@@ -11,8 +11,7 @@ class RoketDizi(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en tatlış yabancı dizi izleme sitesi. Türkçe dublaj, altyazılı, eski ve yeni yabancı dizilerin yanı sıra kore (asya) dizileri izleyebilirsiniz."
 
-    # Domain doğrulama ve anti-bot mekanizmaları var
-    requires_cffi = True
+
 
     main_page = {
        "dizi/tur/aksiyon"     : "Aksiyon",
@@ -27,7 +26,7 @@ class RoketDizi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{self.main_url}/{url}?&page={page}"
-        resp     = await self.cffi.get(full_url)
+        resp     = await self.httpx.get(full_url)
         sel      = Selector(resp.text)
 
         results = []
@@ -55,7 +54,7 @@ class RoketDizi(PluginBase):
             "Referer"          : f"{self.main_url}/",
         }
         
-        search_req = await self.cffi.post(post_url, headers=headers)
+        search_req = await self.httpx.post(post_url, headers=headers)
         
         try:
             resp_json = search_req.json()
@@ -99,7 +98,7 @@ class RoketDizi(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         # Note: Handling both Movie and Series logic in one, returning SeriesInfo generally or MovieInfo
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         title       = sel.css("h1.text-white::text").get()
@@ -183,7 +182,7 @@ class RoketDizi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[dict]:
-        resp = await self.cffi.get(url)
+        resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
         next_data = sel.css("script#__NEXT_DATA__::text").get()
