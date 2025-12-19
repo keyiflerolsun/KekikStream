@@ -63,7 +63,7 @@ class ExtractorManager:
         """
         # Lazy loading: İlk kullanımda extractorları initialize et
         self._ensure_initialized()
-        
+
         mapping = {}
         for link in links:
             # Cached instance'ları kullan

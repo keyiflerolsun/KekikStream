@@ -34,7 +34,10 @@ class PluginBase(ABC):
         )
         self.httpx.headers.update(self.cloudscraper.headers)
         self.httpx.cookies.update(self.cloudscraper.cookies)
-        self.httpx.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
+        self.httpx.headers.update({
+            "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
+            "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        })
 
         self.media_handler = MediaHandler()
         self.ex_manager    = ExtractorManager()

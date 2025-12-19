@@ -198,6 +198,32 @@ KekikStream/
 3. `get_main_page`, `search`, `load_item`, `load_links` metodlarını implemente edin.  
 4. Plugin'i test edin (örnek: `Tests/Single.py`).  
 
+### 🔧 Geliştirme Modu
+
+KekikStream, eklenti geliştiricileri için otomatik bir **geliştirme modu** sunar:
+
+**Plugin Geliştirme:**
+- Çalışma dizininde `Plugins/` klasörü oluşturup içine plugin dosyası eklerseniz, **sadece bu local plugin'ler** yüklenir
+- Global plugin'ler (sisteme kurulu olanlar) otomatik olarak atlanır
+- Bu sayede test sırasında diğer plugin'lerle karışma olmaz
+
+**Extractor Geliştirme:**
+- Çalışma dizininde `Extractors/` klasörü oluşturup içine extractor dosyası eklerseniz, **sadece bu local extractor'lar** yüklenir
+- Global extractor'lar otomatik olarak atlanır
+- Kendi extractor'ınızı izole bir ortamda test edebilirsiniz
+
+**Örnek:**
+```bash
+# Çalışma dizininizde
+mkdir Plugins
+touch Plugins/MyTestPlugin.py  # Plugin'inizi yazın
+
+# KekikStream'i çalıştırın - sadece MyTestPlugin yüklenecek
+KekikStream
+```
+
+> 💡 **Not:** Yerel dizinde herhangi bir Plugin/Extractor dosyası bulunmazsa, sistem normal şekilde global olanları yükler.
+
 ---
 
 ## 📊 Performans
