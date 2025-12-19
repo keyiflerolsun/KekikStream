@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, get_ytdlp_extractors
 from urllib.parse     import urlparse
-from yt_dlp.extractor import gen_extractors
 import yt_dlp, re, sys, os
 
 class YTDLP(ExtractorBase):
@@ -13,20 +12,22 @@ class YTDLP(ExtractorBase):
 
     @classmethod
     def _init_fast_domain_regex(cls):
+        """
+        Fast domain regex'i initialize et
+        """
         if cls._FAST_DOMAIN_RE is not None:
             return
 
         domains = set()
 
+        # Merkezi cache'den extractorları al
+        extractors = get_ytdlp_extractors()
+
         # yt-dlp extractor'larının _VALID_URL regex'lerinden domain yakala
         # Regex metinlerinde domainler genelde "\." şeklinde geçer.
         domain_pat = re.compile(r"(?:[a-z0-9-]+\\\.)+[a-z]{2,}", re.IGNORECASE)
 
-        for ie in gen_extractors():
-            # Generic'i fast-path'e dahil etmiyoruz
-            if getattr(ie, "IE_NAME", "").lower() == "generic":
-                continue
-
+        for ie in extractors:
             valid = getattr(ie, "_VALID_URL", None)
             if not valid or not isinstance(valid, str):
                 continue
@@ -89,7 +90,9 @@ class YTDLP(ExtractorBase):
                     "no_warnings"           : True,  # Uyarı mesajları yok
                     "extract_flat"          : True,  # Minimal işlem
                     "no_check_certificates" : True,
-                    "ignoreerrors"          : True   # Hataları yoksay
+                    "ignoreerrors"          : True,  # Hataları yoksay
+                    "socket_timeout"        : 3,
+                    "retries"               : 1
                 }
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -116,7 +119,9 @@ class YTDLP(ExtractorBase):
             "no_warnings"           : True,
             "extract_flat"          : False,   # Tam bilgi al
             "format"                : "best",  # En iyi kalite
-            "no_check_certificates" : True
+            "no_check_certificates" : True,
+            "socket_timeout"        : 3,
+            "retries"               : 1
         }
 
         # Referer varsa header olarak ekle
