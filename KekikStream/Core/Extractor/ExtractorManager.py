@@ -9,23 +9,50 @@ class ExtractorManager:
         self.extractor_loader = ExtractorLoader(extractor_dir)
         self.extractors       = self.extractor_loader.load_all()
 
-    def find_extractor(self, link) -> ExtractorBase:
-        # Verilen bağlantıyı işleyebilecek çıkarıcıyı bul
+        # Extractor instance'larını cache'le
+        self._extractor_instances = []
+        self._ytdlp_extractor     = None
+
         for extractor_cls in self.extractors:
-            extractor:ExtractorBase = extractor_cls()
+            instance = extractor_cls()
+
+            # YTDLP'yi ayrı tut (BAŞA koyacağız - artık hızlı!)
+            if instance.name == "yt-dlp":
+                self._ytdlp_extractor = instance
+            else:
+                self._extractor_instances.append(instance)
+
+        # YTDLP'yi EN BAŞA ekle
+        if self._ytdlp_extractor:
+            self._extractor_instances.insert(0, self._ytdlp_extractor)
+
+    def find_extractor(self, link) -> ExtractorBase:
+        """
+        Verilen bağlantıyı işleyebilecek çıkarıcıyı bul
+
+        - Cached instance'lar kullanılır
+        - YTDLP en son denenir (yavaş olduğu için)
+        """
+        # Cached instance'ları kullan (yeniden oluşturma yok!)
+        for extractor in self._extractor_instances:
             if extractor.can_handle_url(link):
                 return extractor
 
         return None
 
     def map_links_to_extractors(self, links) -> dict:
-        # Bağlantıları uygun çıkarıcılarla eşleştir
+        """
+        Bağlantıları uygun çıkarıcılarla eşleştir
+
+        - Cached instance'lar kullanılır
+        - İlk eşleşmede break (gereksiz kontrol yok)
+        """
         mapping = {}
         for link in links:
-            for extractor_cls in self.extractors:
-                extractor:ExtractorBase = extractor_cls()
+            # Cached instance'ları kullan
+            for extractor in self._extractor_instances:
                 if extractor.can_handle_url(link):
                     mapping[link] = f"{extractor.name:<30} » {link.replace(extractor.main_url, '')}"
-                    break
+                    break  # İlk eşleşmede dur
 
         return mapping

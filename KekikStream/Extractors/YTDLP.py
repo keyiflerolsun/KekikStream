@@ -1,19 +1,82 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import yt_dlp, sys, os
+from urllib.parse     import urlparse
+from yt_dlp.extractor import gen_extractors
+import yt_dlp, re, sys, os
 
 class YTDLP(ExtractorBase):
     name     = "yt-dlp"
     main_url = ""  # Universal - tüm siteleri destekler
 
+    _FAST_DOMAIN_RE = None  # compiled mega-regex (host üstünden)
+
+    @classmethod
+    def _init_fast_domain_regex(cls):
+        if cls._FAST_DOMAIN_RE is not None:
+            return
+
+        domains = set()
+
+        # yt-dlp extractor'larının _VALID_URL regex'lerinden domain yakala
+        # Regex metinlerinde domainler genelde "\." şeklinde geçer.
+        domain_pat = re.compile(r"(?:[a-z0-9-]+\\\.)+[a-z]{2,}", re.IGNORECASE)
+
+        for ie in gen_extractors():
+            # Generic'i fast-path'e dahil etmiyoruz
+            if getattr(ie, "IE_NAME", "").lower() == "generic":
+                continue
+
+            valid = getattr(ie, "_VALID_URL", None)
+            if not valid or not isinstance(valid, str):
+                continue
+
+            for m in domain_pat.findall(valid):
+                d = m.replace(r"\.", ".").lower()
+
+                # Çok agresif/şüpheli şeyleri elemek istersen burada filtre koyabilirsin
+                # (genelde gerek kalmıyor)
+                domains.add(d)
+
+        # Hiç domain çıkmazsa (çok uç durum) fallback: boş regex
+        if not domains:
+            cls._FAST_DOMAIN_RE = re.compile(r"$^")  # hiçbir şeye match etmez
+            return
+
+        # Host eşleştirmesi: subdomain destekli (m.youtube.com, player.vimeo.com vs.)
+        # (?:^|.*\.) (domain1|domain2|...) $
+        joined = "|".join(sorted(re.escape(d) for d in domains))
+        pattern = rf"(?:^|.*\.)(?:{joined})$"
+        cls._FAST_DOMAIN_RE = re.compile(pattern, re.IGNORECASE)
+
     def __init__(self):
-        pass
+        self.__class__._init_fast_domain_regex()
 
     def can_handle_url(self, url: str) -> bool:
         """
-        yt-dlp'nin bu URL'yi işleyip işleyemeyeceğini kontrol et
+        Fast-path: URL host'unu tek mega-regex ile kontrol et (loop yok)
+        Slow-path: gerekirse mevcut extract_info tabanlı kontrolün
         """
+        # URL parse + host al
+        try:
+            parsed = urlparse(url)
+            host = (parsed.hostname or "").lower()
+        except Exception:
+            host = ""
+
+        # Şemasız URL desteği: "youtube.com/..." gibi
+        if not host and "://" not in url:
+            try:
+                parsed = urlparse("https://" + url)
+                host = (parsed.hostname or "").lower()
+            except Exception:
+                host = ""
+
+        # Fast-path
+        if host and self.__class__._FAST_DOMAIN_RE.search(host):
+            return True
+
+        # SLOW PATH: Diğer siteler için yt-dlp'nin native kontrolü
         try:
             # stderr'ı geçici olarak kapat (hata mesajlarını gizle)
             old_stderr = sys.stderr
@@ -51,7 +114,7 @@ class YTDLP(ExtractorBase):
         ydl_opts = {
             "quiet"                 : True,
             "no_warnings"           : True,
-            "extract_flat"          : False,  # Tam bilgi al
+            "extract_flat"          : False,   # Tam bilgi al
             "format"                : "best",  # En iyi kalite
             "no_check_certificates" : True
         }
