@@ -1,10 +1,9 @@
 setuptools
 wheel
-
 Kekik
-curl-cffi
-cloudscraper
 httpx
+cloudscraper
 parsel
 pydantic
 InquirerPy
+yt-dlp
