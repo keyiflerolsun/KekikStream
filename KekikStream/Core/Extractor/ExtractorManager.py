@@ -47,7 +47,9 @@ class ExtractorManager:
         """
         Verilen bağlantıyı işleyebilecek çıkarıcıyı bul
         """
+        # Lazy loading: İlk kullanımda extractorları initialize et
         self._ensure_initialized()
+
         # Cached instance'ları kullan
         for extractor in self._extractor_instances:
             if extractor.can_handle_url(link):
@@ -59,6 +61,9 @@ class ExtractorManager:
         """
         Bağlantıları uygun çıkarıcılarla eşleştir
         """
+        # Lazy loading: İlk kullanımda extractorları initialize et
+        self._ensure_initialized()
+        
         mapping = {}
         for link in links:
             # Cached instance'ları kullan
