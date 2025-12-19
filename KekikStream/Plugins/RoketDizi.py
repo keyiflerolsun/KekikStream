@@ -203,14 +203,19 @@ class RoketDizi(PluginBase):
 
                 # Check extractor
                 extractor = self.ex_manager.find_extractor(iframe_url)
+                ext_name  = extractor.name if extractor else ""
 
                 # Metadata'dan bilgileri al
-                source_name   = source.get("source_name", extractor.name if extractor else "Iframe")
+                source_name   = source.get("source_name", "")
                 language_name = source.get("language_name", "")
                 quality_name  = source.get("quality_name", "")
 
                 # İsmi oluştur
-                name_parts = [source_name]
+                name_parts = []
+                if source_name:
+                    name_parts.append(source_name)
+                if ext_name:
+                    name_parts.append(ext_name)
                 if language_name:
                     name_parts.append(language_name)
                 if quality_name:
