@@ -55,13 +55,6 @@ pip install -U KekikStream
 KekikStream
 ```
 
-**Kütüphane (örnek arama):**
-```python
-from KekikStream import Manager
-results = Manager().search("vikings")
-print(results[0].title)
-```
-
 ---
 
 ## ✨ Özellikler
@@ -102,11 +95,11 @@ class MyPlugin(PluginBase):
 
 ### 🎬 Oynatıcı Desteği
 
-| Oynatıcı | Platform | Özellikler |
-|----------|----------|------------|
-| **VLC** | Desktop | Custom headers, subtitles, varsayılan |
-| **MPV** | Desktop | Custom headers, subtitles |
-| **MX Player** | Android | ADB üzerinden |
+| Oynatıcı      | Platform | Özellikler                |
+|---------------|----------|---------------------------|
+| **MPV**       | Desktop  | Custom headers, subtitles |
+| **VLC**       | Desktop  | Custom headers, subtitles |
+| **MX Player** | Android  | ADB üzerinden             |
 
 > Özel durumlar için (Google Drive vb.) arka planda otomatik olarak yt-dlp devreye girer.
 
@@ -138,8 +131,8 @@ graph TB
     end
     
     subgraph Players
-        VLC[🎥 VLC]
         MPV[🎥 MPV]
+        VLC[🎥 VLC]
         MX[🎥 MX Player]
     end
     
@@ -209,13 +202,13 @@ KekikStream/
 
 ## 📊 Performans
 
-| Metrik | Değer |
-|--------|-------|
-| Plugin Sayısı | 20+ |
-| Extractor Sayısı | 40+ |
+| Metrik               | Değer            |
+|----------------------|------------------|
+| Plugin Sayısı        | 20+              |
+| Extractor Sayısı     | 40+              |
 | Desteklenen Platform | Desktop, Android |
-| Async Arama | ✅ |
-| Cache Desteği | ✅ |
+| Async Arama          | ✅               |
+| Cache Desteği        | ✅               |
 
 ---
 
