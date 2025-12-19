@@ -13,6 +13,7 @@ from .Extractor.ExtractorManager import ExtractorManager
 from .Extractor.ExtractorBase    import ExtractorBase
 from .Extractor.ExtractorLoader  import ExtractorLoader
 from .Extractor.ExtractorModels  import ExtractResult, Subtitle
+from .Extractor.YTDLPCache       import get_ytdlp_extractors
 
 from .Media.MediaManager import MediaManager
 from .Media.MediaHandler import MediaHandler
