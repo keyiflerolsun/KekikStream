@@ -14,8 +14,8 @@
 
 [![PyPI Yükle](https://github.com/keyiflerolsun/KekikStream/actions/workflows/pypiYukle.yml/badge.svg)](https://github.com/keyiflerolsun/KekikStream/actions/workflows/pypiYukle.yml)
 
-**Modüler ve Genişletilebilir Medya Streaming Kütüphanesi**  
-Terminal üzerinden medya içeriği arayın, VLC/MPV ile doğrudan izleyin! 🚀
+**Modüler ve genişletilebilir medya streaming kütüphanesi**  
+Terminal üzerinden içerik arayın, VLC/MPV ile doğrudan izleyin veya kendi API’nizi kurun. 🚀
 
 [![Video](https://github.com/user-attachments/assets/63d31bb0-0b69-40b4-84aa-66623f2a253f)](https://github.com/user-attachments/assets/63d31bb0-0b69-40b4-84aa-66623f2a253f)
 
@@ -24,40 +24,95 @@ Terminal üzerinden medya içeriği arayın, VLC/MPV ile doğrudan izleyin! 🚀
 
 ---
 
-## 🌟 Genel Bakış
+## 🚦 Ne Sunar?
 
-**KekikStream**, Türkçe medya kaynaklarından içerik aramanızı ve popüler medya oynatıcılar ile izlemenizi sağlayan Python kütüphanesidir.
+KekikStream, Türkçe medya kaynaklarını tek CLI arayüzünde toplayarak hızlı arama ve oynatma sunar. Plugin mimarisi sayesinde yeni kaynaklar eklemek ve [KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI) ile web/API üzerinden yayın yapmak kolaydır.
 
-### Temel Özellikler
-
-- 🎥 **Çoklu Kaynak Desteği** - Onlarca Türkçe medya sitesi desteği
-- 🔌 **Plugin Mimarisi** - Kolayca yeni kaynaklar ekleyin
-- 🎬 **Çoklu Oynatıcı** - VLC, MPV, MX Player desteği
-- 🖥️ **CLI & Kütüphane** - Terminal veya kod içinde kullanın
-- 🌐 **API ve Web UI Desteği** - [KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI) ile ağ üzerinden erişim
+- 🎥 Çoklu kaynak desteği: Onlarca Türkçe medya sitesi  
+- 🔌 Plugin mimarisi: Yeni kaynak eklemek dakikalar sürer  
+- 🎬 Çoklu oynatıcı: VLC, MPV, MX Player  
+- 🖥️ CLI & kütüphane: Terminalde veya kod içinde kullanın  
+- 🌐 API/Web UI: KekikStreamAPI üzerinden uzak erişim
 
 ---
 
 ## 🚀 Hızlı Başlangıç
 
-### Kurulum
+> Gereksinimler: Python 3.11+, sistemde VLC veya MPV kurulu olmalı (Android için MX Player + ADB).
 
 ```bash
-# Yüklemek
+# Kurulum
 pip install KekikStream
 
-# Güncellemek
+# Güncelleme
 pip install -U KekikStream
 ```
 
-> **Gereksinimler:** Sisteminizde VLC veya MPV yüklü olmalıdır.
-
 ### Temel Kullanım
 
-**Terminal:**
+**CLI:**  
 ```bash
 KekikStream
 ```
+
+**Kütüphane (örnek arama):**
+```python
+from KekikStream import Manager
+results = Manager().search("vikings")
+print(results[0].title)
+```
+
+---
+
+## ✨ Özellikler
+
+### 🔌 Plugin Sistemi
+
+KekikStream modüler bir plugin mimarisi kullanır; her medya kaynağı bağımsız bir plugin'dir.
+
+**Mevcut Pluginler (örnek):** Dizilla, HDFilmCehennemi, Dizipal, Dizifon, RoketDizi, Sinefy, Moviesseed, FullHDFilmizlesene, HDBestMovies, SuperFilmGeldi, Sinezy ve daha fazlası.
+
+**Plugin Geliştirme:**
+```python
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo
+
+class MyPlugin(PluginBase):
+    name        = "MyPlugin"
+    language    = "en"
+    main_url    = "https://example.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    description = "MyPlugin description"
+
+    main_page   = {
+      f"{main_url}/category/" : "Category Name"
+    }
+
+    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
+        return results
+
+    async def search(self, query: str) -> list[SearchResult]:
+        return results
+
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
+        return details
+
+    async def load_links(self, url: str) -> list[dict]:
+        return links
+```
+
+### 🎬 Oynatıcı Desteği
+
+| Oynatıcı | Platform | Özellikler |
+|----------|----------|------------|
+| **VLC** | Desktop | Custom headers, subtitles, varsayılan |
+| **MPV** | Desktop | Custom headers, subtitles |
+| **MX Player** | Android | ADB üzerinden |
+
+> Özel durumlar için (Google Drive vb.) arka planda otomatik olarak yt-dlp devreye girer.
+
+### 🔗 Extractor Sistemi
+
+Vidmoly, Filemoon, Sibnet, Sendvid, Voe, Doodstream, Streamtape, Upstream, Dailymotion, JWPlayer ve birçok kaynaktan direkt streaming linki çıkarır.
 
 ---
 
@@ -127,69 +182,6 @@ graph TB
 
 ---
 
-## ✨ Özellikler
-
-### 🔌 Plugin Sistemi
-
-KekikStream modüler bir plugin mimarisi kullanır. Her medya kaynağı bağımsız bir plugin'dir.
-
-**Mevcut Pluginler:**
-- Dizilla, HDFilmCehennemi, Dizipal, Dizifon
-- RoketDizi, Sinefy, Moviesseed, FullHDFilmizlesene
-- HDBestMovies, SuperFilmGeldi, Sinezy ve daha fazlası...
-
-**Plugin Geliştirme:**
-```python
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo
-
-class MyPlugin(PluginBase):
-    name        = "MyPlugin"
-    language    = "en"
-    main_url    = "https://example.com"
-    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "MyPlugin description"
-
-    main_page   = {
-      f"{main_url}/category/" : "Category Name"
-    }
-
-    async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        # Ana sayfa implementasyonu
-        return results
-
-    async def search(self, query: str) -> list[SearchResult]:
-        # Arama implementasyonu
-        return results
-
-    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        # İçerik detayları
-        return details
-
-    async def load_links(self, url: str) -> list[dict]:
-        # Video bağlantıları
-        return links
-```
-
-### 🎬 Oynatıcı Desteği
-
-| Oynatıcı | Platform | Özellikler |
-|----------|----------|------------|
-| **VLC** | Desktop | Custom headers, subtitles, varsayılan |
-| **MPV** | Desktop | Custom headers, subtitles |
-| **MX Player** | Android | ADB üzerinden |
-
-> **Not:** Özel durumlar için (Google Drive, vb.) arka planda otomatik olarak yt-dlp kullanılabilir.
-
-### 🔗 Extractor Sistemi
-
-Video barındırma sitelerinden direkt streaming linkleri çıkarır:
-
-- Vidmoly, Filemoon, Sibnet, Sendvid
-- Voe, Doodstream, Streamtape, Upstream
-- Dailymotion, JWPlayer ve daha fazlası...
-
----
-
 ## 🛠️ Geliştirme
 
 ### Proje Yapısı
@@ -208,12 +200,10 @@ KekikStream/
 
 ### Yeni Plugin Ekleme
 
-1. `KekikStream/Plugins/` altına yeni dosya oluşturun
-2. `PluginBase` sınıfından türetin
-3. Gerekli metodları implemente edin (`get_main_page`, `search`, `load_item`, `load_links`)
-4. Plugin'i test edin
-
-**Örnek:** [Tests/Single.py](https://github.com/keyiflerolsun/KekikStream/blob/master/Tests/Single.py)
+1. `KekikStream/Plugins/` altına yeni dosya oluşturun.  
+2. `PluginBase` sınıfından türetin.  
+3. `get_main_page`, `search`, `load_item`, `load_links` metodlarını implemente edin.  
+4. Plugin'i test edin (örnek: `Tests/Single.py`).  
 
 ---
 
@@ -233,12 +223,10 @@ KekikStream/
 
 Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
-### Nasıl Katkıda Bulunulur?
-
-1. **Yeni Plugin Ekleyin:** Türkçe medya sitesi desteği ekleyin
-2. **Bug Raporu:** GitHub Issues kullanın
-3. **Feature Request:** Yeni özellik önerileri
-4. **Dokümantasyon:** README ve kod dokümantasyonu iyileştirmeleri
+1. Yeni plugin ekleyin  
+2. Bug raporu açın  
+3. Feature request gönderin  
+4. Dokümantasyon iyileştirin
 
 ### 🎁 Teşekkürler
 
@@ -246,14 +234,13 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 ### 💻 Genişletme Referansları
 
-- [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)
+- [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)  
 - [keyiflerolsun/seyirTurk-Parser](https://github.com/keyiflerolsun/seyirTurk-Parser)
 
 ## 🌐 Telif Hakkı ve Lisans
 
-* *Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
-* [GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
-
+*Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️  
+[GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
 
 ---
 
