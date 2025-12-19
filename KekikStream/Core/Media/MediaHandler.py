@@ -2,61 +2,12 @@
 
 from ...CLI                      import konsol
 from ..Extractor.ExtractorModels import ExtractResult
-import subprocess, os, yt_dlp
+import subprocess, os
 
 class MediaHandler:
     def __init__(self, title: str = "KekikStream"):
         self.title   = title
         self.headers = {}
-
-    def should_use_ytdlp(self, url: str, user_agent: str) -> bool:
-        """
-        yt-dlp gereken durumları profesyonel şekilde tespit et
-
-        yt-dlp'nin native Python API'sini simulate mode ile kullanarak
-        güvenilir ve performanslı tespit yapar.
-
-        Args:
-            url: Video URL'si
-            user_agent: User-Agent string'i
-
-        Returns:
-            bool: yt-dlp kullanılması gerekiyorsa True
-        """
-        # 1. User-Agent bazlı kontrol (mevcut davranışı koru - RecTV, MolyStream için)
-        ytdlp_user_agents = [
-            "googleusercontent",
-            "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"
-        ]
-
-        if user_agent in ytdlp_user_agents:
-            konsol.log("[cyan][ℹ] User-Agent bazlı yt-dlp tespiti[/cyan]")
-            return True
-
-        # 2. yt-dlp'nin native Python API'sini kullan (simulate mode)
-        try:
-            ydl_opts = {
-                "simulate"     : True,  # Download yok, sadece tespit
-                "quiet"        : True,  # Log kirliliği yok
-                "no_warnings"  : True,  # Uyarı mesajları yok
-                "extract_flat" : True   # Minimal işlem
-            }
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # URL'yi işleyebiliyor mu kontrol et
-                info = ydl.extract_info(url, download=False, process=False)
-
-                # Generic extractor ise atla
-                if info and info.get("extractor_key") != "Generic":
-                    konsol.log(f"[cyan][ℹ] yt-dlp extractor: {info.get('extractor_key', 'Unknown')}[/cyan]")
-                    return True
-
-                return False
-
-        except Exception as e:
-            # yt-dlp işleyemezse False döndür
-            konsol.log(f"[yellow][⚠] yt-dlp kontrol hatası: {e}[/yellow]")
-            return False
 
     def play_media(self, extract_data: ExtractResult):
         # user-agent ekle (varsayılan veya extract_data'dan)
@@ -67,17 +18,13 @@ class MediaHandler:
         if extract_data.referer:
             self.headers["referer"] = extract_data.referer
 
+        # Özel Durumlar (RecTV vs. Googleusercontent)
+        if user_agent in ["googleusercontent", "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0"]:
+            return self.play_with_ytdlp(extract_data)
+
         # İşletim sistemine göre oynatıcı seç (Android durumu)
         if subprocess.check_output(['uname', '-o']).strip() == b'Android':
             return self.play_with_android_mxplayer(extract_data)
-
-        # Akıllı yt-dlp tespiti
-        if self.should_use_ytdlp(extract_data.url, user_agent):
-            konsol.log("[green][✓] yt-dlp kullanılacak[/green]")
-            success = self.play_with_ytdlp(extract_data)
-            if success:
-                return True
-            konsol.log("[yellow][⚠] yt-dlp başarısız, standart oynatıcılar deneniyor...[/yellow]")
 
         # Oynatıcı öncelik sırası (fallback zincirleme)
         players = [
