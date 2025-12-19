@@ -9,14 +9,12 @@ class MediaHandler:
         self.title   = title
         self.headers = {}
 
-        self._ytdlp_extractors = yt_dlp.extractor.list_extractors()
-
     def should_use_ytdlp(self, url: str, user_agent: str) -> bool:
         """
-        yt-dlp gereken durumları akıllıca tespit et
+        yt-dlp gereken durumları profesyonel şekilde tespit et
 
-        yt-dlp'nin kendi 1863+ extractor'ını kullanarak otomatik tespit yapar.
-        YouTube, Vimeo, Twitch, TikTok, Instagram vb. binlerce site için çalışır.
+        yt-dlp'nin native Python API'sini simulate mode ile kullanarak
+        güvenilir ve performanslı tespit yapar.
 
         Args:
             url: Video URL'si
@@ -35,23 +33,28 @@ class MediaHandler:
             konsol.log("[cyan][ℹ] User-Agent bazlı yt-dlp tespiti[/cyan]")
             return True
 
-        # 2. yt-dlp'nin kendi extractor tespitini kullan
+        # 2. yt-dlp'nin native Python API'sini kullan (simulate mode)
         try:
-            # Tüm extractorları kontrol et (Generic hariç)
-            for ie in self._ytdlp_extractors:
-                # Generic extractor'ı atla (her URL'ye uygundur ama özel değildir)
-                if ie.ie_key() == 'Generic':
-                    continue
+            ydl_opts = {
+                "simulate"     : True,  # Download yok, sadece tespit
+                "quiet"        : True,  # Log kirliliği yok
+                "no_warnings"  : True,  # Uyarı mesajları yok
+                "extract_flat" : True   # Minimal işlem
+            }
 
-                # Bu extractor bu URL'yi işleyebilir mi?
-                if ie.suitable(url):
-                    konsol.log(f"[cyan][ℹ] yt-dlp extractor bulundu: {ie.ie_key()}[/cyan]")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # URL'yi işleyebiliyor mu kontrol et
+                info = ydl.extract_info(url, download=False, process=False)
+
+                # Generic extractor ise atla
+                if info and info.get("extractor_key") != "Generic":
+                    konsol.log(f"[cyan][ℹ] yt-dlp extractor: {info.get('extractor_key', 'Unknown')}[/cyan]")
                     return True
 
-            # Özel extractor bulunamadı
-            return False
+                return False
 
         except Exception as e:
+            # yt-dlp işleyemezse False döndür
             konsol.log(f"[yellow][⚠] yt-dlp kontrol hatası: {e}[/yellow]")
             return False
 
