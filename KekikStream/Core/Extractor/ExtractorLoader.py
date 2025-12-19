@@ -19,19 +19,22 @@ class ExtractorLoader:
     def load_all(self) -> list[ExtractorBase]:
         extractors = []
 
-        # Global çıkarıcıları yükle
-        if self.global_extractors_dir.exists():
-            # konsol.log(f"[green][*] Global Extractor dizininden yükleniyor: {self.global_extractors_dir}[/green]")
-            global_extractors = self._load_from_directory(self.global_extractors_dir)
-            # konsol.log(f"[green]Global Extractor'lar: {[e.__name__ for e in global_extractors]}[/green]")
-            extractors.extend(global_extractors)
-
-        # Yerel çıkarıcıları yükle
+        # Eğer yerel dizinde Extractor varsa, sadece onları yükle (eklenti geliştirme modu)
         if self.local_extractors_dir.exists():
             # konsol.log(f"[green][*] Yerel Extractor dizininden yükleniyor: {self.local_extractors_dir}[/green]")
             local_extractors = self._load_from_directory(self.local_extractors_dir)
             # konsol.log(f"[green]Yerel Extractor'lar: {[e.__name__ for e in local_extractors]}[/green]")
-            extractors.extend(local_extractors)
+
+            if local_extractors:
+                # konsol.log("[cyan][*] Yerel Extractor bulundu, global Extractor'lar atlanıyor (eklenti geliştirme modu)[/cyan]")
+                extractors.extend(local_extractors)
+
+        # Yerel dizinde Extractor yoksa, global'leri yükle
+        if not extractors and self.global_extractors_dir.exists():
+            # konsol.log(f"[green][*] Global Extractor dizininden yükleniyor: {self.global_extractors_dir}[/green]")
+            global_extractors = self._load_from_directory(self.global_extractors_dir)
+            # konsol.log(f"[green]Global Extractor'lar: {[e.__name__ for e in global_extractors]}[/green]")
+            extractors.extend(global_extractors)
 
         # Benzersizliği sağlama (modül adı + sınıf adı bazında)
         unique_extractors = []

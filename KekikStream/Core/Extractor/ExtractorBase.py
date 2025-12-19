@@ -17,13 +17,13 @@ class ExtractorBase(ABC):
         self.cloudscraper = CloudScraper()
 
         # httpx - lightweight and safe for most HTTP requests
-        self.httpx = AsyncClient(
-            timeout          = 3,
-            follow_redirects = True
-        )
+        self.httpx = AsyncClient(timeout = 10)
         self.httpx.headers.update(self.cloudscraper.headers)
         self.httpx.cookies.update(self.cloudscraper.cookies)
-        self.httpx.headers.update({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0"})
+        self.httpx.headers.update({
+            "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
+            "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        })
 
     def can_handle_url(self, url: str) -> bool:
         # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et

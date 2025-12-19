@@ -19,15 +19,19 @@ class PluginLoader:
     def load_all(self) -> dict[str, PluginBase]:
         plugins = {}
 
-        # Global eklentileri yükle
-        if self.global_plugins_dir.exists():
-            # konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
-            plugins |= self._load_from_directory(self.global_plugins_dir)
-
-        # Yerel eklentileri yükle
+        # Eğer yerel dizinde Plugin varsa, sadece onları yükle (eklenti geliştirme modu)
         if self.local_plugins_dir.exists():
             # konsol.log(f"[green][*] Yerel Eklenti dizininden yükleniyor: {self.local_plugins_dir}[/green]")
-            plugins |= self._load_from_directory(self.local_plugins_dir)
+            local_plugins = self._load_from_directory(self.local_plugins_dir)
+
+            if local_plugins:
+                # konsol.log("[cyan][*] Yerel Plugin bulundu, global Plugin'ler atlanıyor (eklenti geliştirme modu)[/cyan]")
+                plugins |= local_plugins
+
+        # Yerel dizinde Plugin yoksa, global'leri yükle
+        if not plugins and self.global_plugins_dir.exists():
+            # konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
+            plugins |= self._load_from_directory(self.global_plugins_dir)
 
         if not plugins:
             konsol.print("[yellow][!] Yüklenecek bir Eklenti bulunamadı![/yellow]")
