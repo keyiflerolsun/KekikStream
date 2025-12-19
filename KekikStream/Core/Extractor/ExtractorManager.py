@@ -16,7 +16,7 @@ class ExtractorManager:
         for extractor_cls in self.extractors:
             instance = extractor_cls()
 
-            # YTDLP'yi ayrı tut (BAŞA koyacağız - artık hızlı!)
+            # YTDLP'yi ayrı tut
             if instance.name == "yt-dlp":
                 self._ytdlp_extractor = instance
             else:
@@ -29,11 +29,8 @@ class ExtractorManager:
     def find_extractor(self, link) -> ExtractorBase:
         """
         Verilen bağlantıyı işleyebilecek çıkarıcıyı bul
-
-        - Cached instance'lar kullanılır
-        - YTDLP en son denenir (yavaş olduğu için)
         """
-        # Cached instance'ları kullan (yeniden oluşturma yok!)
+        # Cached instance'ları kullan
         for extractor in self._extractor_instances:
             if extractor.can_handle_url(link):
                 return extractor
@@ -43,9 +40,6 @@ class ExtractorManager:
     def map_links_to_extractors(self, links) -> dict:
         """
         Bağlantıları uygun çıkarıcılarla eşleştir
-
-        - Cached instance'lar kullanılır
-        - İlk eşleşmede break (gereksiz kontrol yok)
         """
         mapping = {}
         for link in links:
