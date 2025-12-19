@@ -16,7 +16,7 @@ class PlayerFilmIzle(ExtractorBase):
         video_req = istek.text
 
         subtitles = []
-        if sub_match := re.search(r'playerjsSubtitle = "([^"]*)"', video_req, re.IGNORE_CASE):
+        if sub_match := re.search(r'playerjsSubtitle = "([^"]*)"', video_req, re.IGNORECASE):
             sub_yakala = sub_match.group(1)
             # Format örneği: [dil]url
             # Kotlin kodunda: subYakala.substringAfter("]") -> url
@@ -27,7 +27,7 @@ class PlayerFilmIzle(ExtractorBase):
                 subtitles.append(Subtitle(name=sub_lang, url=sub_url))
 
         # Data yakalama: FirePlayer|DATA|...
-        data_match = re.search(r'FirePlayer\|([^|]+)\|', video_req, re.IGNORE_CASE)
+        data_match = re.search(r'FirePlayer\|([^|]+)\|', video_req, re.IGNORECASE)
         data_val   = data_match.group(1) if data_match else None
         
         if not data_val:
@@ -47,7 +47,7 @@ class PlayerFilmIzle(ExtractorBase):
         get_url  = response.text.replace("\\", "")
 
         m3u8_url = ""
-        if url_yakala := re.search(r'"securedLink":"([^"]*)"', get_url, re.IGNORE_CASE):
+        if url_yakala := re.search(r'"securedLink":"([^"]*)"', get_url, re.IGNORECASE):
             m3u8_url = url_yakala.group(1)
 
         if not m3u8_url:

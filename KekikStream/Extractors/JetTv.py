@@ -31,7 +31,7 @@ class JetTv(ExtractorBase):
 
         # 2. Yöntem: Regex Fallback
         if not master_url:
-             if match := re.search(r"file: '([^']*)'", document, re.IGNORE_CASE):
+             if match := re.search(r"file: '([^']*)'", document, re.IGNORECASE):
                  master_url = match.group(1)
         
         if not master_url:
