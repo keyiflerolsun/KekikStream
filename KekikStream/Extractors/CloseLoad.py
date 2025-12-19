@@ -6,7 +6,7 @@ import re
 
 class CloseLoadExtractor(ExtractorBase):
     name     = "CloseLoad"
-    main_url = "https://closeload.filmmakinesi.sh"
+    main_url = "https://closeload.filmmakinesi.to"
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:

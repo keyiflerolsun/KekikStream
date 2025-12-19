@@ -153,6 +153,7 @@ class Sinefy(PluginBase):
         tags        = sel.css("div.item.categories a::text").getall()
         rating      = sel.css("span.color-imdb::text").get()
         actors      = sel.css("div.content h5::text").getall()
+        year        = sel.css("span.item.year::text").get()  # Year bilgisi eklendi
         
         episodes = []
         season_elements = sel.css("section.episodes-box")
@@ -207,6 +208,7 @@ class Sinefy(PluginBase):
                 rating   = rating,
                 tags     = tags,
                 actors   = actors,
+                year     = year,
                 episodes = episodes
             )
         else:
@@ -217,7 +219,8 @@ class Sinefy(PluginBase):
                 description = description,
                 rating      = rating,
                 tags        = tags,
-                actors      = actors
+                actors      = actors,
+                year        = year
             )
 
     async def load_links(self, url: str) -> list[dict]:

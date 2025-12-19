@@ -74,8 +74,15 @@ class JetFilmizle(PluginBase):
         rating_raw  = secici.css("section.movie-exp div.imdb_puan span::text").get()
         rating      = rating_raw.strip() if rating_raw else None
         
-        year        = secici.xpath("//div[@class='yap' and (contains(., 'Vizyon') or contains(., 'Yapım'))]/text()").get()
-        year        = year.strip() if year else None
+        
+        # Year - div.yap içinde 4 haneli sayı ara
+        year_div = secici.xpath("//div[@class='yap' and (contains(., 'Vizyon') or contains(., 'Yapım'))]/text()").get()
+        year = None
+        if year_div:
+            year_match = re.search(r'(\d{4})', year_div.strip())
+            if year_match:
+                year = year_match.group(1)
+        
         actors      = secici.css("div[itemprop='actor'] a span::text").getall()
 
         return MovieInfo(
@@ -93,42 +100,50 @@ class JetFilmizle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        iframes = []
-        if main_iframe := secici.css("div#movie iframe::attr(data-src), div#movie iframe::attr(data), div#movie iframe::attr(src)").get():
-            iframes.append(self.fix_url(main_iframe))
-
-        for part in secici.css("div.film_part a"):
-            part_href = part.attrib.get("href")
-            if not part_href:
-                continue
-
-            part_istek  = await self.httpx.get(part_href)
-            part_secici = Selector(part_istek.text)
-
-            if iframe := part_secici.css("div#movie iframe::attr(data-src), div#movie iframe::attr(data), div#movie iframe::attr(src)").get():
-                iframes.append(self.fix_url(iframe))
-            else:
-                for link in part_secici.css("div#movie p a"):
-                    if download_link := link.attrib.get("href"):
-                        iframes.append(self.fix_url(download_link))
-
-        processed_iframes = []
-        for iframe in iframes:
-            if "jetv.xyz" in iframe:
-                jetv_istek  = await self.httpx.get(iframe)
-                jetv_secici = Selector(jetv_istek.text)
-
-                if jetv_iframe := jetv_secici.css("iframe::attr(src)").get():
-                    processed_iframes.append(self.fix_url(jetv_iframe))
-            else:
-                processed_iframes.append(iframe)
-
         results = []
-        for idx, iframe in enumerate(processed_iframes):
-            extractor = self.ex_manager.find_extractor(iframe)
-            results.append({
-                "url"  : iframe,
-                "name" : f"{extractor.name if extractor else f'Player {idx + 1}'}"
-            })
+
+        # 1) Ana iframe'leri kontrol et
+        for iframe in secici.css("iframe"):
+            src = (iframe.css("::attr(src)").get() or 
+                   iframe.css("::attr(data-src)").get() or
+                   iframe.css("::attr(data-lazy-src)").get())
+            
+            if src and src != "about:blank":
+                iframe_url = self.fix_url(src)
+                extractor = self.ex_manager.find_extractor(iframe_url)
+                results.append({
+                    "url": iframe_url,
+                    "name": extractor.name if extractor else "Ana Player"
+                })
+
+        # 2) Sayfa numaralarından linkleri topla (Fragman hariç)
+        page_links = []
+        for link in secici.css("a.post-page-numbers"):
+            isim = link.css("span::text").get() or ""
+            if isim != "Fragman":
+                href = link.css("::attr(href)").get()
+                if href:
+                    page_links.append((self.fix_url(href), isim))
+
+        # 3) Her sayfa linkindeki iframe'leri bul
+        for page_url, isim in page_links:
+            try:
+                page_resp = await self.httpx.get(page_url)
+                page_sel = Selector(page_resp.text)
+                
+                for iframe in page_sel.css("div#movie iframe"):
+                    src = (iframe.css("::attr(src)").get() or 
+                           iframe.css("::attr(data-src)").get() or
+                           iframe.css("::attr(data-lazy-src)").get())
+                    
+                    if src and src != "about:blank":
+                        iframe_url = self.fix_url(src)
+                        extractor = self.ex_manager.find_extractor(iframe_url)
+                        results.append({
+                            "url": iframe_url,
+                            "name": f"{extractor.name if extractor else 'Player'} | {isim}"
+                        })
+            except Exception:
+                continue
 
         return results

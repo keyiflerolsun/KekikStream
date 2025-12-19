@@ -60,9 +60,10 @@ class ExtractorLoader:
             if file.endswith(".py") and not file.startswith("__"):
                 module_name = file[:-3] # .py uzantısını kaldır
                 # konsol.log(f"[cyan]Okunan Dosya\t\t: {module_name}[/cyan]")
-                if extractor := self._load_extractor(directory, module_name):
-                    # konsol.log(f"[magenta]Extractor Yüklendi\t: {extractor.__name__}[/magenta]")
-                    extractors.append(extractor)
+                module_extractors = self._load_extractor(directory, module_name)
+                if module_extractors:
+                    # konsol.log(f"[magenta]Extractor Yüklendi\t: {[e.__name__ for e in module_extractors]}[/magenta]")
+                    extractors.extend(module_extractors)
 
         # konsol.log(f"[yellow]{directory} dizininden yüklenen Extractor'lar: {[e.__name__ for e in extractors]}[/yellow]")
         return extractors
@@ -73,21 +74,25 @@ class ExtractorLoader:
             path = directory / f"{module_name}.py"
             spec = importlib.util.spec_from_file_location(module_name, path)
             if not spec or not spec.loader:
-                return None
+                return []
 
             # Modülü içe aktar
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            # Yalnızca doğru modülden gelen ExtractorBase sınıflarını yükle
+            # Yalnızca doğru modülden gelen ExtractorBase sınıflarını yükle (TÜM CLASS'LAR)
+            extractors = []
             for attr in dir(module):
                 obj = getattr(module, attr)
-                if obj.__module__ == module_name and isinstance(obj, type) and issubclass(obj, ExtractorBase) and obj is not ExtractorBase:
+                # isinstance kontrolünü __module__ kontrolünden ÖNCE yap
+                if isinstance(obj, type) and issubclass(obj, ExtractorBase) and obj is not ExtractorBase and obj.__module__ == module_name:
                     # konsol.log(f"[green]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/green]")
-                    return obj
+                    extractors.append(obj)
+            
+            return extractors
 
         except Exception as hata:
             konsol.log(f"[red][!] Extractor yüklenirken hata oluştu: {module_name}\nHata: {hata}")
             konsol.print(f"[dim]{traceback.format_exc()}[/dim]")
 
-        return None
+        return []

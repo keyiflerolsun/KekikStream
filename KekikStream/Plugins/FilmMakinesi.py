@@ -83,6 +83,7 @@ class FilmMakinesi(PluginBase):
             rating = rating.strip().split()[0]
         year        = secici.css("span.date a::text").get().strip()
         actors      = secici.css("div.cast-name::text").getall()
+        tags        = secici.css("div.genre a::text").getall()
         duration    = secici.css("div.time::text").get()
         if duration:
             duration = duration.split()[1].strip()
@@ -92,6 +93,7 @@ class FilmMakinesi(PluginBase):
             poster      = self.fix_url(poster),
             title       = self.clean_title(title),
             description = description,
+            tags        = tags,
             rating      = rating,
             year        = year,
             actors      = actors,

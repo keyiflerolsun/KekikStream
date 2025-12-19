@@ -94,6 +94,20 @@ class Sinezy(PluginBase):
 
         tags   = sel.css("div.detail span a::text").getall()
         actors = sel.css("span.oyn p::text").getall()        # Might need splitting logic
+        
+        year = None
+        info_text = sel.css("span.info::text").get()
+        if info_text:
+            year_match = re.search(r'\b(19\d{2}|20\d{2})\b', info_text)
+            if year_match:
+                year = year_match.group(1)
+        
+        # Bulunamadıysa tüm sayfada ara
+        if not year:
+            all_text = " ".join(sel.css("::text").getall())
+            year_match = re.search(r'\b(19\d{2}|20\d{2})\b', all_text)
+            if year_match:
+                year = year_match.group(1)
 
         return MovieInfo(
             title       = title,
@@ -102,7 +116,8 @@ class Sinezy(PluginBase):
             description = description,
             tags        = tags,
             rating      = rating,
-            actors      = actors
+            actors      = actors,
+            year        = year
         )
 
     async def load_links(self, url: str) -> list[dict]:

@@ -137,7 +137,7 @@ class Dizilla(PluginBase):
         year        = veri.get("datePublished").split("-")[0]
         
         # Tags extraction from page content (h3 tag)
-        tags_raw = secici.css("h3.text-white.opacity-60::text").get()
+        tags_raw = secici.css("div.poster.poster h3::text").get()
         tags     = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
 
         rating = veri.get("aggregateRating", {}).get("ratingValue")
