@@ -78,40 +78,40 @@ class YTDLP(ExtractorBase):
             return True
 
         # SLOW PATH: Diğer siteler için yt-dlp'nin native kontrolü
-        try:
-            # stderr'ı geçici olarak kapat (hata mesajlarını gizle)
-            old_stderr = sys.stderr
-            sys.stderr = open(os.devnull, "w")
+        # try:
+        #     # stderr'ı geçici olarak kapat (hata mesajlarını gizle)
+        #     old_stderr = sys.stderr
+        #     sys.stderr = open(os.devnull, "w")
 
-            try:
-                ydl_opts = {
-                    "simulate"              : True,  # Download yok, sadece tespit
-                    "quiet"                 : True,  # Log kirliliği yok
-                    "no_warnings"           : True,  # Uyarı mesajları yok
-                    "extract_flat"          : True,  # Minimal işlem
-                    "no_check_certificates" : True,
-                    "ignoreerrors"          : True,  # Hataları yoksay
-                    "socket_timeout"        : 3,
-                    "retries"               : 1
-                }
+        #     try:
+        #         ydl_opts = {
+        #             "simulate"              : True,  # Download yok, sadece tespit
+        #             "quiet"                 : True,  # Log kirliliği yok
+        #             "no_warnings"           : True,  # Uyarı mesajları yok
+        #             "extract_flat"          : True,  # Minimal işlem
+        #             "no_check_certificates" : True,
+        #             "ignoreerrors"          : True,  # Hataları yoksay
+        #             "socket_timeout"        : 3,
+        #             "retries"               : 1
+        #         }
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    # URL'yi işleyebiliyor mu kontrol et
-                    info = ydl.extract_info(url, download=False, process=False)
+        #         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        #             # URL'yi işleyebiliyor mu kontrol et
+        #             info = ydl.extract_info(url, download=False, process=False)
 
-                    # Generic extractor ise atla
-                    if info and info.get("extractor_key") != "Generic":
-                        return True
+        #             # Generic extractor ise atla
+        #             if info and info.get("extractor_key") != "Generic":
+        #                 return True
 
-                    return False
-            finally:
-                # stderr'ı geri yükle
-                sys.stderr.close()
-                sys.stderr = old_stderr
+        #             return False
+        #     finally:
+        #         # stderr'ı geri yükle
+        #         sys.stderr.close()
+        #         sys.stderr = old_stderr
 
-        except Exception:
+        # except Exception:
             # yt-dlp işleyemezse False döndür
-            return False
+        return False
 
     async def extract(self, url: str, referer: str | None = None) -> ExtractResult:
         ydl_opts = {
