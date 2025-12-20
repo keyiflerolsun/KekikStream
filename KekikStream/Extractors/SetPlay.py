@@ -5,7 +5,13 @@ import re
 
 class SetPlay(ExtractorBase):
     name     = "SetPlay"
-    main_url = "https://setplay.cfd"
+    main_url = "https://setplay.shop"
+
+    # Birden fazla domain destekle
+    supported_domains = ["setplay.cfd", "setplay.shop", "setplay.site"]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
 
     async def extract(self, url, referer=None) -> ExtractResult:
         ext_ref = referer or ""

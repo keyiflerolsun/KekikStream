@@ -7,6 +7,12 @@ class PeaceMakerst(ExtractorBase):
     name     = "PeaceMakerst"
     main_url = "https://peacemakerst.com"
 
+    # Birden fazla domain destekle
+    supported_domains = ["peacemakerst.com", "hdstreamable.com"]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+
     async def extract(self, url, referer=None) -> ExtractResult:
         if referer:
             self.httpx.headers.update({"Referer": referer})

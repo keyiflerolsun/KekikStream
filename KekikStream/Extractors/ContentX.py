@@ -7,6 +7,19 @@ class ContentX(ExtractorBase):
     name     = "ContentX"
     main_url = "https://contentx.me"
 
+    # Birden fazla domain destekle
+    supported_domains = [
+        "contentx.me", "four.contentx.me",
+        "dplayer82.site", "sn.dplayer82.site", "four.dplayer82.site", "org.dplayer82.site",
+        "dplayer74.site", "sn.dplayer74.site",
+        "hotlinger.com", "sn.hotlinger.com",
+        "playru.net", "four.playru.net",
+        "pichive.online", "four.pichive.online", "pichive.me", "four.pichive.me"
+    ]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+
     async def extract(self, url, referer=None) -> list[ExtractResult]:
         if referer:
             self.httpx.headers.update({"Referer": referer})
