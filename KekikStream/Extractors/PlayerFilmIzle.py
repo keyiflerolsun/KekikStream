@@ -1,11 +1,14 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import re, json
+import re
 
 class PlayerFilmIzle(ExtractorBase):
     name     = "PlayerFilmIzle"
     main_url = "https://player.filmizle.in"
+
+    def can_handle_url(self, url: str) -> bool:
+        return "filmizle.in" in url or "fireplayer" in url.lower()
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         # Kotlin tarafında referer mainUrl olarak zorlanmış
@@ -29,20 +32,20 @@ class PlayerFilmIzle(ExtractorBase):
         # Data yakalama: FirePlayer|DATA|...
         data_match = re.search(r'FirePlayer\|([^|]+)\|', video_req, re.IGNORECASE)
         data_val   = data_match.group(1) if data_match else None
-        
+
         if not data_val:
              raise ValueError("PlayerFilmIzle: Data bulunamadı")
 
         url_post = f"{self.main_url}/player/index.php?data={data_val}&do=getVideo"
-        
+
         post_headers = {
             "Referer": ext_ref,
             "X-Requested-With": "XMLHttpRequest"
         }
-        
+
         # Kotlin'de post data: "hash" -> data, "r" -> ""
         post_data = {"hash": data_val, "r": ""}
-        
+
         response = await self.httpx.post(url_post, data=post_data, headers=post_headers)
         get_url  = response.text.replace("\\", "")
 

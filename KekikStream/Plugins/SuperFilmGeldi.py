@@ -89,7 +89,7 @@ class SuperFilmGeldi(PluginBase):
         # Mix player özel işleme
         if "mix" in iframe and "index.php?data=" in iframe:
             iframe_istek = await self.httpx.get(iframe, headers={"Referer": f"{self.main_url}/"})
-            mix_point    = re.search(r'videoUrl":"(.*)","videoServer', iframe_istek.text)
+            mix_point    = re.search(r'videoUrl"\s*:\s*"(.*?)"\s*,\s*"videoServer', iframe_istek.text)
 
             if mix_point:
                 mix_point = mix_point[1].replace("\\", "")
@@ -111,11 +111,17 @@ class SuperFilmGeldi(PluginBase):
                     "subtitles" : []
                 })
         else:
+            # Extractor'a yönlendir
             extractor = self.ex_manager.find_extractor(iframe)
-            results.append({
-                "name"    : extractor.name if extractor else "Player",
-                "url"     : iframe,
-                "referer" : f"{self.main_url}/"
-            })
+            data      = await extractor.extract(iframe, referer=f"{self.main_url}/")
+            results.append(data.dict())
 
         return results
+
+    async def play(self, **kwargs):
+        extract_result = ExtractResult(**kwargs)
+        self.media_handler.title = kwargs.get("name")
+        if self.name not in self.media_handler.title:
+            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
+
+        self.media_handler.play_media(extract_result)

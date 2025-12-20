@@ -140,7 +140,7 @@ class SinemaCX(PluginBase):
             # Extractor'a yönlendir
             extractor = self.ex_manager.find_extractor(iframe)
             data      = await extractor.extract(iframe, referer=f"{self.main_url}/")
-            results.append(data.to_dict())
+            results.append(data.dict())
 
         return results
 
