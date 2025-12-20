@@ -228,11 +228,14 @@ class Sinefy(PluginBase):
         sel  = Selector(resp.text)
         
         iframe = sel.css("iframe::attr(src)").get()
-        if iframe:
-            iframe = self.fix_url(iframe)
-            extractor = self.ex_manager.find_extractor(iframe)
-            return [{
-                "url"  : iframe,
-                "name" : extractor.name if extractor else "Iframe"
-            }]
-        return []
+        if not iframe:
+            return []
+            
+        iframe_url = self.fix_url(iframe)
+        
+        # Always return iframe (matching Kotlin - no extractor check)
+        # loadExtractor in Kotlin handles extraction internally
+        return [{
+            "url"  : iframe_url,
+            "name" : "Sinefy Player"
+        }]

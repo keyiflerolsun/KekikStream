@@ -179,17 +179,25 @@ class Dizilla(PluginBase):
         decrypted   = await self.decrypt_response(secure_data)
         results     = decrypted.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
 
-        links = []
-        for result in results:
-            iframe_src = Selector(result.get("source_content")).css("iframe::attr(src)").get()
-            iframe_url = self.fix_url(iframe_src)
-            if not iframe_url:
-                continue
+        if not results:
+            return []
 
-            extractor = self.ex_manager.find_extractor(iframe_url)
-            links.append({
-                "url"  : iframe_url,
-                "name" : f"{extractor.name if extractor else 'Main Player'} | {result.get('language_name')}",
-            })
+        # Get first source (matching Kotlin)
+        first_result = results[0]
+        source_content = first_result.get("source_content", "")
+        
+        # Clean the source_content string (matching Kotlin: .replace("\"", "").replace("\\", ""))
+        cleaned_source = source_content.replace('"', '').replace('\\', '')
+        
+        # Parse cleaned HTML
+        iframe_src = Selector(cleaned_source).css("iframe::attr(src)").get()
+        iframe_url = self.fix_url(iframe_src)
+        
+        if not iframe_url:
+            return []
 
-        return links
+        extractor = self.ex_manager.find_extractor(iframe_url)
+        return [{
+            "url"  : iframe_url,
+            "name" : f"{extractor.name if extractor else 'Main Player'} | {first_result.get('language_name', 'Unknown')}",
+        }]

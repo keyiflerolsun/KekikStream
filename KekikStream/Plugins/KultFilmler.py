@@ -9,7 +9,7 @@ class KultFilmler(PluginBase):
     language    = "tr"
     main_url    = "https://kultfilmler.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Kült film ve dizi izleme sitesi."
+    description = "Kült Filmler özenle en iyi filmleri derler ve iyi bir altyazılı film izleme deneyimi sunmayı amaçlar. Reklamsız 1080P Altyazılı Film izle..."
 
     main_page   = {
         f"{main_url}/category/aile-filmleri-izle"       : "Aile",

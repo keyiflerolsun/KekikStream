@@ -9,7 +9,7 @@ class SinemaCX(PluginBase):
     language    = "tr"
     main_url    = "https://www.sinema.fit"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "HD Film izle, Türkçe Dublaj ve Altyazılı filmler."
+    description = "Türkiye'nin en iyi film platformu Sinema.cc! 2026'nın en yeni ve popüler yabancı yapımları, Türkçe dublaj ve altyazılı HD kalitede, reklamsız ve ücretsiz olarak seni bekliyor. Şimdi izle!"
 
     main_page   = {
         f"{main_url}/page/SAYFA"                            : "Son Eklenen Filmler",
@@ -139,12 +139,8 @@ class SinemaCX(PluginBase):
         else:
             # Extractor'a yönlendir
             extractor = self.ex_manager.find_extractor(iframe)
-            results.append({
-                "name"      : f"{extractor.name if extractor else self.name}",
-                "url"       : iframe,
-                "referer"   : f"{self.main_url}/",
-                "subtitles" : subtitles
-            })
+            data      = await extractor.extract(iframe, referer=f"{self.main_url}/")
+            results.append(data.to_dict())
 
         return results
 

@@ -2,6 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
 from parsel           import Selector
+import re
 
 class SezonlukDizi(PluginBase):
     name        = "SezonlukDizi"
@@ -99,6 +100,20 @@ class SezonlukDizi(PluginBase):
             actors      = actors
         )
 
+    async def get_asp_data(self) -> tuple[str, str]:
+        """Fetch dynamic ASP version numbers from site.min.js"""
+        try:
+            js_content = await self.httpx.get(f"{self.main_url}/js/site.min.js")
+            alternatif_match = re.search(r'dataAlternatif(.*?)\.asp', js_content.text)
+            embed_match = re.search(r'dataEmbed(.*?)\.asp', js_content.text)
+            
+            alternatif_ver = alternatif_match.group(1) if alternatif_match else "22"
+            embed_ver = embed_match.group(1) if embed_match else "22"
+            
+            return (alternatif_ver, embed_ver)
+        except Exception:
+            return ("22", "22")  # Fallback to default versions
+
     async def load_links(self, url: str) -> list[dict]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
@@ -107,10 +122,13 @@ class SezonlukDizi(PluginBase):
         if not bid:
             return []
 
+        # Get dynamic ASP versions
+        alternatif_ver, embed_ver = await self.get_asp_data()
+
         results = []
         for dil, label in [("1", "Altyazı"), ("0", "Dublaj")]:
             dil_istek = await self.httpx.post(
-                url     = f"{self.main_url}/ajax/dataAlternatif22.asp",
+                url     = f"{self.main_url}/ajax/dataAlternatif{alternatif_ver}.asp",
                 headers = {"X-Requested-With": "XMLHttpRequest"},
                 data    = {"bid": bid, "dil": dil},
             )
@@ -123,7 +141,7 @@ class SezonlukDizi(PluginBase):
             if dil_json.get("status") == "success":
                 for idx, veri in enumerate(dil_json.get("data", [])):
                     veri_response = await self.httpx.post(
-                        url     = f"{self.main_url}/ajax/dataEmbed22.asp",
+                        url     = f"{self.main_url}/ajax/dataEmbed{embed_ver}.asp",
                         headers = {"X-Requested-With": "XMLHttpRequest"},
                         data    = {"id": veri.get("id")},
                     )
@@ -133,10 +151,13 @@ class SezonlukDizi(PluginBase):
                         if "link.asp" in iframe:
                             continue
                             
-                        extractor = self.ex_manager.find_extractor(self.fix_url(iframe))
-                        results.append({
-                            "url"  : self.fix_url(iframe),
-                            "name" : f"{extractor.name if extractor else f'{label} - Player {idx + 1}'}"
-                        })
+                        iframe_url = self.fix_url(iframe)
+                        extractor = self.ex_manager.find_extractor(iframe_url)
+                        
+                        if extractor:  # Only add if extractor found
+                            results.append({
+                                "url"  : iframe_url,
+                                "name" : f"{extractor.name} | {label}"
+                            })
 
         return results

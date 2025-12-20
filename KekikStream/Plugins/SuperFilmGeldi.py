@@ -9,7 +9,7 @@ class SuperFilmGeldi(PluginBase):
     language    = "tr"
     main_url    = "https://www.superfilmgeldi13.art"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Ücretsiz film izleme sitesi."
+    description = "Hd film izliyerek arkadaşlarınızla ve sevdiklerinizle iyi bir vakit geçirmek istiyorsanız açın bir film eğlenmeye bakın. Bilim kurgu filmleri, aşk drama vahşet aşk romantik sıradışı korku filmlerini izle."
 
     main_page   = {
         f"{main_url}/page/SAYFA"                                        : "Son Eklenenler",

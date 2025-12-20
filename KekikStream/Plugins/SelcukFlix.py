@@ -9,7 +9,7 @@ class SelcukFlix(PluginBase):
     lang        = "tr"
     main_url    = "https://selcukflix.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Selcukflix&#x27;te her türden en yeni ve en popüler dizi ve filmleri izlemenin keyfini çıkarın. Aksiyondan romantiğe, bilim kurgudan dramaya, geniş kütüphanemizde herkes için bir şey var."
+    description = "Selcukflix'te her türden en yeni ve en popüler dizi ve filmleri izlemenin keyfini çıkarın. Aksiyondan romantiğe, bilim kurgudan dramaya, geniş kütüphanemizde herkes için bir şey var."
 
     main_page = {
         f"{main_url}/tum-bolumler" : "Yeni Eklenen Bölümler",
@@ -240,60 +240,59 @@ class SelcukFlix(PluginBase):
         sel  = Selector(resp.text)
         
         next_data = sel.css("script#__NEXT_DATA__::text").get()
-        if not next_data: return []
+        if not next_data:
+            return []
 
         try:
-             data = json.loads(next_data)
-             secure_data = data["props"]["pageProps"]["secureData"]
-             raw_data = base64.b64decode(secure_data.replace('"', ''))
-             try:
-                 decoded_str = raw_data.decode('utf-8')
-             except UnicodeDecodeError:
-                 decoded_str = raw_data.decode('iso-8859-1')
+            data = json.loads(next_data)
+            secure_data = data["props"]["pageProps"]["secureData"]
+            raw_data = base64.b64decode(secure_data.replace('"', ''))
             
-             content_details = json.loads(decoded_str)
-             related_data = content_details.get("relatedData", {})
-             
-             source_content = None
-             
-             # Check if Series (episode) or Movie
-             if "/dizi/" in url:
-                 if related_data.get("episodeSources", {}).get("state"):
-                      res = related_data["episodeSources"].get("result", [])
-                      if res:
-                          source_content = res[0].get("sourceContent")
-             else:
-                 # Movie
-                 if related_data.get("movieParts", {}).get("state"):
-                      # Looking for first part source
-                      movie_parts = related_data["movieParts"].get("result", [])
-                      if movie_parts:
-                          first_part_id = movie_parts[0].get("id")
-                          # RelatedResults -> getMoviePartSourcesById_ID
-                          rr = content_details.get("RelatedResults", {})
-                          key = f"getMoviePartSourcesById_{first_part_id}"
-                          if key in rr:
-                              res = rr[key].get("result", [])
-                              if res:
-                                  source_content = res[0].get("source_content")
+            # Try UTF-8 first, fallback to ISO-8859-1 (matching Kotlin)
+            try:
+                decoded_str = raw_data.decode('utf-8')
+            except UnicodeDecodeError:
+                decoded_str = raw_data.decode('iso-8859-1')
+            
+            content_details = json.loads(decoded_str)
+            related_data = content_details.get("relatedData", {})
+            
+            source_content = None
+            
+            # Check if Series (episode) or Movie
+            if "/dizi/" in url:
+                if related_data.get("episodeSources", {}).get("state"):
+                    res = related_data["episodeSources"].get("result", [])
+                    if res:
+                        source_content = res[0].get("sourceContent")
+            else:
+                # Movie
+                if related_data.get("movieParts", {}).get("state"):
+                    movie_parts = related_data["movieParts"].get("result", [])
+                    if movie_parts:
+                        first_part_id = movie_parts[0].get("id")
+                        # RelatedResults -> getMoviePartSourcesById_ID
+                        rr = content_details.get("RelatedResults", {})
+                        key = f"getMoviePartSourcesById_{first_part_id}"
+                        if key in rr:
+                            res = rr[key].get("result", [])
+                            if res:
+                                source_content = res[0].get("source_content")
 
-             results = []
-             if source_content:
-                 iframe_sel = Selector(source_content)
-                 iframe_src = iframe_sel.css("iframe::attr(src)").get()
-                 if iframe_src:
-                     iframe_src = self.fix_url(iframe_src)
-                     # Domain replace
-                     if "sn.dplayer74.site" in iframe_src:
-                         iframe_src = iframe_src.replace("sn.dplayer74.site", "sn.hotlinger.com")
-                     
-                     extractor = self.ex_manager.find_extractor(iframe_src)
-                     results.append({
-                         "url": iframe_src,
-                         "name": extractor.name if extractor else "Iframe"
-                     })
-             
-             return results
+            if source_content:
+                iframe_sel = Selector(source_content)
+                iframe_src = iframe_sel.css("iframe::attr(src)").get()
+                if iframe_src:
+                    iframe_src = self.fix_url(iframe_src)
+                    extractor  = self.ex_manager.find_extractor(iframe_src)
+
+                    if extractor:  # Only return if extractor found
+                        return [{
+                            "url"  : iframe_src,
+                            "name" : extractor.name
+                        }]
+            
+            return []
 
         except Exception:
             return []

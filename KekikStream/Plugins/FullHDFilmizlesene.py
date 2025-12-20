@@ -10,7 +10,7 @@ class FullHDFilmizlesene(PluginBase):
     language    = "tr"
     main_url    = "https://www.fullhdfilmizlesene.tv"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Sinema zevkini evinize kadar getirdik. Türkiye'nin lider Film sitesinde, en yeni filmleri Full HD izleyin."
+    description = "Türkiye'nin ilk ve lider HD film izleme platformu, kaliteli ve sorunsuz hizmetiyle sinema keyfini zirveye taşır."
 
     main_page   = {
         f"{main_url}/en-cok-izlenen-hd-filmler/"            : "En Çok izlenen Filmler",

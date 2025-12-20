@@ -8,7 +8,7 @@ class UgurFilm(PluginBase):
     language    = "tr"
     main_url    = "https://ugurfilm3.xyz"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Yabancı film izle, Türkçe dublaj ve Türkçe altyazılı film seçenekleriyle 720p ve 1080p HD kalitesinde film izle - Uğur Film full hd film izle."
+    description = "Uğur Film ile film izle! En yeni ve güncel filmleri, Türk yerli filmleri Full HD 1080p kalitede Türkçe Altyazılı olarak izle."
 
     main_page   = {
         f"{main_url}/turkce-altyazili-filmler/page/" : "Türkçe Altyazılı Filmler",

@@ -8,7 +8,7 @@ class FilmMakinesi(PluginBase):
     language    = "tr"
     main_url    = "https://filmmakinesi.to"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Film Makinesi, en yeni ve en güncel filmleri sitemizde full HD kalite farkı ile izleyebilirsiniz. HD film izle denildiğinde akla gelen en kaliteli film izleme sitesi."
+    description = "Film Makinesi ile en yeni ve güncel filmleri Full HD kalite farkı ile izleyebilirsiniz. Film izle denildiğinde akla gelen en kaliteli film sitesi."
 
     main_page   = {
         f"{main_url}/filmler-1/"                : "Son Filmler",

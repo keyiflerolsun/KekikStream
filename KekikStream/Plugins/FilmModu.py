@@ -9,7 +9,7 @@ class FilmModu(PluginBase):
     language    = "tr"
     main_url    = "https://www.filmmodu.ws"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "HD Film izle, Türkçe Dublaj ve Altyazılı filmler."
+    description = "Film modun geldiyse yüksek kalitede yeni filmleri izle, 1080p izleyebileceğiniz reklamsız tek film sitesi."
 
     main_page   = {
         f"{main_url}/hd-film-kategori/4k-film-izle?page=SAYFA"          : "4K",
@@ -91,9 +91,13 @@ class FilmModu(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
+        alternates = secici.css("div.alternates a")
+        if not alternates:
+            return []  # No alternates available
+
         results = []
 
-        for alternatif in secici.css("div.alternates a"):
+        for alternatif in alternates:
             alt_link = self.fix_url(alternatif.css("::attr(href)").get())
             alt_name = alternatif.css("::text").get()
 

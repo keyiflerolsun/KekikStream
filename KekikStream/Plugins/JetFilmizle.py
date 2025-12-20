@@ -8,7 +8,7 @@ class JetFilmizle(PluginBase):
     language    = "tr"
     main_url    = "https://jetfilmizle.website"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Binlerce Film İzleme Seçeneğiyle En İyi Film İzleme Sitesi"
+    description = "Film izle, Yerli, Yabancı film izle, Türkçe dublaj, alt yazılı seçenekleriyle ödül almış filmleri Full HD kalitesiyle ve jetfilmizle hızıyla donmadan ücretsizce izleyebilirsiniz."
 
     main_page   = {
         f"{main_url}/page/"                                     : "Son Filmler",
