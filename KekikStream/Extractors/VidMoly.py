@@ -23,11 +23,11 @@ class VidMoly(ExtractorBase):
             "Sec-Fetch-Dest" : "iframe",
         })
 
-        if self.main_url.endswith(".me"):
-            self.main_url = self.main_url.replace(".me", ".net")
+        if ".me" in url:
             url = url.replace(".me", ".net")
 
-        response = await self.httpx.get(url)
+        # VidMoly bazen redirect ediyor, takip et
+        response = await self.httpx.get(url, follow_redirects=True)
         if "Select number" in response.text:
             secici = Selector(response.text)
             response = await self.httpx.post(
@@ -39,21 +39,10 @@ class VidMoly(ExtractorBase):
                     "ts"        : secici.css("input[name='ts']::attr(value)").get(),
                     "nonce"     : secici.css("input[name='nonce']::attr(value)").get(),
                     "ctok"      : secici.css("input[name='ctok']::attr(value)").get()
-                }
+                },
+                follow_redirects=True
             )
 
-        script_match   = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)
-        script_content = script_match[1] if script_match else None
-
-        if not script_content:
-            raise ValueError("Gerekli script bulunamadı.")
-
-        # Video kaynaklarını ayrıştır
-        video_data = self._add_marks(script_content, "file")
-        try:
-            video_sources = json.loads(f"[{video_data}]")
-        except json.JSONDecodeError as hata:
-            raise ValueError("Video kaynakları ayrıştırılamadı.") from hata
 
         # Altyazı kaynaklarını ayrıştır
         subtitles = []
@@ -72,22 +61,49 @@ class VidMoly(ExtractorBase):
                         for sub in subtitle_sources
                             if sub.get("kind") == "captions"
                 ]
-        # İlk video kaynağını al
-        video_url = None
-        for source in video_sources:
-            if file_url := source.get("file"):
-                video_url = file_url
-                break
 
-        if not video_url:
-            raise ValueError("Video URL bulunamadı.")
+        script_match = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)
+        if script_match:
+            script_content = script_match[1]
+            # Video kaynaklarını ayrıştır
+            video_data = self._add_marks(script_content, "file")
+            try:
+                video_sources = json.loads(f"[{video_data}]")
+                # İlk video kaynağını al
+                for source in video_sources:
+                    if file_url := source.get("file"):
+                        return ExtractResult(
+                            name      = self.name,
+                            url       = file_url,
+                            referer   = self.main_url,
+                            subtitles = subtitles
+                        )
+            except json.JSONDecodeError:
+                pass
 
-        return ExtractResult(
-            name      = self.name,
-            url       = video_url,
-            referer   = self.main_url,
-            subtitles = subtitles
-        )
+        # Fallback: Doğrudan file regex ile ara (Kotlin mantığı)
+        # file:"..." veya file: "..."
+        if file_match := re.search(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']', response.text):
+            return ExtractResult(
+                name      = self.name,
+                url       = file_match.group(1),
+                referer   = self.main_url,
+                subtitles = subtitles
+            )
+            
+        # Fallback 2: Herhangi bir file (m3u8 olma şartı olmadan ama tercihen)
+        if file_match := re.search(r'file\s*:\s*["\']([^"\']+)["\']', response.text):
+            url_candidate = file_match.group(1)
+            # Resim dosyalarını hariç tut
+            if not url_candidate.endswith(('.jpg', '.png', '.jpeg')):
+                return ExtractResult(
+                    name      = self.name,
+                    url       = url_candidate,
+                    referer   = self.main_url,
+                    subtitles = subtitles
+                )
+
+        raise ValueError("Video URL bulunamadı.")
 
     def _add_marks(self, text: str, field: str) -> str:
         """
