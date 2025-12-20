@@ -208,7 +208,7 @@ class PluginValidator:
                 extractor_found = True
                 result["message"] = f"{len(links)} link"
             else:
-                issues.append("extractor yok")
+                issues.append(f"extractor yok: {links}")
             
             if issues:
                 result["status"] = "⚠️"
@@ -322,9 +322,12 @@ class PluginValidator:
 async def main():
     validator = PluginValidator()
 
-    if len(sys.argv) >= 2 and sys.argv[1] and sys.argv[1] in validator.plugins.get_plugin_names():
-        plugin_name = sys.argv[1]
-        validator.results[plugin_name] = await validator.validate_plugin(plugin_name)
+    if len(sys.argv) >= 2:
+        plugin_name = sys.argv[1].split(",")
+        for name in plugin_name:
+            if name not in validator.plugins.get_plugin_names():
+                continue
+            validator.results[name] = await validator.validate_plugin(name)
         validator.print_summary()
         return
 
