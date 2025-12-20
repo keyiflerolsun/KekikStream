@@ -10,6 +10,86 @@ class YTDLP(ExtractorBase):
 
     _FAST_DOMAIN_RE = None  # compiled mega-regex (host üstünden)
 
+    _POPULAR_TLDS = {
+        "com", "net", "org", "tv", "io", "co", "me", "ly", "ru", "fr", "de", "es", "it",
+        "nl", "be", "ch", "at", "uk", "ca", "au", "jp", "kr", "cn", "in", "br", "mx",
+        "ar", "tr", "gov", "edu", "mil", "int", "info", "biz", "name", "pro", "aero",
+        "coop", "museum", "onion"
+    }
+
+    # 1. Literal TLD Regex: youtube\.com, vimeo\.com
+    # sorted by reverse length to prevent partial matches (e.g. 'co' matching 'com')
+    _LITERAL_TLD_RE = re.compile(
+        rf"([a-z0-9][-a-z0-9]*(?:\\\.[-a-z0-9]+)*\\\.(?:{'|'.join(sorted(_POPULAR_TLDS, key=len, reverse=True))}))",
+        re.IGNORECASE
+    )
+
+    # 2. Regex TLD Regex: dailymotion\.[a-z]{2,3}
+    _REGEX_TLD_RE = re.compile(
+        r"([a-z0-9][-a-z0-9]*)\\\.\[a-z\]\{?\d*,?\d*\}?",
+        re.IGNORECASE
+    )
+
+    # 3. Alternation TLD Regex: \.(?:com|net|org)
+    _ALT_TLD_RE = re.compile(
+        r"\\\.\(\?:([a-z|]+)\)",
+        re.IGNORECASE
+    )
+
+    # Kelime yakalayıcı (domain bulmak için)
+    _DOMAIN_WORD_RE = re.compile(
+        r"([a-z0-9][-a-z0-9]*)",
+        re.IGNORECASE
+    )
+
+    @classmethod
+    def _extract_literal_domains(cls, valid_url: str) -> set[str]:
+        """Pattern 1: Literal TLD domainlerini (youtube.com) çıkarır."""
+        return {
+            m.replace(r"\.", ".").lower()
+            for m in cls._LITERAL_TLD_RE.findall(valid_url)
+        }
+
+    @classmethod
+    def _extract_regex_tld_domains(cls, valid_url: str) -> set[str]:
+        """Pattern 2: Regex TLD domainlerini (dailymotion.[...]) çıkarır ve popüler TLD'lerle birleştirir."""
+        domains = set()
+        for base in cls._REGEX_TLD_RE.findall(valid_url):
+            base_domain = base.lower()
+            for tld in cls._POPULAR_TLDS:
+                domains.add(f"{base_domain}.{tld}")
+        return domains
+
+    @classmethod
+    def _extract_alternation_domains(cls, valid_url: str) -> set[str]:
+        """Pattern 3: Alternation TLD domainlerini (pornhub.(?:com|net)) çıkarır."""
+        domains = set()
+        for m in cls._ALT_TLD_RE.finditer(valid_url):
+            tlds = m.group(1).split("|")
+            start = m.start()
+
+            # Geriye doğru git ve domain'i bul
+            before = valid_url[:start]
+
+            # 1. Named Groups (?P<name> temizle
+            before = re.sub(r"\(\?P<[^>]+>", "", before)
+
+            # 2. Simple Non-Capturing Groups (?:xxx)? temizle (sadece alphanumeric ve escape)
+            before = re.sub(r"\(\?:[a-z0-9-]+\)\??", "", before)
+
+            # Son domain-like kelimeyi al
+            words = cls._DOMAIN_WORD_RE.findall(before)
+            if not words:
+                continue
+
+            base = words[-1].lower()
+            for tld in tlds:
+                tld = tld.strip().lower()
+                if tld and len(tld) <= 6:
+                    domains.add(f"{base}.{tld}")
+
+        return domains
+
     @classmethod
     def _init_fast_domain_regex(cls):
         """
@@ -19,44 +99,31 @@ class YTDLP(ExtractorBase):
             return
 
         domains = set()
-
-        # Merkezi cache'den extractorları al
         extractors = get_ytdlp_extractors()
-
-        # yt-dlp extractor'larının _VALID_URL regex'lerinden domain yakala
-        # Regex metinlerinde domainler genelde "\." şeklinde geçer.
-        domain_pat = re.compile(r"(?:[a-z0-9-]+\\\.)+[a-z]{2,}", re.IGNORECASE)
 
         for ie in extractors:
             valid = getattr(ie, "_VALID_URL", None)
             if not valid or not isinstance(valid, str):
                 continue
 
-            for m in domain_pat.findall(valid):
-                d = m.replace(r"\.", ".").lower()
-
-                # Çok agresif/şüpheli şeyleri elemek istersen burada filtre koyabilirsin
-                # (genelde gerek kalmıyor)
-                domains.add(d)
+            domains |= cls._extract_literal_domains(valid)
+            domains |= cls._extract_regex_tld_domains(valid)
+            domains |= cls._extract_alternation_domains(valid)
 
         # Hiç domain çıkmazsa (çok uç durum) fallback: boş regex
         if not domains:
             cls._FAST_DOMAIN_RE = re.compile(r"$^")  # hiçbir şeye match etmez
             return
 
-        # Host eşleştirmesi: subdomain destekli (m.youtube.com, player.vimeo.com vs.)
-        # (?:^|.*\.) (domain1|domain2|...) $
-        joined = "|".join(sorted(re.escape(d) for d in domains))
-        pattern = rf"(?:^|.*\.)(?:{joined})$"
-        cls._FAST_DOMAIN_RE = re.compile(pattern, re.IGNORECASE)
+        joined = "|".join(re.escape(d) for d in sorted(domains))
+        cls._FAST_DOMAIN_RE = re.compile(rf"(?:^|.*\.)(?:{joined})$", re.IGNORECASE)
 
     def __init__(self):
         self.__class__._init_fast_domain_regex()
 
     def can_handle_url(self, url: str) -> bool:
         """
-        Fast-path: URL host'unu tek mega-regex ile kontrol et (loop yok)
-        Slow-path: gerekirse mevcut extract_info tabanlı kontrolün
+        Fast-path: URL host'unu tek mega-regex ile kontrol et
         """
         # URL parse + host al
         try:
@@ -77,40 +144,7 @@ class YTDLP(ExtractorBase):
         if host and self.__class__._FAST_DOMAIN_RE.search(host):
             return True
 
-        # SLOW PATH: Diğer siteler için yt-dlp'nin native kontrolü
-        # try:
-        #     # stderr'ı geçici olarak kapat (hata mesajlarını gizle)
-        #     old_stderr = sys.stderr
-        #     sys.stderr = open(os.devnull, "w")
-
-        #     try:
-        #         ydl_opts = {
-        #             "simulate"              : True,  # Download yok, sadece tespit
-        #             "quiet"                 : True,  # Log kirliliği yok
-        #             "no_warnings"           : True,  # Uyarı mesajları yok
-        #             "extract_flat"          : True,  # Minimal işlem
-        #             "no_check_certificates" : True,
-        #             "ignoreerrors"          : True,  # Hataları yoksay
-        #             "socket_timeout"        : 3,
-        #             "retries"               : 1
-        #         }
-
-        #         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        #             # URL'yi işleyebiliyor mu kontrol et
-        #             info = ydl.extract_info(url, download=False, process=False)
-
-        #             # Generic extractor ise atla
-        #             if info and info.get("extractor_key") != "Generic":
-        #                 return True
-
-        #             return False
-        #     finally:
-        #         # stderr'ı geri yükle
-        #         sys.stderr.close()
-        #         sys.stderr = old_stderr
-
-        # except Exception:
-            # yt-dlp işleyemezse False döndür
+        # yt-dlp işleyemezse False döndür
         return False
 
     async def extract(self, url: str, referer: str | None = None) -> ExtractResult:
