@@ -199,6 +199,13 @@ class SetFilmIzle(PluginBase):
 
         nonce = secici.css("div#playex::attr(data-nonce)").get() or ""
 
+        # partKey to dil label mapping
+        part_key_labels = {
+            "turkcedublaj"  : "Türkçe Dublaj",
+            "turkcealtyazi" : "Türkçe Altyazı",
+            "orijinal"      : "Orijinal"
+        }
+
         links = []
         for player in secici.css("nav.player a"):
             source_id   = player.css("::attr(data-post-id)").get()
@@ -233,10 +240,19 @@ class SetFilmIzle(PluginBase):
             if "setplay" not in iframe_url and part_key:
                 iframe_url = f"{iframe_url}?partKey={part_key}"
 
+            # Dil etiketi oluştur
+            label = part_key_labels.get(part_key, "")
+            if not label and part_key:
+                label = part_key.replace("_", " ").title()
+
             extractor = self.ex_manager.find_extractor(iframe_url)
+            name = extractor.name if extractor else player_name or "Direct Link"
+            if label:
+                name = f"{name} | {label}"
+
             links.append({
                 "url"     : iframe_url,
-                "name"    : extractor.name if extractor else player_name or "Direct Link",
+                "name"    : name,
                 "referer" : self.main_url
             })
 

@@ -3,7 +3,7 @@
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
 from parsel           import Selector
 from Kekik.Sifreleme  import Packer, StreamDecoder
-import random, string, re
+import random, string, re, base64
 
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
@@ -146,17 +146,85 @@ class HDFilmCehennemi(PluginBase):
 
         return results
 
+    def hdch_decode(self, value_parts: list[str]) -> str:
+        """
+        HDFilmCehennemi için özel decoder.
+        JavaScript sırası: join -> reverse -> atob -> atob -> shift_back
+        """
+        try:
+            # 1. Parçaları birleştir
+            joined = ''.join(value_parts)
+            
+            # 2. Ters çevir (REV)
+            result = StreamDecoder._reverse(joined)
+            
+            # 3. İlk base64 decode (B64D)
+            result = StreamDecoder._base64_decode(result)
+            if result is None:
+                return ""
+            
+            # 4. İkinci base64 decode (B64D) - JavaScript'te iki kez atob yapılıyor!
+            result = StreamDecoder._base64_decode(result)
+            if result is None:
+                return ""
+            
+            # 5. Shift back (SHF)
+            result = StreamDecoder._shift_back(result)
+            
+            return result
+        except Exception:
+            return ""
+
+    def extract_hdch_url(self, unpacked: str) -> str:
+        """HDFilmCehennemi unpacked script'ten video URL'sini çıkar"""
+        # 1) Decode fonksiyonunun adını bul: function <NAME>(value_parts)
+        match_fn = re.search(r'function\s+(\w+)\s*\(\s*value_parts\s*\)', unpacked)
+        if not match_fn:
+            return ""
+        
+        fn_name = match_fn.group(1)
+        
+        # 2) Bu fonksiyonun array ile çağrıldığı yeri bul: <NAME>([ ... ])
+        array_call_regex = re.compile(rf'{re.escape(fn_name)}\(\s*\[(.*?)\]\s*\)', re.DOTALL)
+        match_call = array_call_regex.search(unpacked)
+        if not match_call:
+            return ""
+        
+        array_body = match_call.group(1)
+        
+        # 3) Array içindeki string parçalarını topla
+        parts = re.findall(r'["\']([^"\']+)["\']', array_body)
+        if not parts:
+            return ""
+        
+        # 4) Özel decoder ile çöz
+        return self.hdch_decode(parts)
+
     async def invoke_local_source(self, iframe: str, source: str, url: str):
-        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
+        self.httpx.headers.update({
+            "Referer": f"{self.main_url}/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0"
+        })
         istek = await self.httpx.get(iframe)
 
+        if not istek.text:
+            return await self.cehennempass(iframe.split("/")[-1])
+
+        # eval(function...) içeren packed script bul
+        eval_match = re.search(r'(eval\(function[\s\S]+)', istek.text)
+        if not eval_match:
+            return await self.cehennempass(iframe.split("/")[-1])
+
         try:
-            eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
+            unpacked = Packer.unpack(eval_match.group(1))
         except Exception:
             return await self.cehennempass(iframe.split("/")[-1])
 
-        unpacked  = Packer.unpack(eval_func)
-        video_url = StreamDecoder.extract_stream_url(unpacked)
+        # HDFilmCehennemi özel decoder ile video URL'sini çıkar
+        video_url = self.extract_hdch_url(unpacked)
+        
+        if not video_url:
+            return await self.cehennempass(iframe.split("/")[-1])
 
         subtitles = []
         try:
@@ -200,8 +268,15 @@ class HDFilmCehennemi(PluginBase):
                 match  = re.search(r'data-src=\\\"([^"]+)', api_get.text)
                 iframe = match[1].replace("\\", "") if match else None
 
-                if iframe and "?rapidrame_id=" in iframe:
-                    iframe = f"{self.main_url}/playerr/{iframe.split('?rapidrame_id=')[1]}"
+                if not iframe:
+                    continue
+
+                # mobi URL'si varsa direkt kullan (query string'i kaldır)
+                if "mobi" in iframe:
+                    iframe = iframe.split("?")[0]  # rapidrame_id query param'ı kaldır
+                # mobi değilse ve rapidrame varsa rplayer kullan
+                elif "rapidrame" in iframe and "?rapidrame_id=" in iframe:
+                    iframe = f"{self.main_url}/rplayer/{iframe.split('?rapidrame_id=')[1]}"
 
                 video_data_list = await self.invoke_local_source(iframe, source, url)
                 if not video_data_list:
