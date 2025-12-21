@@ -134,12 +134,9 @@ class Sinezy(PluginBase):
                      iframe = iframe_match.group(1)
                      iframe = self.fix_url(iframe)
                      
-                     extractor = self.ex_manager.find_extractor(iframe)
-
-                     return [{
-                         "url"  : iframe,
-                         "name" : extractor.name if extractor else "Iframe"
-                     }]
+                     data = await self.extract(iframe)
+                     if data:
+                         return [data]
              except Exception:
                  pass
 

@@ -135,11 +135,8 @@ class FilmBip(PluginBase):
             iframe = self.fix_url(player.css("iframe::attr(src)").get())
 
             if iframe:
-                extractor = self.ex_manager.find_extractor(iframe)
-                results.append({
-                    "name"    : extractor.name if extractor else "Player",
-                    "url"     : iframe,
-                    "referer" : f"{self.main_url}/"
-                })
+                data = await self.extract(iframe)
+                if data:
+                    results.append(data)
 
         return results

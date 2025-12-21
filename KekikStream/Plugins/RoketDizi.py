@@ -211,13 +211,10 @@ class RoketDizi(PluginBase):
                     continue
                 seen_urls.add(iframe_url)
 
-                # Check extractor
-                extractor = self.ex_manager.find_extractor(iframe_url)
-                
-                results.append({
-                    "url"  : iframe_url,
-                    "name" : extractor.name if extractor else "Player"
-                })
+                # Extract with helper
+                data = await self.extract(iframe_url)
+                if data:
+                    results.append(data)
 
             return results
 

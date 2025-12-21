@@ -153,12 +153,9 @@ class FullHDFilm(PluginBase):
         results = []
 
         if iframe_src:
-            extractor = self.ex_manager.find_extractor(iframe_src)
-            results.append({
-                "name"      : extractor.name if extractor else "FullHDFilm Player",
-                "url"       : iframe_src,
-                "referer"   : self.main_url,
-                "subtitles" : [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
-            })
+            data = await self.extract(iframe_src)
+            if data:
+                data["subtitles"] = [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
+                results.append(data)
 
         return results

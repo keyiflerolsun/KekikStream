@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle
 from parsel import Selector
 import re
 
@@ -228,19 +228,8 @@ class DiziPal(PluginBase):
             })
         else:
             # Extractor'a yönlendir
-            extractor = self.ex_manager.find_extractor(iframe)
-            results.append({
-                "name"    : f"{extractor.name if extractor else self.name}",
-                "url"     : iframe,
-                "referer" : f"{self.main_url}/",
-            })
+            data = await self.extract(iframe)
+            if data:
+                results.append(data)
 
         return results
-
-    async def play(self, **kwargs):
-        extract_result = ExtractResult(**kwargs)
-        self.media_handler.title = kwargs.get("name")
-        if self.name not in self.media_handler.title:
-            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
-
-        self.media_handler.play_media(extract_result)

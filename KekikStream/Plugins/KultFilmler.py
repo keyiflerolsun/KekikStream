@@ -208,12 +208,9 @@ class KultFilmler(PluginBase):
             if subtitle_url:
                 subtitles.append(Subtitle(name="Türkçe", url=subtitle_url))
 
-            extractor = self.ex_manager.find_extractor(iframe)
-            results.append({
-                "name"      : extractor.name if extractor else "Player",
-                "url"       : iframe,
-                "referer"   : f"{self.main_url}/",
-                "subtitles" : subtitles
-            })
+            data = await self.extract(iframe)
+            if data:
+                data["subtitles"] = subtitles
+                results.append(data)
 
         return results

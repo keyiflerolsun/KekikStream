@@ -84,7 +84,7 @@ class UgurFilm(PluginBase):
         secici  = Selector(istek.text)
         results = []
 
-        for idx, part_link in enumerate(secici.css("li.parttab a::attr(href)").getall()):
+        for part_link in secici.css("li.parttab a::attr(href)").getall():
             sub_response = await self.httpx.get(part_link)
             sub_selector = Selector(sub_response.text)
 
@@ -100,10 +100,8 @@ class UgurFilm(PluginBase):
                     data = post_data
                 )
                 iframe = self.fix_url(player_response.json().get("iframe"))
-                extractor = self.ex_manager.find_extractor(iframe)
-                results.append({
-                    "url"  : iframe,
-                    "name" : f"{extractor.name if extractor else f'Part {idx + 1}'}"
-                })
+                data = await self.extract(iframe)
+                if data:
+                    results.append(data)
 
         return results

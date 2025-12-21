@@ -5,7 +5,7 @@ from cloudscraper     import CloudScraper
 from httpx            import AsyncClient
 from typing           import Optional
 from .ExtractorModels import ExtractResult
-from urllib.parse     import urljoin
+from urllib.parse     import urljoin, urlparse
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -28,6 +28,11 @@ class ExtractorBase(ABC):
     def can_handle_url(self, url: str) -> bool:
         # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
         return self.main_url in url
+
+    def get_base_url(self, url: str) -> str:
+        """URL'den base URL'i çıkar (scheme + netloc)"""
+        parsed = urlparse(url)
+        return f"{parsed.scheme}://{parsed.netloc}"
 
     @abstractmethod
     async def extract(self, url: str, referer: Optional[str] = None) -> ExtractResult:

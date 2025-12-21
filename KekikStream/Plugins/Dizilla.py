@@ -196,8 +196,5 @@ class Dizilla(PluginBase):
         if not iframe_url:
             return []
 
-        extractor = self.ex_manager.find_extractor(iframe_url)
-        return [{
-            "url"  : iframe_url,
-            "name" : f"{extractor.name if extractor else 'Main Player'} | {first_result.get('language_name', 'Unknown')}",
-        }]
+        data = await self.extract(iframe_url, prefix=first_result.get('language_name', 'Unknown'))
+        return [data] if data else []

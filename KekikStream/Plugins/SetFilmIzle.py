@@ -245,15 +245,8 @@ class SetFilmIzle(PluginBase):
             if not label and part_key:
                 label = part_key.replace("_", " ").title()
 
-            extractor = self.ex_manager.find_extractor(iframe_url)
-            name = extractor.name if extractor else player_name or "Direct Link"
-            if label:
-                name = f"{name} | {label}"
-
-            links.append({
-                "url"     : iframe_url,
-                "name"    : name,
-                "referer" : self.main_url
-            })
+            data = await self.extract(iframe_url, prefix=label if label else None)
+            if data:
+                links.append(data)
 
         return links

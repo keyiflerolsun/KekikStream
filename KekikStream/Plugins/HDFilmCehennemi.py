@@ -1,9 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle
 from parsel           import Selector
 from Kekik.Sifreleme  import Packer, StreamDecoder
-import random, string, re, base64
+import random, string, re
 
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
@@ -11,8 +11,6 @@ class HDFilmCehennemi(PluginBase):
     main_url    = "https://www.hdfilmcehennemi.ws"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en hızlı hd film izleme sitesi. Tek ve gerçek hdfilmcehennemi sitesi."
-    
-
 
     main_page   = {
         f"{main_url}"                                      : "Yeni Eklenen Filmler",
@@ -286,11 +284,3 @@ class HDFilmCehennemi(PluginBase):
                     results.append(video_data)
 
         return results
-
-    async def play(self, **kwargs):
-        extract_result = ExtractResult(**kwargs)
-        self.media_handler.title = kwargs.get("name")
-        if self.name not in self.media_handler.title:
-            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
-
-        self.media_handler.play_media(extract_result)

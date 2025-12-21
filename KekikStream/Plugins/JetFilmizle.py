@@ -110,11 +110,9 @@ class JetFilmizle(PluginBase):
             
             if src and src != "about:blank":
                 iframe_url = self.fix_url(src)
-                extractor = self.ex_manager.find_extractor(iframe_url)
-                results.append({
-                    "url": iframe_url,
-                    "name": extractor.name if extractor else "Ana Player"
-                })
+                data = await self.extract(iframe_url)
+                if data:
+                    results.append(data)
 
         # 2) Sayfa numaralarından linkleri topla (Fragman hariç)
         page_links = []
@@ -138,11 +136,9 @@ class JetFilmizle(PluginBase):
                     
                     if src and src != "about:blank":
                         iframe_url = self.fix_url(src)
-                        extractor = self.ex_manager.find_extractor(iframe_url)
-                        results.append({
-                            "url": iframe_url,
-                            "name": f"{extractor.name if extractor else 'Player'} | {isim}"
-                        })
+                        data = await self.extract(iframe_url, prefix=isim)
+                        if data:
+                            results.append(data)
             except Exception:
                 continue
 

@@ -194,11 +194,3 @@ class BelgeselX(PluginBase):
             })
 
         return links
-
-    async def play(self, **kwargs):
-        extract_result = ExtractResult(**kwargs)
-        self.media_handler.title = kwargs.get("name")
-        if self.name not in self.media_handler.title:
-            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
-
-        self.media_handler.play_media(extract_result)

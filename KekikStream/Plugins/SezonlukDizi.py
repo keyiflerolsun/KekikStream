@@ -152,12 +152,8 @@ class SezonlukDizi(PluginBase):
                             continue
                             
                         iframe_url = self.fix_url(iframe)
-                        extractor = self.ex_manager.find_extractor(iframe_url)
-                        
-                        if extractor:  # Only add if extractor found
-                            results.append({
-                                "url"  : iframe_url,
-                                "name" : f"{extractor.name} | {label}"
-                            })
+                        data = await self.extract(iframe_url, prefix=label)
+                        if data:
+                            results.append(data)
 
         return results

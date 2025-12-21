@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo
 import json
 
 class SineWix(PluginBase):
@@ -156,11 +156,3 @@ class SineWix(PluginBase):
             })
 
         return results
-
-    async def play(self, **kwargs):
-        extract_result = ExtractResult(**kwargs)
-        self.media_handler.title = kwargs.get("name")
-        if self.name not in self.media_handler.title:
-            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
-
-        self.media_handler.play_media(extract_result)

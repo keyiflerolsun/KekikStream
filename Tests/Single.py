@@ -47,23 +47,12 @@ async def main():
             for link in icerikler:
                 konsol.log(f"[red]icerik_link » [purple]{link.get('url')}")
 
-                if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
-                    await plugin.play(
-                        name      = link.get("name"),
-                        url       = link.get("url"),
-                        referer   = link.get("referer"),
-                        subtitles = link.get("subtitles")
-                    )
-                elif extractor := ext.find_extractor(link.get("url")):
-                    sonuc = await extractor.extract(link.get("url"), referer=plugin.main_url)
-                    konsol.log(sonuc)
-                    if isinstance(detay, SeriesInfo):
-                        media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title} - {bolum.title or f'{bolum.season}x{bolum.episode}'}")
-                    else:
-                        media.set_title(f"{sonuc.name} - {plugin.name} - {detay.title}")
-                    media.play_media(sonuc)
-                else:
-                    konsol.print(f"[red]Önerilen araç bulunamadı: {link.get('url')}")
+                await plugin.play(
+                    name      = link.get("name"),
+                    url       = link.get("url"),
+                    referer   = link.get("referer"),
+                    subtitles = link.get("subtitles")
+                )
 
                 break
             break

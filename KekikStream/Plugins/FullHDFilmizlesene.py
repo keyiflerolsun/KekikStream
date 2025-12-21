@@ -119,10 +119,8 @@ class FullHDFilmizlesene(PluginBase):
         response = []
         for link in link_list:
             link = f"https:{link}" if link.startswith("//") else link
-            extractor = self.ex_manager.find_extractor(link)
-            response.append({
-                "url"  : link,
-                "name" : extractor.name if extractor else "Direct Link"
-            })
+            data = await self.extract(link)
+            if data:
+                response.append(data)
 
         return response

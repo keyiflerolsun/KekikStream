@@ -111,11 +111,9 @@ class FilmMakinesi(PluginBase):
             all_links.append(link.attrib.get("data-video_url"))
 
         response = []
-        for idx, link in enumerate(all_links):
-            extractor = self.ex_manager.find_extractor(link)
-            response.append({
-                "url"  : link,
-                "name" : f"{extractor.name if extractor else f'Player {idx + 1}'}",
-            })
+        for link in all_links:
+            data = await self.extract(link)
+            if data:
+                response.append(data)
 
         return response

@@ -182,11 +182,9 @@ class DiziBox(PluginBase):
         if main_iframe := secici.css("div#video-area iframe::attr(src)").get():
             if decoded := await self._iframe_decode(self.name, main_iframe, url):
                 for iframe in decoded:
-                    extractor = self.ex_manager.find_extractor(iframe)
-                    results.append({
-                        "url"  : iframe,
-                        "name" : f"{extractor.name if extractor else 'Main Player'}"
-                    })
+                    data = await self.extract(iframe)
+                    if data:
+                        results.append(data)
 
         for alternatif in secici.css("div.video-toolbar option[value]"):
             alt_name = alternatif.css("::text").get()
@@ -203,10 +201,8 @@ class DiziBox(PluginBase):
             if alt_iframe := alt_secici.css("div#video-area iframe::attr(src)").get():
                 if decoded := await self._iframe_decode(alt_name, alt_iframe, url):
                     for iframe in decoded:
-                        extractor = self.ex_manager.find_extractor(iframe)
-                        results.append({
-                            "url"  : iframe,
-                            "name" : f"{extractor.name if extractor else alt_name}"
-                        })
+                        data = await self.extract(iframe, prefix=alt_name)
+                        if data:
+                            results.append(data)
 
         return results

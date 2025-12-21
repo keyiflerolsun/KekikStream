@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult
+from urllib.parse import urlparse, parse_qs
 import re
 
 class SetPlay(ExtractorBase):
@@ -18,6 +19,9 @@ class SetPlay(ExtractorBase):
 
         if referer:
             self.httpx.headers.update({"Referer": referer})
+
+        # Dinamik base URL kullan
+        base_url = self.get_base_url(url)
 
         istek = await self.httpx.get(url)
         istek.raise_for_status()
@@ -39,7 +43,6 @@ class SetPlay(ExtractorBase):
         title_base = title_match[1].split(".")[-1] if title_match else "Unknown"
         
         # partKey logic
-        from urllib.parse import urlparse, parse_qs
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
         part_key = params.get("partKey", [""])[0]
@@ -52,8 +55,8 @@ class SetPlay(ExtractorBase):
         else:
             name_suffix = title_base
 
-        # M3U8 link oluştur
-        m3u_link = f"{self.main_url}{video_url}?s={video_server}"
+        # M3U8 link oluştur - base_url kullan (main_url yerine)
+        m3u_link = f"{base_url}{video_url}?s={video_server}"
 
         return ExtractResult(
             name      = f"{self.name} - {name_suffix}",

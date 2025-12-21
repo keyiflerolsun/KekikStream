@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 from parsel import Selector
 import re
 
@@ -112,16 +112,8 @@ class SuperFilmGeldi(PluginBase):
                 })
         else:
             # Extractor'a yönlendir
-            extractor = self.ex_manager.find_extractor(iframe)
-            data      = await extractor.extract(iframe, referer=f"{self.main_url}/")
-            results.append(data.dict())
+            data = await self.extract(iframe)
+            if data:
+                results.append(data)
 
         return results
-
-    async def play(self, **kwargs):
-        extract_result = ExtractResult(**kwargs)
-        self.media_handler.title = kwargs.get("name")
-        if self.name not in self.media_handler.title:
-            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
-
-        self.media_handler.play_media(extract_result)

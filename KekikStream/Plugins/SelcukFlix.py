@@ -284,13 +284,9 @@ class SelcukFlix(PluginBase):
                 iframe_src = iframe_sel.css("iframe::attr(src)").get()
                 if iframe_src:
                     iframe_src = self.fix_url(iframe_src)
-                    extractor  = self.ex_manager.find_extractor(iframe_src)
-
-                    if extractor:  # Only return if extractor found
-                        return [{
-                            "url"  : iframe_src,
-                            "name" : extractor.name
-                        }]
+                    data = await self.extract(iframe_src)
+                    if data:
+                        return [data]
             
             return []
 
