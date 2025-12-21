@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 from Kekik.Sifreleme  import Packer, StreamDecoder
+from parsel           import Selector
 import re
 
 class CloseLoadExtractor(ExtractorBase):
@@ -15,12 +16,26 @@ class CloseLoadExtractor(ExtractorBase):
         istek = await self.httpx.get(url)
         istek.raise_for_status()
 
+        # Video URL'sini çıkar
         eval_func = re.compile(r'\s*(eval\(function[\s\S].*)\s*').findall(istek.text)[0]
         m3u_link  = StreamDecoder.extract_stream_url(Packer.unpack(eval_func))
+
+        # Subtitle'ları parse et (Kotlin referansı: track elementleri)
+        subtitles = []
+        secici = Selector(istek.text)
+        for track in secici.css("track"):
+            raw_src = track.css("::attr(src)").get() or ""
+            raw_src = raw_src.strip()
+            label   = track.css("::attr(label)").get() or track.css("::attr(srclang)").get() or "Altyazı"
+            
+            if raw_src:
+                full_url = raw_src if raw_src.startswith("http") else f"{self.main_url}{raw_src}"
+                subtitles.append(Subtitle(name=label, url=full_url))
 
         return ExtractResult(
             name      = self.name,
             url       = m3u_link,
             referer   = self.main_url,
-            subtitles = []
+            subtitles = subtitles
         )
+

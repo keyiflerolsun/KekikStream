@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle
 from parsel import Selector
 import re, base64
 
@@ -69,14 +69,13 @@ class FullHDFilm(PluginBase):
                     if veri.css("img::attr(alt)").get()
         ]
 
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        title       = secici.css("h1::text").get()
-        poster      = self.fix_url(secici.css("div.poster img::attr(src)").get())
-        description = secici.css("div#details div.text::text").get() or \
-                      secici.css("div#details div::text").get()
+        title       = secici.css("h1::text").get() or ""
+        title       = title.strip() if title else ""
+        poster      = self.fix_url(secici.css("div.poster img::attr(src)").get() or "")
         
         actors_text = secici.css("div.oyuncular.info::text").get()
         if actors_text:
@@ -89,20 +88,72 @@ class FullHDFilm(PluginBase):
         tags   = secici.css("div.tur.info a::text").getall()
         rating = secici.css("div.imdb::text").re_first(r"IMDb\s*([\d\.]+)")
         
-        # Açıklama usually above .others
+        # Description
         description = secici.xpath("//div[contains(@class, 'others')]/preceding-sibling::div[1]//text()").getall()
         description = "".join(description).strip() if description else None
 
-        return MovieInfo(
-            url         = url,
-            poster      = poster,
-            title       = self.clean_title(title) if title else "",
-            description = description,
-            tags        = tags,
-            year        = year,
-            actors      = actors,
-            rating      = rating.strip() if rating else None,
-        )
+        # Kotlin referansı: URL'de -dizi kontrolü veya tags içinde "dizi" kontrolü
+        is_series = "-dizi" in url.lower() or any("dizi" in tag.lower() for tag in tags)
+
+        if is_series:
+            episodes = []
+            part_elements = secici.css("li.psec")
+            part_names    = secici.css("li.psec a::text").getall()
+            
+            # pdata değerlerini çıkar
+            pdata_matches = re.findall(r"pdata\['([^']+)'\]\s*=\s*'([^']+)'", istek.text)
+            
+            for idx, (part_id, part_name) in enumerate(zip([el.css("::attr(id)").get() for el in part_elements], part_names)):
+                if not part_name:
+                    continue
+                    
+                part_name = part_name.strip()
+                
+                # Fragman'ları atla
+                if "fragman" in part_name.lower() or (part_id and "fragman" in part_id.lower()):
+                    continue
+                
+                # Sezon ve bölüm numarası çıkar
+                sz_match = re.search(r'(\d+)\s*sezon', part_id.lower() if part_id else "")
+                ep_match = re.search(r'^(\d+)\.', part_name)
+                
+                sz_num = int(sz_match.group(1)) if sz_match else 1
+                ep_num = int(ep_match.group(1)) if ep_match else idx + 1
+                
+                # pdata'dan video URL'si çık (varsa)
+                video_url = url  # Varsayılan olarak ana URL kullan
+                if idx < len(pdata_matches):
+                    video_url = pdata_matches[idx][1] if pdata_matches[idx][1] else url
+                
+                episodes.append(Episode(
+                    season  = sz_num,
+                    episode = ep_num,
+                    title   = f"{sz_num}. Sezon {ep_num}. Bölüm",
+                    url     = url  # Bölüm URL'leri load_links'te işlenecek
+                ))
+
+            return SeriesInfo(
+                url         = url,
+                poster      = poster,
+                title       = self.clean_title(title) if title else "",
+                description = description,
+                tags        = tags,
+                year        = year,
+                actors      = actors,
+                rating      = rating.strip() if rating else None,
+                episodes    = episodes
+            )
+        else:
+            return MovieInfo(
+                url         = url,
+                poster      = poster,
+                title       = self.clean_title(title) if title else "",
+                description = description,
+                tags        = tags,
+                year        = year,
+                actors      = actors,
+                rating      = rating.strip() if rating else None,
+            )
 
     def _get_iframe(self, source_code: str) -> str:
         """Base64 kodlu iframe'i çözümle"""

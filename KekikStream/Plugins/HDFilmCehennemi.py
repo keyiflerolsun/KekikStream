@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle
 from parsel           import Selector
 from Kekik.Sifreleme  import Packer, StreamDecoder
 import random, string, re
@@ -71,36 +71,76 @@ class HDFilmCehennemi(PluginBase):
             
         return results
 
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = Selector(istek.text)
 
-        title       = secici.css("h1.section-title::text").get().strip()
-        poster      = secici.css("aside.post-info-poster img.lazyload::attr(data-src)").get().strip()
-        description = secici.css("article.post-info-content > p::text").get().strip()
+        title       = secici.css("h1.section-title::text").get()
+        title       = title.strip() if title else ""
+        poster      = secici.css("aside.post-info-poster img.lazyload::attr(data-src)").get() or ""
+        poster      = poster.strip() if poster else ""
+        description = secici.css("article.post-info-content > p::text").get() or ""
+        description = description.strip() if description else ""
         tags        = secici.css("div.post-info-genres a::text").getall()
-        rating      = secici.css("div.post-info-imdb-rating span::text").get().strip()
-        year        = secici.css("div.post-info-year-country a::text").get().strip()
+        rating      = secici.css("div.post-info-imdb-rating span::text").get() or ""
+        rating      = rating.strip() if rating else ""
+        year        = secici.css("div.post-info-year-country a::text").get() or ""
+        year        = year.strip() if year else ""
         actors      = secici.css("div.post-info-cast a > strong::text").getall()
-        duration    = secici.css("div.post-info-duration::text").get().replace("dakika", "").strip()
+        duration    = secici.css("div.post-info-duration::text").get() or "0"
+        duration    = duration.replace("dakika", "").strip()
 
-        
         try:
-            duration_minutes = int(duration[2:-1])
+            duration_minutes = int(re.search(r'\d+', duration).group()) if re.search(r'\d+', duration) else 0
         except Exception:
             duration_minutes = 0
 
-        return MovieInfo(
-            url         = url,
-            poster      = self.fix_url(poster),
-            title       = self.clean_title(title),
-            description = description,
-            tags        = tags,
-            rating      = rating,
-            year        = year,
-            actors      = actors,
-            duration    = duration_minutes
-        )
+        # Dizi mi film mi kontrol et (Kotlin referansı: div.seasons kontrolü)
+        is_series = len(secici.css("div.seasons").getall()) > 0
+
+        if is_series:
+            episodes = []
+            for ep in secici.css("div.seasons-tab-content a"):
+                ep_name = ep.css("h4::text").get()
+                ep_href = ep.css("::attr(href)").get()
+                if ep_name and ep_href:
+                    ep_name = ep_name.strip()
+                    # Regex ile sezon ve bölüm numarası çıkar
+                    ep_match = re.search(r'(\d+)\.\s*Bölüm', ep_name)
+                    sz_match = re.search(r'(\d+)\.\s*Sezon', ep_name)
+                    ep_num = int(ep_match.group(1)) if ep_match else 1
+                    sz_num = int(sz_match.group(1)) if sz_match else 1
+                    
+                    episodes.append(Episode(
+                        season  = sz_num,
+                        episode = ep_num,
+                        title   = ep_name,
+                        url     = self.fix_url(ep_href)
+                    ))
+
+            return SeriesInfo(
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = self.clean_title(title),
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                episodes    = episodes
+            )
+        else:
+            return MovieInfo(
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = self.clean_title(title),
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                duration    = duration_minutes
+            )
 
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode
 from parsel           import Selector
 import re, base64, json, urllib.parse
 
@@ -137,8 +137,13 @@ class SelcukFlix(PluginBase):
         search_url = f"{self.main_url}/api/bg/searchcontent?searchterm={query}"
 
         headers = {
+            "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
             "Accept"           : "application/json, text/plain, */*",
+            "Accept-Language"  : "en-US,en;q=0.5",
             "X-Requested-With" : "XMLHttpRequest",
+            "Sec-Fetch-Site"   : "same-origin",
+            "Sec-Fetch-Mode"   : "cors",
+            "Sec-Fetch-Dest"   : "empty",
             "Referer"          : f"{self.main_url}/"
         }
 
@@ -151,15 +156,16 @@ class SelcukFlix(PluginBase):
             try:
                 decoded_str = raw_data.decode('utf-8')
             except UnicodeDecodeError:
-                decoded_str = raw_data.decode('iso-8859-1').encode('utf-8').decode('utf-8')
+                decoded_str = raw_data.decode('iso-8859-1')
 
             search_data = json.loads(decoded_str)
 
             results = []
             for item in search_data.get("result", []):
-                title  = item.get("title")
-                slug   = item.get("slug")
-                poster = item.get("poster")
+                # API field isimleri: object_name, used_slug, object_poster_url
+                title  = item.get("object_name") or item.get("title")
+                slug   = item.get("used_slug") or item.get("slug")
+                poster = item.get("object_poster_url") or item.get("poster")
 
                 if poster:
                     poster = self.clean_image_url(poster)
@@ -176,7 +182,7 @@ class SelcukFlix(PluginBase):
         except Exception:
             return []
 
-    async def load_item(self, url: str) -> SeriesInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
 
@@ -190,15 +196,17 @@ class SelcukFlix(PluginBase):
         try:
             decoded_str = raw_data.decode('utf-8')
         except UnicodeDecodeError:
-            decoded_str = raw_data.decode('iso-8859-1') # .encode('utf-8').decode('utf-8') implied
+            decoded_str = raw_data.decode('iso-8859-1')
 
         content_details = json.loads(decoded_str)
         item            = content_details.get("contentItem", {})
 
-        title           = item.get("original_title") or item.get("originalTitle")
+        title           = item.get("original_title") or item.get("originalTitle") or ""
         poster          = self.clean_image_url(item.get("poster_url") or item.get("posterUrl"))
         description     = item.get("description") or item.get("used_description")
         rating          = str(item.get("imdb_point") or item.get("imdbPoint", ""))
+        year            = item.get("release_year") or item.get("releaseYear")
+        duration        = item.get("total_minutes") or item.get("totalMinutes")
 
         series_data     = content_details.get("relatedData", {}).get("seriesData")
         if not series_data and "RelatedResults" in content_details:
@@ -206,17 +214,18 @@ class SelcukFlix(PluginBase):
              if series_data and isinstance(series_data, list):
                   pass
 
-        episodes = []
+        # Dizi mi film mi kontrol et (Kotlin referansı)
         if series_data:
-             seasons_list = []
-             if isinstance(series_data, dict):
-                 seasons_list = series_data.get("seasons", [])
-             elif isinstance(series_data, list):
-                 seasons_list = series_data
+            episodes = []
+            seasons_list = []
+            if isinstance(series_data, dict):
+                seasons_list = series_data.get("seasons", [])
+            elif isinstance(series_data, list):
+                seasons_list = series_data
 
-             for season in seasons_list:
+            for season in seasons_list:
                 if not isinstance(season, dict): continue
-                s_no = season.get("season_no") or season.get("seasonNo") # Try snake_case too
+                s_no = season.get("season_no") or season.get("seasonNo")
                 ep_list = season.get("episodes", [])
                 for ep in ep_list:
                     episodes.append(Episode(
@@ -225,15 +234,27 @@ class SelcukFlix(PluginBase):
                         title   = ep.get("ep_text") or ep.get("epText"),
                         url     = self.fix_url(ep.get("used_slug") or ep.get("usedSlug"))
                     ))
-        
-        return SeriesInfo(
-            title       = title,
-            url         = url,
-            poster      = poster,
-            description = description,
-            rating      = rating,
-            episodes    = episodes
-        )
+            
+            return SeriesInfo(
+                title       = title,
+                url         = url,
+                poster      = poster,
+                description = description,
+                rating      = rating,
+                year        = year,
+                episodes    = episodes
+            )
+        else:
+            # Film ise MovieInfo döndür
+            return MovieInfo(
+                title       = title,
+                url         = url,
+                poster      = poster,
+                description = description,
+                rating      = rating,
+                year        = year,
+                duration    = duration
+            )
 
     async def load_links(self, url: str) -> list[dict]:
         resp = await self.httpx.get(url)
@@ -248,42 +269,45 @@ class SelcukFlix(PluginBase):
             secure_data = data["props"]["pageProps"]["secureData"]
             raw_data = base64.b64decode(secure_data.replace('"', ''))
             
-            # Try UTF-8 first, fallback to ISO-8859-1 (matching Kotlin)
             try:
                 decoded_str = raw_data.decode('utf-8')
             except UnicodeDecodeError:
                 decoded_str = raw_data.decode('iso-8859-1')
             
             content_details = json.loads(decoded_str)
-            related_data = content_details.get("relatedData", {})
+            related_results = content_details.get("RelatedResults", {})
             
             source_content = None
             
-            # Check if Series (episode) or Movie
+            # Dizi (bölüm) için
             if "/dizi/" in url:
-                if related_data.get("episodeSources", {}).get("state"):
-                    res = related_data["episodeSources"].get("result", [])
+                episode_sources = related_results.get("getEpisodeSources", {})
+                if episode_sources.get("state"):
+                    res = episode_sources.get("result", [])
                     if res:
-                        source_content = res[0].get("sourceContent")
+                        source_content = res[0].get("source_content") or res[0].get("sourceContent")
             else:
-                # Movie
-                if related_data.get("movieParts", {}).get("state"):
-                    movie_parts = related_data["movieParts"].get("result", [])
-                    if movie_parts:
-                        first_part_id = movie_parts[0].get("id")
-                        # RelatedResults -> getMoviePartSourcesById_ID
-                        rr = content_details.get("RelatedResults", {})
+                # Film için
+                movie_parts = related_results.get("getMoviePartsById", {})
+                if movie_parts.get("state"):
+                    parts = movie_parts.get("result", [])
+                    if parts:
+                        first_part_id = parts[0].get("id")
                         key = f"getMoviePartSourcesById_{first_part_id}"
-                        if key in rr:
-                            res = rr[key].get("result", [])
+                        if key in related_results:
+                            res = related_results[key].get("result", [])
                             if res:
-                                source_content = res[0].get("source_content")
+                                source_content = res[0].get("source_content") or res[0].get("sourceContent")
 
             if source_content:
                 iframe_sel = Selector(source_content)
                 iframe_src = iframe_sel.css("iframe::attr(src)").get()
                 if iframe_src:
                     iframe_src = self.fix_url(iframe_src)
+                    # Hotlinger domain değişimi (Kotlin referansı)
+                    if "sn.dplayer74.site" in iframe_src:
+                        iframe_src = iframe_src.replace("sn.dplayer74.site", "sn.hotlinger.com")
+                    
                     data = await self.extract(iframe_src)
                     if data:
                         return [data]
