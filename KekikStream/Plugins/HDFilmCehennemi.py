@@ -147,29 +147,10 @@ class HDFilmCehennemi(PluginBase):
     def hdch_decode(self, value_parts: list[str]) -> str:
         """
         HDFilmCehennemi için özel decoder.
-        JavaScript sırası: join -> reverse -> atob -> atob -> shift_back
+        StreamDecoder._brute_force ile 24 farklı permütasyonu dener.
         """
         try:
-            # 1. Parçaları birleştir
-            joined = ''.join(value_parts)
-            
-            # 2. Ters çevir (REV)
-            result = StreamDecoder._reverse(joined)
-            
-            # 3. İlk base64 decode (B64D)
-            result = StreamDecoder._base64_decode(result)
-            if result is None:
-                return ""
-            
-            # 4. İkinci base64 decode (B64D) - JavaScript'te iki kez atob yapılıyor!
-            result = StreamDecoder._base64_decode(result)
-            if result is None:
-                return ""
-            
-            # 5. Shift back (SHF)
-            result = StreamDecoder._shift_back(result)
-            
-            return result
+            return StreamDecoder._brute_force(value_parts) or ""
         except Exception:
             return ""
 
