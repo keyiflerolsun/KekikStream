@@ -9,6 +9,12 @@ class VidHide(ExtractorBase):
     name     = "VidHide"
     main_url = "https://vidhidepro.com"
 
+    # Birden fazla domain destekle
+    supported_domains = ["vidhidepro.com", "vidhide.com", "rubyvidhub.com"]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+
     def get_embed_url(self, url: str) -> str:
         if "/d/" in url:
             return url.replace("/d/", "/v/")
@@ -20,6 +26,9 @@ class VidHide(ExtractorBase):
             return url.replace("/f/", "/v/")
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        # Dinamik base URL kullan
+        base_url = self.get_base_url(url)
+
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
@@ -27,7 +36,7 @@ class VidHide(ExtractorBase):
             "Sec-Fetch-Dest" : "empty",
             "Sec-Fetch-Mode" : "cors",
             "Sec-Fetch-Site" : "cross-site",
-            "Origin"         : self.main_url,
+            "Origin"         : base_url,
         })
         
         embed_url = self.get_embed_url(url)
@@ -66,7 +75,7 @@ class VidHide(ExtractorBase):
         return ExtractResult(
             name       = self.name,
             url        = self.fix_url(m3u8_url),
-            referer    = f"{self.main_url}/",
+            referer    = f"{base_url}/",
             user_agent = self.httpx.headers.get("User-Agent", ""),
             subtitles  = []
         )

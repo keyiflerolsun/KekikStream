@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-from Kekik.Sifreleme  import Packer, HexCodec
+from Kekik.Sifreleme  import Packer, HexCodec, StreamDecoder
 import re, base64
 
 class RapidVid(ExtractorBase):
@@ -39,15 +39,25 @@ class RapidVid(ExtractorBase):
             subtitles.append(Subtitle(name=decoded_lang, url=sub_url.replace("\\", "")))
 
         try:
+            decoded_url = None
+
+            # Method 1: file": "..." pattern (HexCodec)
             if extracted_value := re.search(r'file": "(.*)",', istek.text):
                 escaped_hex = extracted_value[1]
                 decoded_url = HexCodec.decode(escaped_hex)
-            else:
-                av_encoded = re.search(r"av\('([^']+)'\)", istek.text)
-                if not av_encoded:
-                    raise ValueError("AV encoding not found.")
 
+            # Method 2: av('...') pattern
+            elif av_encoded := re.search(r"av\('([^']+)'\)", istek.text):
                 decoded_url = self.decode_secret(av_encoded[1])
+
+            # Method 3: Packed script with dc_* function (StreamDecoder)
+            elif Packer.detect_packed(istek.text):
+                unpacked    = Packer.unpack(istek.text)
+                decoded_url = StreamDecoder.extract_stream_url(unpacked)
+
+            if not decoded_url:
+                raise ValueError("No valid video URL pattern found.")
+
         except Exception as hata:
             raise RuntimeError(f"Extraction failed: {hata}") from hata
 
