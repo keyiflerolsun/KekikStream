@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from .CLI       import konsol, cikis_yap, hata_yakala, pypi_kontrol_guncelle
-from .Core      import PluginManager, ExtractorManager, UIManager, MediaManager, PluginBase, ExtractorBase, SeriesInfo
+from .Core      import PluginManager, ExtractorManager, UIManager, MediaManager, PluginBase, ExtractorBase, SeriesInfo, ExtractResult
 from asyncio    import run, TaskGroup, Semaphore
 from contextlib import suppress
 
@@ -226,7 +226,7 @@ class KekikStream:
             case "Çıkış":
                 cikis_yap(False)
 
-    async def show_link_options(self, links: list[dict]):
+    async def show_link_options(self, links: list[ExtractResult]):
         """Bağlantı seçeneklerini göster"""
         if not links:
             konsol.print("[bold red]Bağlantı bulunamadı![/bold red]")
@@ -235,33 +235,33 @@ class KekikStream:
         # Direkt oynatma - tüm pluginlerde artık play metodu var (PluginBase'den miras)
         return await self.play_direct(links)
 
-    async def play_direct(self, links: list[dict]):
+    async def play_direct(self, links: list[ExtractResult]):
         """Plugin'in kendi metoduyla oynat"""
         selected = await self.ui.select_from_list(
             message = "Bağlantı seçin:",
-            choices = [{"name": link.get("name", "Bilinmiyor"), "value": link} for link in links]
+            choices = [{"name": link.name or "Bilinmiyor", "value": link} for link in links]
         )
 
         if not selected:
             return await self.content_finished()
 
         self.update_title(self.episode_title)
-        self.update_title(selected.get("name"))
+        self.update_title(selected.name)
 
         await self.current_plugin.play(
             name       = self.media.get_title(),
-            url        = selected.get("url"),
-            user_agent = selected.get("user_agent"),
-            referer    = selected.get("referer"),
-            subtitles  = selected.get("subtitles", [])
+            url        = selected.url,
+            user_agent = selected.user_agent,
+            referer    = selected.referer,
+            subtitles  = selected.subtitles or []
         )
         return await self.content_finished()
 
-    async def play_with_extractor(self, links: list[dict], mapping: dict):
+    async def play_with_extractor(self, links: list[ExtractResult], mapping: dict):
         """Extractor ile oynat"""
         options = [
-            {"name": link.get("name", mapping[link["url"]]), "value": link}
-                for link in links if link["url"] in mapping
+            {"name": link.name or mapping.get(link.url, "Bilinmiyor"), "value": link}
+                for link in links if link.url in mapping
         ]
 
         if not options:
@@ -272,7 +272,7 @@ class KekikStream:
         if not selected:
             return await self.content_finished()
 
-        url = selected.get("url")
+        url = selected.url
         extractor: ExtractorBase = self.extractor.find_extractor(url)
         
         if not extractor:
@@ -280,7 +280,7 @@ class KekikStream:
             return await self.handle_no_results()
 
         try:
-            referer = selected.get("referer", self.current_plugin.main_url)
+            referer = selected.referer or self.current_plugin.main_url
             extract_data = await extractor.extract(url, referer=referer)
         except Exception as e:
             konsol.print(f"[bold red]{extractor.name} hatası: {e}[/bold red]")
@@ -298,7 +298,7 @@ class KekikStream:
 
         # Başlıkları güncelle ve oynat
         self.update_title(self.episode_title)
-        self.update_title(selected.get("name"))
+        self.update_title(selected.name)
         self.update_title(extract_data.name)
 
         self.media.play_media(extract_data)

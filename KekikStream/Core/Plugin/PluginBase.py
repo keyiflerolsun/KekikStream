@@ -4,7 +4,7 @@ from ...CLI                       import konsol
 from abc                          import ABC, abstractmethod
 from cloudscraper                 import CloudScraper
 from httpx                        import AsyncClient
-from .PluginModels                import MainPageResult, SearchResult, MovieInfo
+from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
 from ..Extractor.ExtractorModels  import ExtractResult
@@ -55,31 +55,31 @@ class PluginBase(ABC):
         pass
 
     @abstractmethod
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         """Bir medya öğesi hakkında detaylı bilgi döndürür."""
         pass
 
     @abstractmethod
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         """
         Bir medya öğesi için oynatma bağlantılarını döndürür.
-        
+
         Args:
             url: Medya URL'si
-            
+
         Returns:
-            Dictionary listesi, her biri şu alanları içerir:
+            ExtractResult listesi, her biri şu alanları içerir:
             - url (str, zorunlu): Video URL'si
             - name (str, zorunlu): Gösterim adı (tüm bilgileri içerir)
             - referer (str, opsiyonel): Referer header
-            - subtitles (list, opsiyonel): Altyazı listesi
-        
+            - subtitles (list[Subtitle], opsiyonel): Altyazı listesi
+
         Example:
             [
-                {
-                    "url": "https://example.com/video.m3u8",
-                    "name": "HDFilmCehennemi | 1080p TR Dublaj"
-                }
+                ExtractResult(
+                    url="https://example.com/video.m3u8",
+                    name="HDFilmCehennemi | 1080p TR Dublaj"
+                )
             ]
         """
         pass
@@ -97,7 +97,7 @@ class PluginBase(ABC):
 
         return f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
 
-    async def extract(self, url: str, referer: str = None, prefix: str | None = None) -> dict | None:
+    async def extract(self, url: str, referer: str = None, prefix: str | None = None) -> ExtractResult | None:
         """
         Extractor ile video URL'sini çıkarır.
 
@@ -107,8 +107,8 @@ class PluginBase(ABC):
             prefix: İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
 
         Returns:
-            dict: Extractor sonucu (name prefix ile birleştirilmiş) veya None
-            
+            ExtractResult: Extractor sonucu (name prefix ile birleştirilmiş) veya None
+
         Extractor bulunamadığında veya hata oluştuğunda uyarı verir.
         """
         if referer is None:
@@ -121,13 +121,12 @@ class PluginBase(ABC):
 
         try:
             data = await extractor.extract(url, referer=referer)
-            result = data.dict()
-            
+
             # prefix varsa name'e ekle
-            if prefix and result.get("name"):
-                result["name"] = f"{prefix} | {result['name']}"
-            
-            return result
+            if prefix and data.name:
+                data.name = f"{prefix} | {data.name}"
+
+            return data
         except Exception as hata:
             konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
             return None
