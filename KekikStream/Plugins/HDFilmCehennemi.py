@@ -144,16 +144,6 @@ class HDFilmCehennemi(PluginBase):
 
         return results
 
-    def hdch_decode(self, value_parts: list[str]) -> str:
-        """
-        HDFilmCehennemi için özel decoder.
-        StreamDecoder._brute_force ile 24 farklı permütasyonu dener.
-        """
-        try:
-            return StreamDecoder._brute_force(value_parts) or ""
-        except Exception:
-            return ""
-
     def extract_hdch_url(self, unpacked: str) -> str:
         """HDFilmCehennemi unpacked script'ten video URL'sini çıkar"""
         # 1) Decode fonksiyonunun adını bul: function <NAME>(value_parts)
@@ -168,16 +158,16 @@ class HDFilmCehennemi(PluginBase):
         match_call = array_call_regex.search(unpacked)
         if not match_call:
             return ""
-        
+
         array_body = match_call.group(1)
-        
+
         # 3) Array içindeki string parçalarını topla
         parts = re.findall(r'["\']([^"\']+)["\']', array_body)
         if not parts:
             return ""
-        
+
         # 4) Özel decoder ile çöz
-        return self.hdch_decode(parts)
+        return StreamDecoder._brute_force(parts)
 
     async def invoke_local_source(self, iframe: str, source: str, url: str):
         self.httpx.headers.update({
