@@ -20,6 +20,23 @@ class SezonlukDizi(PluginBase):
         f"{main_url}/diziler.asp?siralama_tipi=id&kat=4&s="    : "Animasyonlar",
         f"{main_url}/diziler.asp?siralama_tipi=id&kat=5&s="    : "Animeler",
         f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="    : "Belgeseller",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=aile&s="       : "Aile",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=aksiyon&s="    : "Aksiyon",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=bilimkurgu&s=" : "Bilim Kurgu",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=biyografik&s=" : "Biyografi",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=dram&s="       : "Dram",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=fantastik&s="  : "Fantastik",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=gerilim&s="    : "Gerilim",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=gizem&s="      : "Gizem",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=korku&s="      : "Korku",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=komedi&s="     : "Komedi",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=macera&s="     : "Macera",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=muzikal&s="    : "Müzikal",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=suc&s="        : "Suç",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=romantik&s="   : "Romantik",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=savas&s="      : "Savaş",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=tarihi&s="     : "Tarihi",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=western&s="    : "Western"
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
