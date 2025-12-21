@@ -255,6 +255,8 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 - [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)  
 - [keyiflerolsun/seyirTurk-Parser](https://github.com/keyiflerolsun/seyirTurk-Parser)
+- [feroxx/Kekik-cloudstream](https://github.com/feroxx/Kekik-cloudstream)
+- [kerimmkirac/cs-kerim](https://github.com/kerimmkirac/cs-kerim)
 
 ## 🌐 Telif Hakkı ve Lisans
 
