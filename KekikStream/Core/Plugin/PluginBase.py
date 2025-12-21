@@ -1,11 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+from ...CLI                       import konsol
 from abc                          import ABC, abstractmethod
 from cloudscraper                 import CloudScraper
 from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
+from ..Extractor.ExtractorModels  import ExtractResult
 from urllib.parse                 import urljoin
 import re
 
@@ -95,6 +97,41 @@ class PluginBase(ABC):
 
         return f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
 
+    async def extract(self, url: str, referer: str = None, prefix: str | None = None) -> dict | None:
+        """
+        Extractor ile video URL'sini çıkarır.
+
+        Args:
+            url: Iframe veya video URL'si
+            referer: Referer header (varsayılan: plugin main_url)
+            prefix: İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
+
+        Returns:
+            dict: Extractor sonucu (name prefix ile birleştirilmiş) veya None
+            
+        Extractor bulunamadığında veya hata oluştuğunda uyarı verir.
+        """
+        if referer is None:
+            referer = f"{self.main_url}/"
+
+        extractor = self.ex_manager.find_extractor(url)
+        if not extractor:
+            konsol.log(f"[magenta][?] {self.name} » Extractor bulunamadı: {url}")
+            return None
+
+        try:
+            data = await extractor.extract(url, referer=referer)
+            result = data.dict()
+            
+            # prefix varsa name'e ekle
+            if prefix and result.get("name"):
+                result["name"] = f"{prefix} | {result['name']}"
+            
+            return result
+        except Exception as hata:
+            konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
+            return None
+
     @staticmethod
     def clean_title(title: str) -> str:
         suffixes = [
@@ -120,3 +157,15 @@ class PluginBase(ABC):
             cleaned_title = re.sub(f"{re.escape(suffix)}.*$", "", cleaned_title, flags=re.IGNORECASE).strip()
 
         return cleaned_title
+
+    async def play(self, **kwargs):
+        """
+        Varsayılan oynatma metodu.
+        Tüm pluginlerde ortak kullanılır.
+        """
+        extract_result = ExtractResult(**kwargs)
+        self.media_handler.title = kwargs.get("name")
+        if self.name not in self.media_handler.title:
+            self.media_handler.title = f"{self.name} | {self.media_handler.title}"
+
+        self.media_handler.play_media(extract_result)

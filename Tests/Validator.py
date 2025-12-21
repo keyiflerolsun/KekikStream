@@ -200,17 +200,8 @@ class PluginValidator:
                 issues.append("name yok")
 
             # Extractor kontrolü
-            extractor_found = False
-            if hasattr(plugin, "play") and callable(getattr(plugin, "play", None)):
-                extractor_found = True
-                result["message"] = f"{len(links)} link (custom play)"
-                result["message"] += f"\nLinkler : {links}"
-            elif self.ext.find_extractor(first_link.get("url")):
-                extractor_found = True
-                result["message"] = f"{len(links)} link"
-                result["message"] += f"\nLinkler : {links}"
-            else:
-                issues.append(f"extractor yok: {links}")
+            result["message"] = f"{len(links)} link bulundu."
+            result["message"] += f"\nLinkler : {links}"
             
             if issues:
                 result["status"] = "⚠️"

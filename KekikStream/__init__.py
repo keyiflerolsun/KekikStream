@@ -232,27 +232,8 @@ class KekikStream:
             konsol.print("[bold red]Bağlantı bulunamadı![/bold red]")
             return await self.handle_no_results()
 
-        # Direkt oynatma varsa
-        if hasattr(self.current_plugin, "play"):
-            return await self.play_direct(links)
-
-        # Extractor ile oynat
-        url_list = [link["url"] for link in links]
-        mapping  = self.extractor.map_links_to_extractors(url_list)
-
-        if not mapping:
-            konsol.print("[bold red]Extractor bulunamadı![/bold red]")
-            return await self.handle_no_results()
-
-        choice = await self.ui.select_from_list("Ne yapmak istersiniz?", ["İzle", "Tüm Eklentilerde Ara", "Ana Menü"])
-
-        match choice:
-            case "İzle":
-                await self.play_with_extractor(links, mapping)
-            case "Tüm Eklentilerde Ara":
-                await self.search_all_plugins()
-            case "Ana Menü":
-                await self.start()
+        # Direkt oynatma - tüm pluginlerde artık play metodu var (PluginBase'den miras)
+        return await self.play_direct(links)
 
     async def play_direct(self, links: list[dict]):
         """Plugin'in kendi metoduyla oynat"""
