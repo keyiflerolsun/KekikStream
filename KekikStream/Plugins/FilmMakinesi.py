@@ -75,18 +75,22 @@ class FilmMakinesi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        title       = secici.css("h1.title::text").get().strip()
-        poster      = secici.css("img.cover-img::attr(src)").get().strip()
-        description = secici.css("div.info-description p::text").get().strip()
+        title       = secici.css("h1.title::text").get()
+        title       = title.strip() if title else ""
+        poster      = secici.css("img.cover-img::attr(src)").get()
+        poster      = poster.strip() if poster else ""
+        description = secici.css("div.info-description p::text").get()
+        description = description.strip() if description else ""
         rating      = secici.css("div.score::text").get()
         if rating:
             rating = rating.strip().split()[0]
-        year        = secici.css("span.date a::text").get().strip()
+        year        = secici.css("span.date a::text").get()
+        year        = year.strip() if year else ""
         actors      = secici.css("div.cast-name::text").getall()
         tags        = secici.css("div.genre a::text").getall()
         duration    = secici.css("div.time::text").get()
         if duration:
-            duration = duration.split()[1].strip()
+            duration = duration.split()[1].strip() if len(duration.split()) > 1 else ""
 
         return MovieInfo(
             url         = url,
