@@ -34,6 +34,23 @@ class SetFilmIzle(PluginBase):
         f"{main_url}/tur/western/"     : "Western"
     }
 
+    def _get_nonce(self, nonce_type: str = "video_nonce", referer: str = None) -> str:
+        """Site cache'lenmiş nonce'ları expire olabiliyor, fresh nonce al"""
+        try:
+            resp = self.cloudscraper.post(
+                f"{self.main_url}/wp-admin/admin-ajax.php",
+                headers = {
+                    "Referer"      : referer or self.main_url,
+                    "Origin"       : self.main_url,
+                    "Content-Type" : "application/x-www-form-urlencoded",
+                },
+                data = "action=st_cache_refresh_nonces"
+            )
+            nonces = resp.json().get("data", {}).get("nonces", {})
+            return nonces.get(nonce_type, "")
+        except:
+            return ""
+
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(url)
         secici = Selector(istek.text)
@@ -55,23 +72,7 @@ class SetFilmIzle(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        # Ana sayfadan nonce değerini al
-        main_resp = self.cloudscraper.get(self.main_url)
-
-        # Birden fazla nonce pattern dene
-        nonce = ""
-        nonce_patterns = [
-            r'nonces:\s*\{\s*search:\s*"([^"]+)"',      # STMOVIE_AJAX.nonces.search
-            r'"search":\s*"([a-zA-Z0-9]+)"',            # JSON format
-            r"nonce:\s*'([^']*)'",
-            r'"nonce":"([^"]+)"',
-            r'data-nonce="([^"]+)"',
-        ]
-        for pattern in nonce_patterns:
-            match = re.search(pattern, main_resp.text)
-            if match:
-                nonce = match.group(1)
-                break
+        nonce = self._get_nonce("search")
 
         search_resp = self.cloudscraper.post(
             f"{self.main_url}/wp-admin/admin-ajax.php",
@@ -197,7 +198,7 @@ class SetFilmIzle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        nonce = secici.css("div#playex::attr(data-nonce)").get() or ""
+        nonce = self._get_nonce("video_nonce", referer=url)
 
         # partKey to dil label mapping
         part_key_labels = {
@@ -215,7 +216,6 @@ class SetFilmIzle(PluginBase):
             if not source_id or "event" in source_id or source_id == "":
                 continue
 
-            # Multipart form request
             try:
                 resp = self.cloudscraper.post(
                     f"{self.main_url}/wp-admin/admin-ajax.php",
