@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
 from parsel           import Selector
 
 class FilmMakinesi(PluginBase):
@@ -104,7 +104,7 @@ class FilmMakinesi(PluginBase):
             duration    = duration
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 

@@ -11,7 +11,7 @@ sys.path.append(root_dir)
 
 from KekikStream.CLI  import konsol
 from asyncio          import run
-from KekikStream.Core import PluginManager, ExtractorManager, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode
+from KekikStream.Core import PluginManager, ExtractorManager, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
 from random           import choice
 from rich.table       import Table
 from rich.panel       import Panel
@@ -188,28 +188,50 @@ class PluginValidator:
                 return result
             
             first_link = choice(links)
-            if not isinstance(first_link, dict):
+            
+            # ExtractResult veya dict olabilir
+            if isinstance(first_link, ExtractResult):
+                # ExtractResult objesi
+                issues = []
+                if not first_link.url:
+                    issues.append("url boş")
+                if not first_link.name:
+                    issues.append("name boş")
+                
+                # Subtitle kontrolü
+                subtitle_info = ""
+                if first_link.subtitles:
+                    subtitle_info = f", {len(first_link.subtitles)} altyazı"
+                
+                result["message"] = f"{len(links)} link bulundu{subtitle_info}"
+                
+                if issues:
+                    result["status"] = "⚠️"
+                    result["message"] = ", ".join(issues)
+                else:
+                    result["status"] = "✅"
+                
+                result["data"] = first_link
+            elif isinstance(first_link, dict):
+                # Eski dict formatı (geriye dönük uyumluluk)
+                issues = []
+                if "url" not in first_link or not first_link["url"]:
+                    issues.append("url yok")
+                if "name" not in first_link:
+                    issues.append("name yok")
+
+                result["message"] = f"{len(links)} link bulundu (dict format - güncellenmeli!)"
+                
+                if issues:
+                    result["status"] = "⚠️"
+                    result["message"] = ", ".join(issues)
+                else:
+                    result["status"] = "⚠️"  # dict format artık uyarı
+                
+                result["data"] = first_link
+            else:
                 result["message"] = f"Yanlış tip: {type(first_link).__name__}"
                 return result
-            
-            # Link yapısını kontrol et
-            issues = []
-            if "url" not in first_link or not first_link["url"]:
-                issues.append("url yok")
-            if "name" not in first_link:
-                issues.append("name yok")
-
-            # Extractor kontrolü
-            result["message"] = f"{len(links)} link bulundu."
-            result["message"] += f"\nLinkler : {links}"
-            
-            if issues:
-                result["status"] = "⚠️"
-                result["message"] = ", ".join(issues)
-            else:
-                result["status"] = "✅"
-            
-            result["data"] = first_link
             
         except Exception as e:
             result["message"] = f"Hata: {str(e)[:50]}"

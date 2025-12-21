@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult
 from json             import dumps, loads
 import re
 
@@ -116,21 +116,21 @@ class RecTV(PluginBase):
                     actors      = []
                 )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         try:
             veri = loads(url)
         except Exception:
             # JSON değilse düz URL'dir (eski yapı veya hata)
-            return [{"url": url, "name": "Video"}]
+            return [ExtractResult(url=url, name="Video")]
 
         # Eğer dizi bölümü ise (bizim oluşturduğumuz yapı)
         if veri.get("is_episode"):
-            return [{
-                "url"        : veri.get("url"),
-                "name"       : veri.get("title", "Bölüm"),
-                "user_agent" : "googleusercontent",
-                "referer"    : "https://twitter.com/"
-            }]
+            return [ExtractResult(
+                url        = veri.get("url"),
+                name       = veri.get("title", "Bölüm"),
+                user_agent = "googleusercontent",
+                referer    = "https://twitter.com/"
+            )]
 
         # Film ise (RecTV API yapısı)
         results = []
@@ -140,11 +140,11 @@ class RecTV(PluginBase):
                 if "otolinkaff" in video_link:
                     continue
 
-                results.append({
-                    "url"        : video_link,
-                    "name"       : f"{veri.get('title')} - {kaynak.get('title')}",
-                    "user_agent" : "googleusercontent",
-                    "referer"    : "https://twitter.com/"
-                })
+                results.append(ExtractResult(
+                    url        = video_link,
+                    name       = f"{veri.get('title')} - {kaynak.get('title')}",
+                    user_agent = "googleusercontent",
+                    referer    = "https://twitter.com/"
+                ))
 
         return results

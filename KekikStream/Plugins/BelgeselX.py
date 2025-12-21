@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
 from parsel           import Selector
 import re
 
@@ -164,7 +164,7 @@ class BelgeselX(PluginBase):
             episodes    = episodes
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek = await self.httpx.get(url)
         text  = istek.text
 
@@ -187,10 +187,10 @@ class BelgeselX(PluginBase):
             source_name = "Google" if quality == "FULL" else self.name
             quality_str = "1080p" if quality == "FULL" else quality
 
-            links.append({
-                "url"     : video_url,
-                "name"    : f"{source_name} | {quality_str}",
-                "referer" : url
-            })
+            links.append(ExtractResult(
+                url     = video_url,
+                name    = f"{source_name} | {quality_str}",
+                referer = url
+            ))
 
         return links

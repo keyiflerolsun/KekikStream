@@ -14,23 +14,29 @@ class FullHDFilm(PluginBase):
     main_page   = {
         f"{main_url}/tur/turkce-altyazili-film-izle"     : "Altyazılı Filmler",
         f"{main_url}/tur/netflix-filmleri-izle"          : "Netflix",
+        f"{main_url}/tur/yerli-film-izle"                : "Yerli Film",
         f"{main_url}/category/aile-filmleri-izle"        : "Aile",
         f"{main_url}/category/aksiyon-filmleri-izle"     : "Aksiyon",
         f"{main_url}/category/animasyon-filmleri-izle"   : "Animasyon",
         f"{main_url}/category/belgesel-filmleri-izle"    : "Belgesel",
-        f"{main_url}/category/bilim-kurgu-filmleri-izle" : "Bilim-Kurgu",
+        f"{main_url}/category/bilim-kurgu-filmleri-izle" : "Bilim Kurgu",
         f"{main_url}/category/biyografi-filmleri-izle"   : "Biyografi",
         f"{main_url}/category/dram-filmleri-izle"        : "Dram",
         f"{main_url}/category/fantastik-filmler-izle"    : "Fantastik",
         f"{main_url}/category/gerilim-filmleri-izle"     : "Gerilim",
         f"{main_url}/category/gizem-filmleri-izle"       : "Gizem",
+        f"{main_url}/category/kisa"                      : "Kısa",
         f"{main_url}/category/komedi-filmleri-izle"      : "Komedi",
         f"{main_url}/category/korku-filmleri-izle"       : "Korku",
         f"{main_url}/category/macera-filmleri-izle"      : "Macera",
+        f"{main_url}/category/muzik"                     : "Müzik",
+        f"{main_url}/category/muzikal-filmleri-izle"     : "Müzikal",
         f"{main_url}/category/romantik-filmler-izle"     : "Romantik",
         f"{main_url}/category/savas-filmleri-izle"       : "Savaş",
+        f"{main_url}/category/spor-filmleri-izle"        : "Spor",
         f"{main_url}/category/suc-filmleri-izle"         : "Suç",
-        f"{main_url}/tur/yerli-film-izle"                : "Yerli Film",
+        f"{main_url}/category/tarih-filmleri-izle"       : "Tarih",
+        f"{main_url}/category/western-filmleri-izle"     : "Western",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -182,7 +188,7 @@ class FullHDFilm(PluginBase):
 
         return None
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Referer"    : self.main_url
@@ -206,7 +212,9 @@ class FullHDFilm(PluginBase):
         if iframe_src:
             data = await self.extract(iframe_src)
             if data:
-                data["subtitles"] = [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
-                results.append(data)
+                # ExtractResult objesi immutable, yeni bir kopya oluştur
+                subtitles = [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
+                updated_data = data.model_copy(update={"subtitles": subtitles}) if subtitles else data
+                results.append(updated_data)
 
         return results

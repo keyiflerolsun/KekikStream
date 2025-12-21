@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
 from parsel           import Selector
 from Kekik.Sifreleme  import Packer, StreamDecoder
 import random, string, re
@@ -145,7 +145,7 @@ class HDFilmCehennemi(PluginBase):
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
-    async def cehennempass(self, video_id: str) -> list[dict]:
+    async def cehennempass(self, video_id: str) -> list:
         results = []
         
         istek = await self.httpx.post(
@@ -159,11 +159,11 @@ class HDFilmCehennemi(PluginBase):
             data    = {"video_id": video_id, "selected_quality": "low"},
         )
         if video_url := istek.json().get("download_link"):
-            results.append({
-                "url"     : self.fix_url(video_url),
-                "name"    : "Düşük Kalite",
-                "referer" : f"https://cehennempass.pw/download/{video_id}"
-            })
+            results.append(ExtractResult(
+                url     = self.fix_url(video_url),
+                name    = "Düşük Kalite",
+                referer = f"https://cehennempass.pw/download/{video_id}"
+            ))
 
         istek = await self.httpx.post(
             url     = "https://cehennempass.pw/process_quality_selection.php",
@@ -176,11 +176,11 @@ class HDFilmCehennemi(PluginBase):
             data    = {"video_id": video_id, "selected_quality": "high"},
         )
         if video_url := istek.json().get("download_link"):
-            results.append({
-                "url"     : self.fix_url(video_url),
-                "name"    : "Yüksek Kalite",
-                "referer" : f"https://cehennempass.pw/download/{video_id}"
-            })
+            results.append(ExtractResult(
+                url     = self.fix_url(video_url),
+                name    = "Yüksek Kalite",
+                referer = f"https://cehennempass.pw/download/{video_id}"
+            ))
 
         return results
 
@@ -246,14 +246,14 @@ class HDFilmCehennemi(PluginBase):
         except Exception:
             pass
 
-        return [{
-            "url"       : video_url,
-            "name"      : source,
-            "referer"   : url,
-            "subtitles" : subtitles
-        }]
+        return [ExtractResult(
+            url       = video_url,
+            name      = source,
+            referer   = url,
+            subtitles = subtitles
+        )]
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 

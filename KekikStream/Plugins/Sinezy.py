@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
 from parsel           import Selector
 import re, base64
 
@@ -120,7 +120,7 @@ class Sinezy(PluginBase):
             year        = year
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
 
         match = re.search(r"ilkpartkod\s*=\s*'([^']+)'", resp.text, re.IGNORECASE)

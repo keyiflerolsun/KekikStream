@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
 from parsel import Selector
 import re
 
@@ -12,17 +12,26 @@ class SuperFilmGeldi(PluginBase):
     description = "Hd film izliyerek arkadaşlarınızla ve sevdiklerinizle iyi bir vakit geçirmek istiyorsanız açın bir film eğlenmeye bakın. Bilim kurgu filmleri, aşk drama vahşet aşk romantik sıradışı korku filmlerini izle."
 
     main_page   = {
-        f"{main_url}/page/SAYFA"                                        : "Son Eklenenler",
-        f"{main_url}/hdizle/category/aksiyon/page/SAYFA"                : "Aksiyon",
-        f"{main_url}/hdizle/category/animasyon/page/SAYFA"              : "Animasyon",
-        f"{main_url}/hdizle/category/belgesel/page/SAYFA"               : "Belgesel",
-        f"{main_url}/hdizle/category/bilim-kurgu/page/SAYFA"            : "Bilim Kurgu",
-        f"{main_url}/hdizle/category/fantastik/page/SAYFA"              : "Fantastik",
-        f"{main_url}/hdizle/category/komedi-filmleri/page/SAYFA"        : "Komedi Filmleri",
-        f"{main_url}/hdizle/category/macera/page/SAYFA"                 : "Macera",
-        f"{main_url}/hdizle/category/gerilim/page/SAYFA"                : "Gerilim",
-        f"{main_url}/hdizle/category/suc/page/SAYFA"                    : "Suç",
-        f"{main_url}/hdizle/category/karete-filmleri/page/SAYFA"        : "Karate Filmleri",
+        f"{main_url}/page/SAYFA"                                 : "Son Eklenenler",
+        f"{main_url}/hdizle/category/aksiyon/page/SAYFA"         : "Aksiyon",
+        f"{main_url}/hdizle/category/animasyon/page/SAYFA"       : "Animasyon",
+        f"{main_url}/hdizle/category/belgesel/page/SAYFA"        : "Belgesel",
+        f"{main_url}/hdizle/category/biyografi/page/SAYFA"       : "Biyografi",
+        f"{main_url}/hdizle/category/bilim-kurgu/page/SAYFA"     : "Bilim Kurgu",
+        f"{main_url}/hdizle/category/fantastik/page/SAYFA"       : "Fantastik",
+        f"{main_url}/hdizle/category/dram/page/SAYFA"            : "Dram",
+        f"{main_url}/hdizle/category/gerilim/page/SAYFA"         : "Gerilim",
+        f"{main_url}/hdizle/category/gizem/page/SAYFA"           : "Gizem",
+        f"{main_url}/hdizle/category/komedi-filmleri/page/SAYFA" : "Komedi Filmleri",
+        f"{main_url}/hdizle/category/karete-filmleri/page/SAYFA" : "Karate Filmleri",
+        f"{main_url}/hdizle/category/korku/page/SAYFA"           : "Korku",
+        f"{main_url}/hdizle/category/muzik/page/SAYFA"           : "Müzik",
+        f"{main_url}/hdizle/category/macera/page/SAYFA"          : "Macera",
+        f"{main_url}/hdizle/category/romantik/page/SAYFA"        : "Romantik",
+        f"{main_url}/hdizle/category/spor/page/SAYFA"            : "Spor",
+        f"{main_url}/hdizle/category/savas/page/SAYFA"           : "Savaş",
+        f"{main_url}/hdizle/category/suc/page/SAYFA"             : "Suç",
+        f"{main_url}/hdizle/category/western/page/SAYFA"         : "Western",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -76,7 +85,9 @@ class SuperFilmGeldi(PluginBase):
             actors      = actors,
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
+        from KekikStream.Core import ExtractResult
+
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -104,12 +115,12 @@ class SuperFilmGeldi(PluginBase):
 
                 m3u_link = iframe.split("/player")[0] + mix_point + end_point
 
-                results.append({
-                    "name"      : f"{self.name} | Mix Player",
-                    "url"       : m3u_link,
-                    "referer"   : iframe,
-                    "subtitles" : []
-                })
+                results.append(ExtractResult(
+                    name      = f"{self.name} | Mix Player",
+                    url       = m3u_link,
+                    referer   = iframe,
+                    subtitles = []
+                ))
         else:
             # Extractor'a yönlendir
             data = await self.extract(iframe)

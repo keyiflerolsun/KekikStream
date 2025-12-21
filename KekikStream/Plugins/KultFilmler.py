@@ -160,7 +160,7 @@ class KultFilmler(PluginBase):
         match = re.search(r"(https?://[^\s\"]+\.srt)", source_code)
         return match[1] if match else None
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -195,12 +195,12 @@ class KultFilmler(PluginBase):
                 m3u_match    = re.search(r'file:"([^"]+)"', iframe_istek.text)
 
                 if m3u_match:
-                    results.append({
-                        "name"      : "VidMoly",
-                        "url"       : m3u_match[1],
-                        "referer"   : self.main_url,
-                        "subtitles" : []
-                    })
+                    results.append(ExtractResult(
+                        name      = "VidMoly",
+                        url       = m3u_match[1],
+                        referer   = self.main_url,
+                        subtitles = []
+                    ))
                     continue
 
             # Altyazı çıkar
@@ -210,7 +210,8 @@ class KultFilmler(PluginBase):
 
             data = await self.extract(iframe)
             if data:
-                data["subtitles"] = subtitles
-                results.append(data)
+                # ExtractResult objesi immutable, yeni bir kopya oluştur
+                updated_data = data.model_copy(update={"subtitles": subtitles}) if subtitles else data
+                results.append(updated_data)
 
         return results

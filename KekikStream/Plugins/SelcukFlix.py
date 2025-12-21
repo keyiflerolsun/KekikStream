@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
 from parsel           import Selector
 import re, base64, json, urllib.parse
 
@@ -256,7 +256,7 @@ class SelcukFlix(PluginBase):
                 duration    = duration
             )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         

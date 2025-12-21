@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult
 from parsel           import Selector
 import re
 
@@ -123,7 +123,7 @@ class DiziYou(PluginBase):
             actors      = actors
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -179,11 +179,11 @@ class DiziYou(PluginBase):
 
         results = []
         for stream in stream_urls:
-            results.append({
-                "url"       : stream.get("url"),
-                "name"      : f"{stream.get('dil')}",
-                "referer"   : url,
-                "subtitles" : subtitles
-            })
+            results.append(ExtractResult(
+                url       = stream.get("url"),
+                name      = f"{stream.get('dil')}",
+                referer   = url,
+                subtitles = subtitles
+            ))
 
         return results

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
 from parsel import Selector
 import re
 
@@ -87,7 +87,7 @@ class FilmModu(PluginBase):
             actors      = [a.css("span::text").get() for a in secici.css("a[itemprop='actor']")],
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -124,11 +124,11 @@ class FilmModu(PluginBase):
                 subtitle_url = None
 
             for source in source_data.get("sources", []):
-                results.append({
-                    "name"      : f"{self.name} | {alt_name} | {source.get('label', 'Bilinmiyor')}",
-                    "url"       : self.fix_url(source["src"]),
-                    "referer"   : f"{self.main_url}/",
-                    "subtitles" : [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
-                })
+                results.append(ExtractResult(
+                    name      = f"{self.name} | {alt_name} | {source.get('label', 'Bilinmiyor')}",
+                    url       = self.fix_url(source["src"]),
+                    referer   = f"{self.main_url}/",
+                    subtitles = [Subtitle(name="Türkçe", url=subtitle_url)] if subtitle_url else []
+                ))
 
         return results

@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult
 import json
 
 class SineWix(PluginBase):
@@ -123,21 +123,21 @@ class SineWix(PluginBase):
                     episodes    = episodes,
                 )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         try:
             veri = json.loads(url)
             if veri.get("is_episode"):
-                return [{
-                    "url"     : veri.get("url"),
-                    "name"    : veri.get("title"),
-                    "referer" : self.main_url
-                }]
+                return [ExtractResult(
+                    url     = veri.get("url"),
+                    name    = veri.get("title"),
+                    referer = self.main_url
+                )]
         except Exception:
             pass
 
         # Eğer JSON değilse ve direkt URL ise (eski yapı veya harici link)
         if not url.startswith(self.main_url) and not url.startswith("{"):
-             return [{"url": url, "name": "Video"}]
+             return [ExtractResult(url=url, name="Video")]
 
         istek = await self.httpx.get(url)
         veri  = istek.json()
@@ -149,10 +149,10 @@ class SineWix(PluginBase):
         results = []
         for video in veri.get("videos"):
             video_link = video.get("link").split("_blank\">")[-1]
-            results.append({
-                "url"     : video_link,
-                "name"    : f"{self.name}",
-                "referer" : self.main_url
-            })
+            results.append(ExtractResult(
+                url     = video_link,
+                name    = f"{self.name}",
+                referer = self.main_url
+            ))
 
         return results

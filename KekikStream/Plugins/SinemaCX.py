@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
 from parsel import Selector
 import re
 
@@ -12,20 +12,29 @@ class SinemaCX(PluginBase):
     description = "Türkiye'nin en iyi film platformu Sinema.cc! 2026'nın en yeni ve popüler yabancı yapımları, Türkçe dublaj ve altyazılı HD kalitede, reklamsız ve ücretsiz olarak seni bekliyor. Şimdi izle!"
 
     main_page   = {
-        f"{main_url}/page/SAYFA"                            : "Son Eklenen Filmler",
-        f"{main_url}/izle/aile-filmleri/page/SAYFA"         : "Aile Filmleri",
-        f"{main_url}/izle/aksiyon-filmleri/page/SAYFA"      : "Aksiyon Filmleri",
-        f"{main_url}/izle/animasyon-filmleri/page/SAYFA"    : "Animasyon Filmleri",
-        f"{main_url}/izle/belgesel/page/SAYFA"              : "Belgesel Filmleri",
-        f"{main_url}/izle/bilim-kurgu-filmleri/page/SAYFA"  : "Bilim Kurgu Filmler",
-        f"{main_url}/izle/biyografi/page/SAYFA"             : "Biyografi Filmleri",
-        f"{main_url}/izle/fantastik-filmler/page/SAYFA"     : "Fantastik Filmler",
-        f"{main_url}/izle/gizem-filmleri/page/SAYFA"        : "Gizem Filmleri",
-        f"{main_url}/izle/komedi-filmleri/page/SAYFA"       : "Komedi Filmleri",
-        f"{main_url}/izle/korku-filmleri/page/SAYFA"        : "Korku Filmleri",
-        f"{main_url}/izle/macera-filmleri/page/SAYFA"       : "Macera Filmleri",
-        f"{main_url}/izle/romantik-filmler/page/SAYFA"      : "Romantik Filmler",
-        f"{main_url}/izle/erotik-filmler/page/SAYFA"        : "Erotik Film",
+        f"{main_url}/page/SAYFA"                           : "Son Eklenen Filmler",
+        f"{main_url}/izle/aile-filmleri/page/SAYFA"        : "Aile Filmleri",
+        f"{main_url}/izle/aksiyon-filmleri/page/SAYFA"     : "Aksiyon Filmleri",
+        f"{main_url}/izle/animasyon-filmleri/page/SAYFA"   : "Animasyon Filmleri",
+        f"{main_url}/izle/belgesel/page/SAYFA"             : "Belgesel Filmleri",
+        f"{main_url}/izle/bilim-kurgu-filmleri/page/SAYFA" : "Bilim Kurgu Filmler",
+        f"{main_url}/izle/biyografi/page/SAYFA"            : "Biyografi Filmleri",
+        f"{main_url}/izle/dram-filmleri/page/SAYFA"        : "Dram Filmleri",
+        f"{main_url}/izle/erotik-filmler/page/SAYFA"       : "Erotik Film",
+        f"{main_url}/izle/fantastik-filmler/page/SAYFA"    : "Fantastik Filmler",
+        f"{main_url}/izle/gerilim-filmleri/page/SAYFA"     : "Gerilim Filmleri",
+        f"{main_url}/izle/gizem-filmleri/page/SAYFA"       : "Gizem Filmleri",
+        f"{main_url}/izle/komedi-filmleri/page/SAYFA"      : "Komedi Filmleri",
+        f"{main_url}/izle/korku-filmleri/page/SAYFA"       : "Korku Filmleri",
+        f"{main_url}/izle/macera-filmleri/page/SAYFA"      : "Macera Filmleri",
+        f"{main_url}/izle/muzikal-filmler/page/SAYFA"      : "Müzikal Filmler",
+        f"{main_url}/izle/romantik-filmler/page/SAYFA"     : "Romantik Filmler",
+        f"{main_url}/izle/savas-filmleri/page/SAYFA"       : "Savaş Filmleri",
+        f"{main_url}/izle/seri-filmler/page/SAYFA"         : "Seri Filmler",
+        f"{main_url}/izle/spor-filmleri/page/SAYFA"        : "Spor Filmleri",
+        f"{main_url}/izle/suc-filmleri/page/SAYFA"         : "Suç Filmleri",
+        f"{main_url}/izle/tarihi-filmler/page/SAYFA"       : "Tarih Filmler",
+        f"{main_url}/izle/western-filmleri/page/SAYFA"     : "Western Filmler",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -75,7 +84,7 @@ class SinemaCX(PluginBase):
             duration    = int(duration_match[1]) if duration_match else None,
         )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
@@ -130,12 +139,12 @@ class SinemaCX(PluginBase):
                 vid_data = vid_istek.json()
 
                 if vid_data.get("securedLink"):
-                    results.append({
-                        "name"      : f"{self.name}",
-                        "url"       : vid_data["securedLink"],
-                        "referer"   : iframe,
-                        "subtitles" : subtitles
-                    })
+                    results.append(ExtractResult(
+                        name      = f"{self.name}",
+                        url       = vid_data["securedLink"],
+                        referer   = iframe,
+                        subtitles = subtitles
+                    ))
         else:
             # Extractor'a yönlendir
             data = await self.extract(iframe)

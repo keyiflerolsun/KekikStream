@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
 from parsel import Selector
 import re
 
@@ -177,7 +177,7 @@ class DiziPal(PluginBase):
                 duration    = duration,
             )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         # Reset headers to get HTML response
         self.httpx.headers.update({
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -220,12 +220,12 @@ class DiziPal(PluginBase):
                     sub_url = sub_text.replace(f"[{lang}]", "")
                     subtitles.append(Subtitle(name=lang, url=self.fix_url(sub_url)))
 
-            results.append({
-                "name"      : self.name,
-                "url"       : m3u_link,
-                "referer"   : f"{self.main_url}/",
-                "subtitles" : subtitles
-            })
+            results.append(ExtractResult(
+                name      = self.name,
+                url       = m3u_link,
+                referer   = f"{self.main_url}/",
+                subtitles = subtitles
+            ))
         else:
             # Extractor'a yönlendir
             data = await self.extract(iframe)

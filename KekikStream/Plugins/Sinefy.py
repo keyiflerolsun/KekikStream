@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo, ExtractResult
 from parsel           import Selector
 import re, json, urllib.parse
 
@@ -223,7 +223,7 @@ class Sinefy(PluginBase):
                 year        = year
             )
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
         sel  = Selector(resp.text)
         
@@ -235,7 +235,7 @@ class Sinefy(PluginBase):
         
         # Always return iframe (matching Kotlin - no extractor check)
         # loadExtractor in Kotlin handles extraction internally
-        return [{
-            "url"  : iframe_url,
-            "name" : "Sinefy Player"
-        }]
+        return [ExtractResult(
+            url  = iframe_url,
+            name = "Sinefy Player"
+        )]

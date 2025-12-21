@@ -67,7 +67,7 @@ KekikStream modüler bir plugin mimarisi kullanır; her medya kaynağı bağıms
 
 **Plugin Geliştirme:**
 ```python
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, ExtractResult
 
 class MyPlugin(PluginBase):
     name        = "MyPlugin"
@@ -89,7 +89,7 @@ class MyPlugin(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         return details
 
-    async def load_links(self, url: str) -> list[dict]:
+    async def load_links(self, url: str) -> list[ExtractResult]:
         return links
 ```
 
