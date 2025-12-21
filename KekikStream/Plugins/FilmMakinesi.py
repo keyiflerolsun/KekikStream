@@ -104,16 +104,24 @@ class FilmMakinesi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = Selector(istek.text)
 
-        iframe_src = secici.css("iframe::attr(data-src)").get()
-
-        all_links = [iframe_src] if iframe_src else []
-        for link in secici.css("div.video-parts a[data-video_url]"):
-            all_links.append(link.attrib.get("data-video_url"))
-
         response = []
-        for link in all_links:
-            data = await self.extract(link)
+
+        # Video parts linklerini ve etiketlerini al
+        for link in secici.css("div.video-parts a[data-video_url]"):
+            video_url = link.attrib.get("data-video_url")
+            label     = link.css("::text").get() or ""
+            label     = label.strip()
+
+            data = await self.extract(video_url, prefix=label.split()[0] if label else None)
             if data:
                 response.append(data)
+
+        # Eğer video-parts yoksa iframe kullan
+        if not response:
+            iframe_src = secici.css("iframe::attr(data-src)").get()
+            if iframe_src:
+                data = await self.extract(iframe_src)
+                if data:
+                    response.append(data)
 
         return response

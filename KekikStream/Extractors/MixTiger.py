@@ -37,16 +37,15 @@ class MixTiger(ExtractorBase):
         if not m3u_link:
             raise ValueError("Video URL not found in response")
 
-        # Recursive extraction check
+        # Recursive extraction check - başka extractor kullanılabilir mi?
         try:
             from KekikStream.Core.Extractor.ExtractorManager import ExtractorManager
-            # Import inside method to avoid circular dependency
             manager = ExtractorManager()
             if nested_extractor := manager.find_extractor(m3u_link):
-                # Use recursive extraction
-                return await nested_extractor.extract(m3u_link, referer=final_referer)
+                # Nested extractor ile çıkar
+                return await nested_extractor.extract(m3u_link, referer=ext_ref)
         except Exception:
-            # If recursion fails, fallback to standard result
+            # Recursive extraction başarısız olursa standart sonucu döndür
             pass
 
         return ExtractResult(
@@ -55,3 +54,4 @@ class MixTiger(ExtractorBase):
             referer   = None if "disk.yandex" in m3u_link else ext_ref,
             subtitles = []
         )
+
