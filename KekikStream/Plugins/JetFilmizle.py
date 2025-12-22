@@ -2,6 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
 from parsel           import Selector
+import re
 
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
@@ -16,7 +17,25 @@ class JetFilmizle(PluginBase):
         f"{main_url}/editorun-secimi/page/"                     : "Editörün Seçimi",
         f"{main_url}/turk-film-izle/page/"                      : "Türk Filmleri",
         f"{main_url}/cizgi-filmler-izle/page/"                  : "Çizgi Filmler",
-        f"{main_url}/kategoriler/yesilcam-filmleri-izlee/page/" : "Yeşilçam Filmleri"
+        f"{main_url}/kategoriler/yesilcam-filmleri-izlee/page/" : "Yeşilçam Filmleri",
+        f"{main_url}/film-turu/aile-filmleri-izle/page/"        : "Aile Filmleri",
+        f"{main_url}/film-turu/aksiyon-filmleri/page/"          : "Aksiyon Filmleri",
+        f"{main_url}/film-turu/animasyon-filmler-izle/page/"    : "Animasyon Filmleri",
+        f"{main_url}/film-turu/bilim-kurgu-filmler/page/"       : "Bilim Kurgu Filmleri",
+        f"{main_url}/film-turu/dram-filmleri-izle/page/"        : "Dram Filmleri",
+        f"{main_url}/film-turu/fantastik-filmleri-izle/page/"   : "Fantastik Filmler",
+        f"{main_url}/film-turu/gerilim-filmleri/page/"          : "Gerilim Filmleri",
+        f"{main_url}/film-turu/gizem-filmleri/page/"            : "Gizem Filmleri",
+        f"{main_url}/film-turu/komedi-film-full-izle/page/"     : "Komedi Filmleri",
+        f"{main_url}/film-turu/korku-filmleri-izle/page/"       : "Korku Filmleri",
+        f"{main_url}/film-turu/macera-filmleri/page/"           : "Macera Filmleri",
+        f"{main_url}/film-turu/muzikal/page/"                   : "Müzikal Filmler",
+        f"{main_url}/film-turu/polisiye/page/"                  : "Polisiye Filmler",
+        f"{main_url}/film-turu/romantik-film-izle/page/"        : "Romantik Filmler",
+        f"{main_url}/film-turu/savas-filmi-izle/page/"          : "Savaş Filmleri",
+        f"{main_url}/film-turu/spor/page/"                      : "Spor Filmleri",
+        f"{main_url}/film-turu/suc-filmleri/page/"              : "Suç Filmleri",
+        f"{main_url}/film-turu/tarihi-filmler/page/"            : "Tarihi Filmleri",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
