@@ -257,6 +257,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 - [keyiflerolsun/seyirTurk-Parser](https://github.com/keyiflerolsun/seyirTurk-Parser)
 - [feroxx/Kekik-cloudstream](https://github.com/feroxx/Kekik-cloudstream)
 - [kerimmkirac/cs-kerim](https://github.com/kerimmkirac/cs-kerim)
+- [Phisher98/Extractors](https://github.com/phisher98/cloudstream-extensions-phisher/blob/master/StreamPlay/src/main/kotlin/com/Phisher98/Extractors.kt)
 
 ## 🌐 Telif Hakkı ve Lisans
 
