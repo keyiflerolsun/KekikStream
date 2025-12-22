@@ -7,7 +7,16 @@ class JFVid(ExtractorBase):
     name     = "JFVid"
     main_url = "https://jfvid.com"
 
+    # Birden fazla domain destekle
+    supported_domains = ["jfvid.com"]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        # Dinamik base URL kullan
+        base_url = self.get_base_url(url)
+
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
@@ -15,7 +24,7 @@ class JFVid(ExtractorBase):
         # URL format: https://xxx.jfvid.com/play/{encodedId}
         if "/play/" in url:
             encoded_id = url.split("/play/")[-1]
-            stream_url = f"{self.main_url}/stream/{encoded_id}"
+            stream_url = f"{base_url}/stream/{encoded_id}"
         elif "/stream/" in url:
             # Zaten stream URL ise doğrudan kullan
             stream_url = url
