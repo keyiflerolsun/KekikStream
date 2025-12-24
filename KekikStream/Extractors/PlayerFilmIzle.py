@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from Kekik.Sifreleme  import Packer
 import re
 
 class PlayerFilmIzle(ExtractorBase):
@@ -29,8 +30,11 @@ class PlayerFilmIzle(ExtractorBase):
                 sub_lang = sub_lang_raw.replace("[", "")
                 subtitles.append(Subtitle(name=sub_lang, url=sub_url))
 
-        # Data yakalama: FirePlayer|DATA|...
-        data_match = re.search(r'FirePlayer\|([^|]+)\|', video_req, re.IGNORECASE)
+        # Packed script varsa unpack et
+        unpacked = Packer.unpack(video_req) if Packer.detect_packed(video_req) else video_req
+
+        # Data yakalama: FirePlayer("DATA", ...) formatından
+        data_match = re.search(r'FirePlayer\s*\(\s*["\']([a-f0-9]+)["\']', unpacked, re.IGNORECASE)
         data_val   = data_match.group(1) if data_match else None
 
         if not data_val:
