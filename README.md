@@ -113,64 +113,71 @@ Vidmoly, Filemoon, Sibnet, Sendvid, Voe, Doodstream, Streamtape, Upstream, Daily
 
 ```mermaid
 graph TB
-    CLI[🖥️ CLI Interface]
-    Manager[🔌 Plugin Manager]
-    
-    subgraph Plugins
-        P1[📺 Dizilla]
-        P2[🎬 HDFilmCehennemi]
-        P3[🍿 Dizipal]
-        PN[... 20+ Plugin]
+    subgraph KekikStream[🎬 KekikStream]
+        CLI[🖥️ CLI Interface]
+        Manager[🔌 Plugin Manager]
+
+        subgraph Plugins
+            P1[📺 Dizilla]
+            P2[🎬 HDFilmCehennemi]
+            P3[🍿 Dizipal]
+            PN[... 20+ Plugin]
+        end
+
+        subgraph Extractors
+            E1[🔗 Vidmoly]
+            E2[🔗 Filemoon]
+            E3[🔗 Sibnet]
+            EN[... Extractors]
+        end
+
+        subgraph Players
+            MPV[🎥 MPV]
+            VLC[🎥 VLC]
+            MX[🎥 MX Player]
+        end
     end
-    
-    subgraph Extractors
-        E1[🔗 Vidmoly]
-        E2[🔗 Filemoon]
-        E3[🔗 Sibnet]
-        EN[... Extractors]
-    end
-    
-    subgraph Players
-        MPV[🎥 MPV]
-        VLC[🎥 VLC]
-        MX[🎥 MX Player]
-    end
-    
+
     CLI --> Manager
     Manager --> P1
     Manager --> P2
     Manager --> P3
     Manager --> PN
-    
+
     %% Her plugin otomatik olarak ihtiyaç duyduğu extractor'ı kullanır
     P1 -.-> E1
     P1 -.-> E2
     P1 -.-> E3
-    
+
     P2 -.-> E1
     P2 -.-> E2
     P2 -.-> E3
-    
+
     P3 -.-> E1
     P3 -.-> E2
     P3 -.-> E3
-    
+
     PN -.-> EN
-    
+
     E1 --> VLC
     E2 --> VLC
     E3 --> VLC
     EN --> VLC
-    
+
     E1 --> MPV
     E2 --> MPV
     E3 --> MPV
     EN --> MPV
-    
+
     E1 --> MX
     E2 --> MX
     E3 --> MX
     EN --> MX
+
+    style KekikStream fill:#2b2a29,stroke:#ef7f1a,stroke-width:2px
+    style Plugins fill:#242322,stroke:#0087a3,stroke-width:2px
+    style Extractors fill:#242322,stroke:#5a7c8c,stroke-width:2px
+    style Players fill:#242322,stroke:#0087a3,stroke-width:2px
 ```
 
 ---
