@@ -125,8 +125,13 @@ class SetFilmIzle(PluginBase):
         secici = HTMLParser(istek.text)
         html_text = istek.text
 
-        title_el = secici.css_first("h1")
+        title_el = secici.css_first("h1") or secici.css_first(".titles h1")
         raw_title = title_el.text(strip=True) if title_el else ""
+        if not raw_title:
+             # Alternatif title yeri
+             title_meta = secici.css_first("meta[property='og:title']")
+             raw_title = title_meta.attrs.get("content", "") if title_meta else ""
+        
         title = re.sub(r"\s*izle.*$", "", raw_title, flags=re.IGNORECASE).strip()
 
         poster_el = secici.css_first("div.poster img")

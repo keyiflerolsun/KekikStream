@@ -228,7 +228,7 @@ class HDFilmCehennemi(PluginBase):
             return ""
 
         # 4) Özel decoder ile çöz
-        return StreamDecoder._brute_force(parts)
+        return StreamDecoder.extract_stream_url(unpacked)
 
     async def invoke_local_source(self, iframe: str, source: str, url: str):
         self.httpx.headers.update({
