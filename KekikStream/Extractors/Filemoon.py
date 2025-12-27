@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-from Kekik.Sifreleme  import Packer
-from parsel           import Selector
+from KekikStream.Core  import ExtractorBase, ExtractResult
+from Kekik.Sifreleme   import Packer
+from selectolax.parser import HTMLParser
 import re
 
 class Filemoon(ExtractorBase):
@@ -33,10 +33,11 @@ class Filemoon(ExtractorBase):
         # İlk sayfayı al
         istek    = await self.httpx.get(url)
         response = istek.text
-        secici   = Selector(response)
+        secici   = HTMLParser(response)
 
         # Eğer iframe varsa, iframe'e git
-        iframe_src = secici.css("iframe::attr(src)").get()
+        iframe_el = secici.css_first("iframe")
+        iframe_src = iframe_el.attrs.get("src") if iframe_el else None
         if iframe_src:
             iframe_url = self.fix_url(iframe_src)
             self.httpx.headers.update({
@@ -52,7 +53,7 @@ class Filemoon(ExtractorBase):
         if Packer.detect_packed(response):
             try:
                 unpacked = Packer.unpack(response)
-                # sources:[{file:"..." pattern'ını ara
+                # sources:[{file:"...» pattern'ını ara
                 if match := re.search(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"', unpacked):
                     m3u8_url = match.group(1)
                 elif match := re.search(r'file:\s*"([^"]*?\.m3u8[^"]*)"', unpacked):

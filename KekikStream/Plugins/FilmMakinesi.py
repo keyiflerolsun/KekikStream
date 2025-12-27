@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
+from selectolax.parser import HTMLParser
 
 class FilmMakinesi(PluginBase):
     name        = "FilmMakinesi"
@@ -36,65 +36,88 @@ class FilmMakinesi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{'' if page == 1 else f'page/{page}/'}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        veriler = secici.css("div.item-relative")
+        results = []
+        for veri in secici.css("div.item-relative"):
+            title_el = veri.css_first("div.title")
+            link_el  = veri.css_first("a")
+            img_el   = veri.css_first("img")
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.css("div.title::text").get(),
-                url      = self.fix_url(veri.css("a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(data-src)").get() or veri.css("img::attr(src)").get()),
-            )
-                for veri in veriler
-        ]
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
         for article in secici.css("div.item-relative"):
-            title  = article.css("div.title::text").get()
-            href   = article.css("a::attr(href)").get()
-            poster = article.css("img::attr(data-src)").get() or article.css("img::attr(src)").get()
+            title_el = article.css_first("div.title")
+            link_el  = article.css_first("a")
+            img_el   = article.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
 
             if title and href:
-                results.append(
-                    SearchResult(
-                        title  = title.strip(),
-                        url    = self.fix_url(href.strip()),
-                        poster = self.fix_url(poster.strip()) if poster else None,
-                    )
-                )
+                results.append(SearchResult(
+                    title  = title.strip(),
+                    url    = self.fix_url(href.strip()),
+                    poster = self.fix_url(poster.strip()) if poster else None,
+                ))
 
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("h1.title::text").get()
-        title       = title.strip() if title else ""
-        poster      = secici.css("img.cover-img::attr(src)").get()
-        poster      = poster.strip() if poster else ""
-        description = secici.css("div.info-description p::text").get()
-        description = description.strip() if description else ""
-        rating      = secici.css("div.score::text").get()
-        if rating:
-            rating = rating.strip().split()[0]
-        year        = secici.css("span.date a::text").get()
-        year        = year.strip() if year else ""
-        actors      = secici.css("div.cast-name::text").getall()
-        tags        = secici.css("div.genre a::text").getall()
-        duration    = secici.css("div.time::text").get()
-        if duration:
-            duration = duration.split()[1].strip() if len(duration.split()) > 1 else ""
+        title_el = secici.css_first("h1.title")
+        title    = title_el.text(strip=True) if title_el else ""
+
+        poster_el = secici.css_first("img.cover-img")
+        poster    = poster_el.attrs.get("src", "").strip() if poster_el else ""
+
+        desc_el     = secici.css_first("div.info-description p")
+        description = desc_el.text(strip=True) if desc_el else ""
+
+        rating_el = secici.css_first("div.score")
+        rating    = None
+        if rating_el:
+            rating_text = rating_el.text(strip=True)
+            if rating_text:
+                rating = rating_text.split()[0]
+
+        year_el = secici.css_first("span.date a")
+        year    = year_el.text(strip=True) if year_el else ""
+
+        actors = [el.text(strip=True) for el in secici.css("div.cast-name") if el.text(strip=True)]
+        tags   = [el.text(strip=True) for el in secici.css("div.genre a") if el.text(strip=True)]
+
+        duration_el = secici.css_first("div.time")
+        duration    = None
+        if duration_el:
+            duration_text = duration_el.text(strip=True)
+            parts = duration_text.split()
+            if len(parts) > 1:
+                duration = parts[1].strip()
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster),
+            poster      = self.fix_url(poster) if poster else None,
             title       = self.clean_title(title),
             description = description,
             tags        = tags,
@@ -106,23 +129,24 @@ class FilmMakinesi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         response = []
 
         # Video parts linklerini ve etiketlerini al
         for link in secici.css("div.video-parts a[data-video_url]"):
-            video_url = link.attrib.get("data-video_url")
-            label     = link.css("::text").get() or ""
-            label     = label.strip()
+            video_url = link.attrs.get("data-video_url")
+            label     = link.text(strip=True) if link.text(strip=True) else ""
 
-            data = await self.extract(video_url, prefix=label.split()[0] if label else None)
-            if data:
-                response.append(data)
+            if video_url:
+                data = await self.extract(video_url, prefix=label.split()[0] if label else None)
+                if data:
+                    response.append(data)
 
         # Eğer video-parts yoksa iframe kullan
         if not response:
-            iframe_src = secici.css("iframe::attr(data-src)").get()
+            iframe_el = secici.css_first("iframe")
+            iframe_src = iframe_el.attrs.get("data-src") if iframe_el else None
             if iframe_src:
                 data = await self.extract(iframe_src)
                 if data:

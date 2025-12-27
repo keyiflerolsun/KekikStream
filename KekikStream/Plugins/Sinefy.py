@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo, ExtractResult
+from selectolax.parser import HTMLParser
 import re, json, urllib.parse
 
 class Sinefy(PluginBase):
@@ -37,31 +37,35 @@ class Sinefy(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         if "page/" in url:
-             full_url = f"{url}{page}"
+            full_url = f"{url}{page}"
         elif "en-yenifilmler" in url or "netflix" in url:
-             full_url = f"{url}/{page}"
+            full_url = f"{url}/{page}"
         else:
-             full_url = f"{url}&page={page}"
+            full_url = f"{url}&page={page}"
 
         resp = await self.httpx.get(full_url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
 
         results = []
-        # Kotlin: div.poster-with-subject, div.dark-segment div.poster-md.poster
         for item in sel.css("div.poster-with-subject, div.dark-segment div.poster-md.poster"):
-             title  = item.css("h2::text").get()
-             href   = item.css("a::attr(href)").get()
-             poster = item.css("img::attr(data-srcset)").get()
-             if poster:
-                  poster = poster.split(",")[0].split(" ")[0]
+            h2_el = item.css_first("h2")
+            link_el = item.css_first("a")
+            img_el = item.css_first("img")
 
-             if title and href:
-                 results.append(MainPageResult(
-                     category = category,
-                     title    = title,
-                     url      = self.fix_url(href),
-                     poster   = self.fix_url(poster)
-                 ))
+            title  = h2_el.text(strip=True) if h2_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-srcset") if img_el else None
+
+            if poster:
+                poster = poster.split(",")[0].split(" ")[0]
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None
+                ))
 
         return results
 
@@ -71,13 +75,18 @@ class Sinefy(PluginBase):
         c_value = "MTc0NzI2OTAwMDU3ZTEwYmZjMDViNWFmOWIwZDViODg0MjU4MjA1ZmYxOThmZTYwMDdjMWQzMzliNzY5NzFlZmViMzRhMGVmNjgwODU3MGIyZA=="
 
         try:
-             resp = await self.httpx.get(self.main_url)
-             sel  = Selector(resp.text)
-             cke  = sel.css("input[name='cKey']::attr(value)").get()
-             cval = sel.css("input[name='cValue']::attr(value)").get()
-             if cke and cval:
-                 c_key   = cke
-                 c_value = cval
+            resp = await self.httpx.get(self.main_url)
+            sel  = HTMLParser(resp.text)
+
+            cke_el = sel.css_first("input[name='cKey']")
+            cval_el = sel.css_first("input[name='cValue']")
+
+            cke = cke_el.attrs.get("value") if cke_el else None
+            cval = cval_el.attrs.get("value") if cval_el else None
+
+            if cke and cval:
+                c_key   = cke
+                c_value = cval
 
         except Exception:
             pass
@@ -111,23 +120,23 @@ class Sinefy(PluginBase):
                 res_array = data.get("data", {}).get("result", [])
                 
                 if not res_array:
-                     # Fallback manual parsing ?
-                     pass
+                    # Fallback manual parsing ?
+                    pass
 
                 for item in res_array:
-                     name = item.get("object_name")
-                     slug = item.get("used_slug")
-                     poster = item.get("object_poster_url")
-                     
-                     if name and slug:
-                         if "cdn.ampproject.org" in poster:
-                              poster = "https://images.macellan.online/images/movie/poster/180/275/80/" + poster.split("/")[-1]
-                         
-                         results.append(SearchResult(
-                             title=name,
-                             url=self.fix_url(slug),
-                             poster=self.fix_url(poster)
-                         ))
+                    name = item.get("object_name")
+                    slug = item.get("used_slug")
+                    poster = item.get("object_poster_url")
+                    
+                    if name and slug:
+                        if "cdn.ampproject.org" in poster:
+                            poster = "https://images.macellan.online/images/movie/poster/180/275/80/" + poster.split("/")[-1]
+                        
+                        results.append(SearchResult(
+                            title=name,
+                            url=self.fix_url(slug),
+                            poster=self.fix_url(poster) if poster else None
+                        ))
                 return results
 
         except Exception:
@@ -136,74 +145,85 @@ class Sinefy(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
         
-        title       = sel.css("h1::text").get()
-        poster_info = sel.css("div.ui.items img::attr(data-srcset)").get()
+        title_el = sel.css_first("h1")
+        title    = title_el.text(strip=True) if title_el else None
+
+        img_el      = sel.css_first("div.ui.items img")
+        poster_info = img_el.attrs.get("data-srcset") if img_el else None
         poster      = None
         if poster_info:
-             # take 1x
-             parts = str(poster_info).split(",")
-             for p in parts:
-                 if "1x" in p:
-                     poster = p.strip().split(" ")[0]
-                     break
+            # take 1x
+            parts = str(poster_info).split(",")
+            for p in parts:
+                if "1x" in p:
+                    poster = p.strip().split(" ")[0]
+                    break
         
-        description = sel.css("p#tv-series-desc::text").get()
-        tags        = sel.css("div.item.categories a::text").getall()
-        rating      = sel.css("span.color-imdb::text").get()
-        actors      = sel.css("div.content h5::text").getall()
-        year        = sel.css("span.item.year::text").get()  # Year bilgisi eklendi
+        desc_el     = sel.css_first("p#tv-series-desc")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        tags    = [a.text(strip=True) for a in sel.css("div.item.categories a") if a.text(strip=True)]
+
+        rating_el = sel.css_first("span.color-imdb")
+        rating    = rating_el.text(strip=True) if rating_el else None
+
+        actors = [h5.text(strip=True) for h5 in sel.css("div.content h5") if h5.text(strip=True)]
+
+        year_el = sel.css_first("span.item.year")
+        year    = year_el.text(strip=True) if year_el else None
         
         episodes = []
         season_elements = sel.css("section.episodes-box")
         
         if season_elements:
-             # Get season links
-             season_links = []
-             menu = sel.css("div.ui.vertical.fluid.tabular.menu a")
-             for link in menu:
-                 href = link.css("::attr(href)").get()
-                 if href:
-                     season_links.append(self.fix_url(href))
-             
-             for s_url in season_links:
-                 target_url = s_url if "/bolum-" in s_url else f"{s_url}/bolum-1"
-                 
-                 try:
-                     s_resp = await self.httpx.get(target_url)
-                     s_sel  = Selector(s_resp.text)
-                     ep_links = s_sel.css("div.ui.list.celled a.item")
-                     
-                     current_season_no = 1
-                     match = re.search(r"sezon-(\d+)", target_url)
-                     if match:
-                         current_season_no = int(match.group(1))
-                     
-                     for ep_link in ep_links:
-                         href = ep_link.css("::attr(href)").get()
-                         name = ep_link.css("div.content div.header::text").get()
-                         
-                         if href:
-                             ep_no = 0
-                             match_ep = re.search(r"bolum-(\d+)", href)
-                             if match_ep:
-                                 ep_no = int(match_ep.group(1))
-                                 
-                             episodes.append(Episode(
-                                 season = current_season_no,
-                                 episode = ep_no,
-                                 title = name.strip() if name else "",
-                                 url = self.fix_url(href)
-                             ))
-                 except Exception:
-                     pass
+            # Get season links
+            season_links = []
+            menu = sel.css("div.ui.vertical.fluid.tabular.menu a")
+            for link in menu:
+                href = link.attrs.get("href")
+                if href:
+                    season_links.append(self.fix_url(href))
+            
+            for s_url in season_links:
+                target_url = s_url if "/bolum-" in s_url else f"{s_url}/bolum-1"
+                
+                try:
+                    s_resp = await self.httpx.get(target_url)
+                    s_sel  = HTMLParser(s_resp.text)
+                    ep_links = s_sel.css("div.ui.list.celled a.item")
+                    
+                    current_season_no = 1
+                    match = re.search(r"sezon-(\d+)", target_url)
+                    if match:
+                        current_season_no = int(match.group(1))
+                    
+                    for ep_link in ep_links:
+                        href = ep_link.attrs.get("href")
+                        name_el = ep_link.css_first("div.content div.header")
+                        name = name_el.text(strip=True) if name_el else ""
+                        
+                        if href:
+                            ep_no = 0
+                            match_ep = re.search(r"bolum-(\d+)", href)
+                            if match_ep:
+                                ep_no = int(match_ep.group(1))
+                                
+                            episodes.append(Episode(
+                                season = current_season_no,
+                                episode = ep_no,
+                                title = name,
+                                url = self.fix_url(href)
+                            ))
+                except Exception:
+                    pass
         
         if episodes:
             return SeriesInfo(
                 title    = title,
                 url      = url,
-                poster   = self.fix_url(poster),
+                poster   = self.fix_url(poster) if poster else None,
                 description = description,
                 rating   = rating,
                 tags     = tags,
@@ -215,7 +235,7 @@ class Sinefy(PluginBase):
             return MovieInfo(
                 title       = title,
                 url         = url,
-                poster      = self.fix_url(poster),
+                poster      = self.fix_url(poster) if poster else None,
                 description = description,
                 rating      = rating,
                 tags        = tags,
@@ -225,16 +245,25 @@ class Sinefy(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
         
-        iframe = sel.css("iframe::attr(src)").get()
+        iframe_el = sel.css_first("iframe")
+        iframe    = iframe_el.attrs.get("src") if iframe_el else None
+
         if not iframe:
             return []
             
         iframe_url = self.fix_url(iframe)
         
-        # Always return iframe (matching Kotlin - no extractor check)
-        # loadExtractor in Kotlin handles extraction internally
+        # Try to extract actual video URL, fallback to raw iframe if fails
+        try:
+            result = await self.extract(iframe_url)
+            if result:
+                return [result] if not isinstance(result, list) else result
+        except Exception:
+            pass
+        
+        # Fallback: return raw iframe URL
         return [ExtractResult(
             url  = iframe_url,
             name = "Sinefy Player"

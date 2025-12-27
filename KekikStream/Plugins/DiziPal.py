@@ -1,13 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
-from parsel import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class DiziPal(PluginBase):
     name        = "DiziPal"
     language    = "tr"
-    main_url    = "https://dizipal1223.com"
+    main_url    = "https://dizipal1224.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "dizipal güncel, dizipal yeni ve gerçek adresi. dizipal en yeni dizi ve filmleri güvenli ve hızlı şekilde sunar."
 
@@ -27,19 +27,24 @@ class DiziPal(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
 
         if "/son-bolumler" in url:
             for veri in secici.css("div.episode-item"):
-                name     = veri.css("div.name::text").get()
-                episode  = veri.css("div.episode::text").get()
-                href     = veri.css("a::attr(href)").get()
-                poster   = veri.css("img::attr(src)").get()
+                name_el    = veri.css_first("div.name")
+                episode_el = veri.css_first("div.episode")
+                link_el    = veri.css_first("a")
+                img_el     = veri.css_first("img")
+
+                name    = name_el.text(strip=True) if name_el else None
+                episode = episode_el.text(strip=True) if episode_el else None
+                href    = link_el.attrs.get("href") if link_el else None
+                poster  = img_el.attrs.get("src") if img_el else None
 
                 if name and href:
-                    ep_text = episode.strip().replace(". Sezon ", "x").replace(". Bölüm", "") if episode else ""
+                    ep_text = episode.replace(". Sezon ", "x").replace(". Bölüm", "") if episode else ""
                     title   = f"{name} {ep_text}"
                     # Son bölümler linkini dizi sayfasına çevir
                     dizi_url = href.split("/sezon")[0] if "/sezon" in href else href
@@ -52,9 +57,13 @@ class DiziPal(PluginBase):
                     ))
         else:
             for veri in secici.css("article.type2 ul li"):
-                title  = veri.css("span.title::text").get()
-                href   = veri.css("a::attr(href)").get()
-                poster = veri.css("img::attr(src)").get()
+                title_el = veri.css_first("span.title")
+                link_el  = veri.css_first("a")
+                img_el   = veri.css_first("img")
+
+                title  = title_el.text(strip=True) if title_el else None
+                href   = link_el.attrs.get("href") if link_el else None
+                poster = img_el.attrs.get("src") if img_el else None
 
                 if title and href:
                     results.append(MainPageResult(
@@ -104,6 +113,18 @@ class DiziPal(PluginBase):
 
         return results
 
+    def _find_sibling_text(self, secici: HTMLParser, label_text: str) -> str | None:
+        """Bir label'ın kardeş div'inden text çıkarır (xpath yerine)"""
+        for div in secici.css("div"):
+            if div.text(strip=True) == label_text:
+                # Sonraki kardeş elementi bul
+                next_sibling = div.next
+                while next_sibling:
+                    if hasattr(next_sibling, 'text') and next_sibling.text(strip=True):
+                        return next_sibling.text(strip=True)
+                    next_sibling = next_sibling.next if hasattr(next_sibling, 'next') else None
+        return None
+
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         # Reset headers to get HTML response
         self.httpx.headers.update({
@@ -112,28 +133,51 @@ class DiziPal(PluginBase):
         self.httpx.headers.pop("X-Requested-With", None)
 
         istek  = await self.httpx.get(url)
-        secici = Selector(text=istek.text, type="html")
+        secici = HTMLParser(istek.text)
+        html_text = istek.text
 
-        poster      = self.fix_url(secici.css("meta[property='og:image']::attr(content)").get())
-        year        = secici.xpath("//div[text()='Yapım Yılı']//following-sibling::div/text()").get()
-        description = secici.css("div.summary p::text").get()
-        rating      = secici.xpath("//div[text()='IMDB Puanı']//following-sibling::div/text()").get()
-        tags_raw    = secici.xpath("//div[text()='Türler']//following-sibling::div/text()").get()
-        tags        = [t.strip() for t in tags_raw.split() if t.strip()] if tags_raw else None
+        og_image = secici.css_first("meta[property='og:image']")
+        poster   = self.fix_url(og_image.attrs.get("content")) if og_image else None
 
-        dur_text    = secici.xpath("//div[text()='Ortalama Süre']//following-sibling::div/text()").get()
-        dur_match   = re.search(r"(\d+)", dur_text or "")
-        duration    = int(dur_match[1]) if dur_match else None
+        # XPath yerine regex ile HTML'den çıkarma
+        year = None
+        year_match = re.search(r'Yapım Yılı.*?<div[^>]*>(\d{4})</div>', html_text, re.DOTALL | re.IGNORECASE)
+        if year_match:
+            year = year_match.group(1)
+
+        desc_el     = secici.css_first("div.summary p")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        rating = None
+        rating_match = re.search(r'IMDB Puanı.*?<div[^>]*>([0-9.]+)</div>', html_text, re.DOTALL | re.IGNORECASE)
+        if rating_match:
+            rating = rating_match.group(1)
+
+        tags = None
+        tags_match = re.search(r'Türler.*?<div[^>]*>([^<]+)</div>', html_text, re.DOTALL | re.IGNORECASE)
+        if tags_match:
+            tags_raw = tags_match.group(1)
+            tags = [t.strip() for t in tags_raw.split() if t.strip()]
+
+        duration = None
+        dur_match = re.search(r'Ortalama Süre.*?<div[^>]*>(\d+)', html_text, re.DOTALL | re.IGNORECASE)
+        if dur_match:
+            duration = int(dur_match.group(1))
 
         if "/dizi/" in url:
-            title = secici.css("div.cover h5::text").get()
+            title_el = secici.css_first("div.cover h5")
+            title    = title_el.text(strip=True) if title_el else None
 
             episodes = []
             for ep in secici.css("div.episode-item"):
-                ep_name    = ep.css("div.name::text").get()
-                ep_href    = ep.css("a::attr(href)").get()
-                ep_text    = ep.css("div.episode::text").get() or ""
-                ep_parts   = ep_text.strip().split(" ")
+                ep_name_el    = ep.css_first("div.name")
+                ep_link_el    = ep.css_first("a")
+                ep_episode_el = ep.css_first("div.episode")
+
+                ep_name = ep_name_el.text(strip=True) if ep_name_el else None
+                ep_href = ep_link_el.attrs.get("href") if ep_link_el else None
+                ep_text = ep_episode_el.text(strip=True) if ep_episode_el else ""
+                ep_parts = ep_text.split(" ")
 
                 ep_season  = None
                 ep_episode = None
@@ -148,7 +192,7 @@ class DiziPal(PluginBase):
                     episodes.append(Episode(
                         season  = ep_season,
                         episode = ep_episode,
-                        title   = ep_name.strip(),
+                        title   = ep_name,
                         url     = self.fix_url(ep_href),
                     ))
 
@@ -156,24 +200,26 @@ class DiziPal(PluginBase):
                 url         = url,
                 poster      = poster,
                 title       = title,
-                description = description.strip() if description else None,
+                description = description,
                 tags        = tags,
-                rating      = rating.strip() if rating else None,
-                year        = year.strip() if year else None,
+                rating      = rating,
+                year        = year,
                 duration    = duration,
                 episodes    = episodes if episodes else None,
             )
         else:
-            title = secici.xpath("//div[@class='g-title'][2]/div/text()").get()
+            # Film için title - g-title div'lerinin 2. olanı
+            g_titles = secici.css("div.g-title div")
+            title = g_titles[1].text(strip=True) if len(g_titles) >= 2 else None
 
             return MovieInfo(
                 url         = url,
                 poster      = poster,
-                title       = title.strip() if title else None,
-                description = description.strip() if description else None,
+                title       = title,
+                description = description,
                 tags        = tags,
-                rating      = rating.strip() if rating else None,
-                year        = year.strip() if year else None,
+                rating      = rating,
+                year        = year,
                 duration    = duration,
             )
 
@@ -185,12 +231,13 @@ class DiziPal(PluginBase):
         self.httpx.headers.pop("X-Requested-With", None)
 
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        iframe = secici.css(".series-player-container iframe::attr(src)").get()
-        if not iframe:
-            iframe = secici.css("div#vast_new iframe::attr(src)").get()
+        iframe_el = secici.css_first(".series-player-container iframe")
+        if not iframe_el:
+            iframe_el = secici.css_first("div#vast_new iframe")
 
+        iframe = iframe_el.attrs.get("src") if iframe_el else None
         if not iframe:
             return []
 

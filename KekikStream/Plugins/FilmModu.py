@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
-from parsel import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class FilmModu(PluginBase):
@@ -42,68 +42,105 @@ class FilmModu(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.css("a::text").get(),
-                url      = self.fix_url(veri.css("a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("picture img::attr(data-src)").get()),
-            )
-                for veri in secici.css("div.movie")
-                    if veri.css("a::text").get()
-        ]
+        results = []
+        for veri in secici.css("div.movie"):
+            link_el = veri.css_first("a")
+            img_el  = veri.css_first("picture img")
+
+            title  = link_el.text(strip=True) if link_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/film-ara?term={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            SearchResult(
-                title  = veri.css("a::text").get(),
-                url    = self.fix_url(veri.css("a::attr(href)").get()),
-                poster = self.fix_url(veri.css("picture img::attr(data-src)").get()),
-            )
-                for veri in secici.css("div.movie")
-                    if veri.css("a::text").get()
-        ]
+        results = []
+        for veri in secici.css("div.movie"):
+            link_el = veri.css_first("a")
+            img_el  = veri.css_first("picture img")
+
+            title  = link_el.text(strip=True) if link_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
+
+            if title and href:
+                results.append(SearchResult(
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        org_title = secici.css("div.titles h1::text").get()
-        alt_title = secici.css("div.titles h2::text").get()
+        org_title_el = secici.css_first("div.titles h1")
+        alt_title_el = secici.css_first("div.titles h2")
+
+        org_title = org_title_el.text(strip=True) if org_title_el else ""
+        alt_title = alt_title_el.text(strip=True) if alt_title_el else ""
         title     = f"{org_title} - {alt_title}" if alt_title else org_title
+
+        poster_el = secici.css_first("img.img-responsive")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        desc_el     = secici.css_first("p[itemprop='description']")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        tags = [a.text(strip=True) for a in secici.css("a[href*='film-tur/']") if a.text(strip=True)]
+
+        year_el = secici.css_first("span[itemprop='dateCreated']")
+        year    = year_el.text(strip=True) if year_el else None
+
+        actors = []
+        for a in secici.css("a[itemprop='actor']"):
+            span_el = a.css_first("span")
+            if span_el and span_el.text(strip=True):
+                actors.append(span_el.text(strip=True))
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(secici.css("img.img-responsive::attr(src)").get()),
+            poster      = self.fix_url(poster) if poster else None,
             title       = title,
-            description = secici.css("p[itemprop='description']::text").get(),
-            tags        = [a.css("::text").get() for a in secici.css("a[href*='film-tur/']")],
-            year        = secici.css("span[itemprop='dateCreated']::text").get(),
-            actors      = [a.css("span::text").get() for a in secici.css("a[itemprop='actor']")],
+            description = description,
+            tags        = tags,
+            year        = year,
+            actors      = actors,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         alternates = secici.css("div.alternates a")
         if not alternates:
-            return []  # No alternates available
+            return []
 
         results = []
 
         for alternatif in alternates:
-            alt_link = self.fix_url(alternatif.css("::attr(href)").get())
-            alt_name = alternatif.css("::text").get()
+            alt_link = alternatif.attrs.get("href")
+            alt_name = alternatif.text(strip=True)
 
             if alt_name == "Fragman" or not alt_link:
                 continue
 
+            alt_link = self.fix_url(alt_link)
             alt_istek = await self.httpx.get(alt_link)
             alt_text  = alt_istek.text
 

@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from Kekik.Sifreleme  import CryptoJS
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
+from Kekik.Sifreleme   import CryptoJS
+from selectolax.parser import HTMLParser
 import re, urllib.parse, base64, contextlib, asyncio, time
 
 class DiziBox(PluginBase):
@@ -49,17 +49,26 @@ class DiziBox(PluginBase):
             url              = f"{url.replace('SAYFA', str(page))}",
             follow_redirects = True
         )
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.css("h3 a::text").get(),
-                url      = self.fix_url(veri.css("h3 a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(src)").get()),
-            )
-                for veri in secici.css("article.detailed-article")
-        ]
+        results = []
+        for veri in secici.css("article.detailed-article"):
+            h3_link = veri.css_first("h3 a")
+            img_el  = veri.css_first("img")
+
+            title  = h3_link.text(strip=True) if h3_link else None
+            href   = h3_link.attrs.get("href") if h3_link else None
+            poster = img_el.attrs.get("src") if img_el else None
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         self.httpx.cookies.update({
@@ -67,54 +76,92 @@ class DiziBox(PluginBase):
             "dbxu"          : str(time.time() * 1000).split(".")[0]
         })
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            SearchResult(
-                title  = item.css("h3 a::text").get(),
-                url    = self.fix_url(item.css("h3 a::attr(href)").get()),
-                poster = self.fix_url(item.css("img::attr(src)").get()),
-            )
-                for item in secici.css("article.detailed-article")
-        ]
+        results = []
+        for item in secici.css("article.detailed-article"):
+            h3_link = item.css_first("h3 a")
+            img_el  = item.css_first("img")
+
+            title  = h3_link.text(strip=True) if h3_link else None
+            href   = h3_link.attrs.get("href") if h3_link else None
+            poster = img_el.attrs.get("src") if img_el else None
+
+            if title and href:
+                results.append(SearchResult(
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("div.tv-overview h1 a::text").get()
-        poster      = self.fix_url(secici.css("div.tv-overview figure img::attr(src)").get())
-        description = secici.css("div.tv-story p::text").get()
-        year        = secici.css("a[href*='/yil/']::text").re_first(r"(\d{4})")
-        tags        = secici.css("a[href*='/tur/']::text").getall()
-        rating      = secici.css("span.label-imdb b::text").re_first(r"[\d.,]+")
-        actors      = [actor.css("::text").get() for actor in secici.css("a[href*='/oyuncu/']")]
+        title_el = secici.css_first("div.tv-overview h1 a")
+        title    = title_el.text(strip=True) if title_el else None
+
+        poster_el = secici.css_first("div.tv-overview figure img")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        desc_el     = secici.css_first("div.tv-story p")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        # year: re_first yerine re.search
+        year_el = secici.css_first("a[href*='/yil/']")
+        year_text = year_el.text(strip=True) if year_el else ""
+        year_match = re.search(r"(\d{4})", year_text)
+        year = year_match.group(1) if year_match else None
+
+        tags = [a.text(strip=True) for a in secici.css("a[href*='/tur/']") if a.text(strip=True)]
+
+        # rating: re_first yerine re.search
+        rating_el = secici.css_first("span.label-imdb b")
+        rating_text = rating_el.text(strip=True) if rating_el else ""
+        rating_match = re.search(r"[\d.,]+", rating_text)
+        rating = rating_match.group() if rating_match else None
+
+        actors = [a.text(strip=True) for a in secici.css("a[href*='/oyuncu/']") if a.text(strip=True)]
 
         episodes = []
-        for sezon_link in secici.css("div#seasons-list a::attr(href)").getall():
+        for sezon_link_el in secici.css("div#seasons-list a"):
+            sezon_link = sezon_link_el.attrs.get("href")
+            if not sezon_link:
+                continue
+
             sezon_url    = self.fix_url(sezon_link)
             sezon_istek  = await self.httpx.get(sezon_url)
-            sezon_secici = Selector(sezon_istek.text)
+            sezon_secici = HTMLParser(sezon_istek.text)
 
             for bolum in sezon_secici.css("article.grid-box"):
-                ep_secici  = bolum.css("div.post-title a::text")
+                ep_link = bolum.css_first("div.post-title a")
+                if not ep_link:
+                    continue
 
-                ep_title   = ep_secici.get()
-                ep_href    = self.fix_url(bolum.css("div.post-title a::attr(href)").get())
-                ep_season  = ep_secici.re_first(r"(\d+)\. ?Sezon")
-                ep_episode = ep_secici.re_first(r"(\d+)\. ?Bölüm")
+                ep_title = ep_link.text(strip=True)
+                ep_href  = ep_link.attrs.get("href")
+
+                # re_first yerine re.search
+                ep_title_text = ep_title or ""
+                season_match  = re.search(r"(\d+)\. ?Sezon", ep_title_text)
+                episode_match = re.search(r"(\d+)\. ?Bölüm", ep_title_text)
+
+                ep_season  = season_match.group(1) if season_match else None
+                ep_episode = episode_match.group(1) if episode_match else None
 
                 if ep_title and ep_href:
                     episodes.append(Episode(
                         season  = ep_season,
                         episode = ep_episode,
                         title   = ep_title,
-                        url     = ep_href,
+                        url     = self.fix_url(ep_href),
                     ))
 
         return SeriesInfo(
             url         = url,
-            poster      = poster,
+            poster      = self.fix_url(poster) if poster else None,
             title       = title,
             description = description,
             tags        = tags,
@@ -137,20 +184,22 @@ class DiziBox(PluginBase):
             iframe_link = iframe_link.replace("king.php?v=", "king.php?wmode=opaque&v=")
 
             istek  = await self.httpx.get(iframe_link)
-            secici = Selector(istek.text)
-            iframe = secici.css("div#Player iframe::attr(src)").get()
+            secici = HTMLParser(istek.text)
+            iframe_el = secici.css_first("div#Player iframe")
+            iframe = iframe_el.attrs.get("src") if iframe_el else None
 
-            self.httpx.headers.update({"Referer": self.main_url})
-            istek = await self.httpx.get(iframe)
+            if iframe:
+                self.httpx.headers.update({"Referer": self.main_url})
+                istek = await self.httpx.get(iframe)
 
-            crypt_data = re.search(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", istek.text)[1]
-            crypt_pass = re.search(r"\",\"(.*)\"\);", istek.text)[1]
-            decode     = CryptoJS.decrypt(crypt_pass, crypt_data)
+                crypt_data = re.search(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", istek.text)[1]
+                crypt_pass = re.search(r"\",\"(.*)\"\);", istek.text)[1]
+                decode     = CryptoJS.decrypt(crypt_pass, crypt_data)
 
-            if video_match := re.search(r"file: '(.*)',", decode):
-                results.append(video_match[1])
-            else:
-                results.append(decode)
+                if video_match := re.search(r"file: '(.*)',", decode):
+                    results.append(video_match[1])
+                else:
+                    results.append(decode)
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
@@ -163,8 +212,9 @@ class DiziBox(PluginBase):
                         decoded_atob = urllib.parse.unquote(atob_data[1])
                         str_atob     = base64.b64decode(decoded_atob).decode("utf-8")
 
-                    if iframe := Selector(str_atob).css("div#Player iframe::attr(src)").get():
-                        results.append(iframe)
+                    iframe_el = HTMLParser(str_atob).css_first("div#Player iframe")
+                    if iframe_el:
+                        results.append(iframe_el.attrs.get("src"))
 
                     break
 
@@ -176,10 +226,13 @@ class DiziBox(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
-        if main_iframe := secici.css("div#video-area iframe::attr(src)").get():
+        main_iframe_el = secici.css_first("div#video-area iframe")
+        main_iframe = main_iframe_el.attrs.get("src") if main_iframe_el else None
+
+        if main_iframe:
             if decoded := await self._iframe_decode(self.name, main_iframe, url):
                 for iframe in decoded:
                     data = await self.extract(iframe)
@@ -187,8 +240,8 @@ class DiziBox(PluginBase):
                         results.append(data)
 
         for alternatif in secici.css("div.video-toolbar option[value]"):
-            alt_name = alternatif.css("::text").get()
-            alt_link = alternatif.css("::attr(value)").get()
+            alt_name = alternatif.text(strip=True)
+            alt_link = alternatif.attrs.get("value")
 
             if not alt_link:
                 continue
@@ -197,8 +250,11 @@ class DiziBox(PluginBase):
             alt_istek = await self.httpx.get(alt_link)
             alt_istek.raise_for_status()
 
-            alt_secici = Selector(alt_istek.text)
-            if alt_iframe := alt_secici.css("div#video-area iframe::attr(src)").get():
+            alt_secici = HTMLParser(alt_istek.text)
+            alt_iframe_el = alt_secici.css_first("div#video-area iframe")
+            alt_iframe = alt_iframe_el.attrs.get("src") if alt_iframe_el else None
+
+            if alt_iframe:
                 if decoded := await self._iframe_decode(alt_name, alt_iframe, url):
                     for iframe in decoded:
                         data = await self.extract(iframe, prefix=alt_name)

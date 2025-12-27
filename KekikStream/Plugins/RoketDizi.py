@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, MovieInfo
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, MovieInfo
+from selectolax.parser import HTMLParser
 import re, base64, json
 
 class RoketDizi(PluginBase):
@@ -24,21 +24,26 @@ class RoketDizi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}?&page={page}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
 
-        for item in secici.css("div.w-full.p-4 span.bg-\\[\\#232323\\]"):
-            title  = item.css("span.font-normal.line-clamp-1::text").get()
-            href   = item.css("a::attr(href)").get()
-            poster = item.css("img::attr(src)").get()
+        # Use div.new-added-list to find the container, then get items
+        for item in secici.css("div.new-added-list > span"):
+            title_el = item.css_first("span.line-clamp-1")
+            link_el  = item.css_first("a")
+            img_el   = item.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("src") if img_el else None
 
             if title and href:
                 results.append(MainPageResult(
                     category = category,
                     title    = self.clean_title(title),
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster)
+                    poster   = self.fix_url(poster) if poster else None
                 ))
 
         return results
@@ -87,20 +92,29 @@ class RoketDizi(PluginBase):
     async def load_item(self, url: str) -> SeriesInfo:
         # Note: Handling both Movie and Series logic in one, returning SeriesInfo generally or MovieInfo
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
+        html_text = resp.text
 
-        title       = sel.css("h1.text-white::text").get()
-        poster      = sel.css("div.w-full.page-top img::attr(src)").get()
-        description = sel.css("div.mt-2.text-sm::text").get()
+        title_el = sel.css_first("h1.text-white")
+        title    = title_el.text(strip=True) if title_el else None
+
+        poster_el = sel.css_first("div.w-full.page-top img")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        desc_el     = sel.css_first("div.mt-2.text-sm")
+        description = desc_el.text(strip=True) if desc_el else None
 
         # Tags - genre bilgileri (Detaylar bölümünde)
         tags = []
-        genre_text = sel.css("h3.text-white.opacity-90::text").get()
-        if genre_text:
-            tags = [t.strip() for t in genre_text.split(",")]
+        genre_el = sel.css_first("h3.text-white.opacity-90")
+        if genre_el:
+            genre_text = genre_el.text(strip=True)
+            if genre_text:
+                tags = [t.strip() for t in genre_text.split(",")]
 
         # Rating
-        rating = sel.css("span.text-white.text-sm.font-bold::text").get()
+        rating_el = sel.css_first("span.text-white.text-sm.font-bold")
+        rating    = rating_el.text(strip=True) if rating_el else None
 
         # Year ve Actors - Detaylar (Details) bölümünden
         year = None
@@ -109,14 +123,13 @@ class RoketDizi(PluginBase):
         # Detaylar bölümündeki tüm flex-col div'leri al
         detail_items = sel.css("div.flex.flex-col")
         for item in detail_items:
-            # Label ve value yapısı: span.text-base ve span.text-sm.opacity-90
-            label = item.css("span.text-base::text").get()
-            value = item.css("span.text-sm.opacity-90::text").get()
+            label_el = item.css_first("span.text-base")
+            value_el = item.css_first("span.text-sm.opacity-90")
+            
+            label = label_el.text(strip=True) if label_el else None
+            value = value_el.text(strip=True) if value_el else None
             
             if label and value:
-                label = label.strip()
-                value = value.strip()
-                
                 # Yayın tarihi (yıl)
                 if label == "Yayın tarihi":
                     # "16 Ekim 2018" formatından yılı çıkar
@@ -130,7 +143,7 @@ class RoketDizi(PluginBase):
                         actors.append(value)
 
         # Check urls for episodes
-        all_urls = re.findall(r'"url":"([^"]*)"', resp.text)
+        all_urls = re.findall(r'"url":"([^"]*)"', html_text)
         is_series = any("bolum-" in u for u in all_urls)
 
         episodes = []
@@ -160,7 +173,7 @@ class RoketDizi(PluginBase):
         return SeriesInfo(
             title       = title,
             url         = url,
-            poster      = self.fix_url(poster),
+            poster      = self.fix_url(poster) if poster else None,
             description = description,
             tags        = tags,
             rating      = rating,
@@ -171,9 +184,13 @@ class RoketDizi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
         
-        next_data = sel.css("script#__NEXT_DATA__::text").get()
+        next_data_el = sel.css_first("script#__NEXT_DATA__")
+        if not next_data_el:
+            return []
+
+        next_data = next_data_el.text(strip=True)
         if not next_data:
             return []
 

@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
+from selectolax.parser import HTMLParser
 import re, json
 
 class SetFilmIzle(PluginBase):
@@ -53,18 +53,22 @@ class SetFilmIzle(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
         for item in secici.css("div.items article"):
-            title  = item.css("h2::text").get()
-            href   = item.css("a::attr(href)").get()
-            poster = item.css("img::attr(data-src)").get()
+            title_el = item.css_first("h2")
+            link_el  = item.css_first("a")
+            img_el   = item.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
 
             if title and href:
                 results.append(MainPageResult(
                     category = category,
-                    title    = title.strip(),
+                    title    = title,
                     url      = self.fix_url(href),
                     poster   = self.fix_url(poster) if poster else None
                 ))
@@ -95,17 +99,21 @@ class SetFilmIzle(PluginBase):
         except:
             return []
 
-        secici  = Selector(text=html)
+        secici  = HTMLParser(html)
         results = []
 
         for item in secici.css("div.items article"):
-            title  = item.css("h2::text").get()
-            href   = item.css("a::attr(href)").get()
-            poster = item.css("img::attr(data-src)").get()
+            title_el = item.css_first("h2")
+            link_el  = item.css_first("a")
+            img_el   = item.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
 
             if title and href:
                 results.append(SearchResult(
-                    title  = title.strip(),
+                    title  = title,
                     url    = self.fix_url(href),
                     poster = self.fix_url(poster) if poster else None
                 ))
@@ -114,50 +122,68 @@ class SetFilmIzle(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
+        html_text = istek.text
 
-        raw_title   = secici.css("h1::text").get() or ""
-        title       = re.sub(r"\s*izle.*$", "", raw_title, flags=re.IGNORECASE).strip()
-        poster      = secici.css("div.poster img::attr(src)").get()
-        description = secici.css("div.wp-content p::text").get()
-        year        = secici.css("div.extra span.C a::text").get()
-        if year:
-            year_match = re.search(r"\d{4}", year)
+        title_el = secici.css_first("h1")
+        raw_title = title_el.text(strip=True) if title_el else ""
+        title = re.sub(r"\s*izle.*$", "", raw_title, flags=re.IGNORECASE).strip()
+
+        poster_el = secici.css_first("div.poster img")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        desc_el     = secici.css_first("div.wp-content p")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        year_el = secici.css_first("div.extra span.C a")
+        year = None
+        if year_el:
+            year_text = year_el.text(strip=True)
+            year_match = re.search(r"\d{4}", year_text)
             year = year_match.group() if year_match else None
-        tags     = [a.css("::text").get().strip() for a in secici.css("div.sgeneros a") if a.css("::text").get()]
-        duration = secici.css("span.runtime::text").get()
-        if duration:
-            dur_match = re.search(r"\d+", duration)
+
+        tags = [a.text(strip=True) for a in secici.css("div.sgeneros a") if a.text(strip=True)]
+
+        duration_el = secici.css_first("span.runtime")
+        duration = None
+        if duration_el:
+            duration_text = duration_el.text(strip=True)
+            dur_match = re.search(r"\d+", duration_text)
             duration = int(dur_match.group()) if dur_match else None
 
-        actors = [span.css("::text").get().strip() for span in secici.css("span.valor a > span") if span.css("::text").get()]
+        actors = [span.text(strip=True) for span in secici.css("span.valor a > span") if span.text(strip=True)]
 
-        trailer_match = re.search(r'embed/([^?]*)\?rel', istek.text)
+        trailer_match = re.search(r'embed/([^?]*)\?rel', html_text)
         trailer = f"https://www.youtube.com/embed/{trailer_match.group(1)}" if trailer_match else None
 
         # Dizi mi film mi kontrol et
         is_series = "/dizi/" in url
 
         if is_series:
-            year_elem = secici.css("a[href*='/yil/']::text").get()
-            if year_elem:
+            year_link_el = secici.css_first("a[href*='/yil/']")
+            if year_link_el:
+                year_elem = year_link_el.text(strip=True)
                 year_match = re.search(r"\d{4}", year_elem)
                 year = year_match.group() if year_match else year
 
-            dur_elem = secici.css("div#info span:contains('Dakika')::text").get()
-            if dur_elem:
-                dur_match = re.search(r"\d+", dur_elem)
-                duration = int(dur_match.group()) if dur_match else duration
+            # Duration from info section
+            for span in secici.css("div#info span"):
+                span_text = span.text(strip=True) if span.text() else ""
+                if "Dakika" in span_text:
+                    dur_match = re.search(r"\d+", span_text)
+                    duration = int(dur_match.group()) if dur_match else duration
+                    break
 
             episodes = []
             for ep_item in secici.css("div#episodes ul.episodios li"):
-                ep_href = ep_item.css("h4.episodiotitle a::attr(href)").get()
-                ep_name = ep_item.css("h4.episodiotitle a::text").get()
+                ep_title_el = ep_item.css_first("h4.episodiotitle a")
+                ep_href = ep_title_el.attrs.get("href") if ep_title_el else None
+                ep_name = ep_title_el.text(strip=True) if ep_title_el else None
 
                 if not ep_href or not ep_name:
                     continue
 
-                ep_detail = ep_name.strip()
+                ep_detail = ep_name
                 season_match = re.search(r"(\d+)\.\s*Sezon", ep_detail)
                 episode_match = re.search(r"Sezon\s+(\d+)\.\s*Bölüm", ep_detail)
 
@@ -167,7 +193,7 @@ class SetFilmIzle(PluginBase):
                 episodes.append(Episode(
                     season  = ep_season,
                     episode = ep_episode,
-                    title   = ep_name.strip(),
+                    title   = ep_name,
                     url     = self.fix_url(ep_href)
                 ))
 
@@ -175,7 +201,7 @@ class SetFilmIzle(PluginBase):
                 url         = url,
                 poster      = self.fix_url(poster) if poster else None,
                 title       = title,
-                description = description.strip() if description else None,
+                description = description,
                 tags        = tags,
                 year        = year,
                 duration    = duration,
@@ -187,7 +213,7 @@ class SetFilmIzle(PluginBase):
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
             title       = title,
-            description = description.strip() if description else None,
+            description = description,
             tags        = tags,
             year        = year,
             duration    = duration,
@@ -196,7 +222,7 @@ class SetFilmIzle(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         nonce = self._get_nonce("video_nonce", referer=url)
 
@@ -209,9 +235,9 @@ class SetFilmIzle(PluginBase):
 
         links = []
         for player in secici.css("nav.player a"):
-            source_id   = player.css("::attr(data-post-id)").get()
-            player_name = player.css("::attr(data-player-name)").get()
-            part_key    = player.css("::attr(data-part-key)").get()
+            source_id   = player.attrs.get("data-post-id")
+            player_name = player.attrs.get("data-player-name")
+            part_key    = player.attrs.get("data-part-key")
 
             if not source_id or "event" in source_id or source_id == "":
                 continue

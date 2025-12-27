@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from parsel import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class SuperFilmGeldi(PluginBase):
@@ -36,48 +36,83 @@ class SuperFilmGeldi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
+        results = []
+        for veri in secici.css("div.movie-preview-content"):
+            link_el = veri.css_first("span.movie-title a")
+            if not link_el:
+                continue
+
+            title_text = link_el.text(strip=True)
+            if not title_text:
+                continue
+
+            img_el = veri.css_first("img")
+            href   = link_el.attrs.get("href")
+            poster = img_el.attrs.get("src") if img_el else None
+
+            results.append(MainPageResult(
                 category = category,
-                title    = self.clean_title(veri.css("span.movie-title a::text").get().split(" izle")[0]),
-                url      = self.fix_url(veri.css("span.movie-title a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(src)").get()),
-            )
-                for veri in secici.css("div.movie-preview-content")
-                    if veri.css("span.movie-title a::text").get()
-        ]
+                title    = self.clean_title(title_text.split(" izle")[0]),
+                url      = self.fix_url(href) if href else "",
+                poster   = self.fix_url(poster) if poster else None,
+            ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            SearchResult(
-                title  = self.clean_title(veri.css("span.movie-title a::text").get().split(" izle")[0]),
-                url    = self.fix_url(veri.css("span.movie-title a::attr(href)").get()),
-                poster = self.fix_url(veri.css("img::attr(src)").get()),
-            )
-                for veri in secici.css("div.movie-preview-content")
-                    if veri.css("span.movie-title a::text").get()
-        ]
+        results = []
+        for veri in secici.css("div.movie-preview-content"):
+            link_el = veri.css_first("span.movie-title a")
+            if not link_el:
+                continue
+
+            title_text = link_el.text(strip=True)
+            if not title_text:
+                continue
+
+            img_el = veri.css_first("img")
+            href   = link_el.attrs.get("href")
+            poster = img_el.attrs.get("src") if img_el else None
+
+            results.append(SearchResult(
+                title  = self.clean_title(title_text.split(" izle")[0]),
+                url    = self.fix_url(href) if href else "",
+                poster = self.fix_url(poster) if poster else None,
+            ))
+
+        return results
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("div.title h1::text").get()
-        title       = self.clean_title(title.split(" izle")[0]) if title else ""
-        poster      = self.fix_url(secici.css("div.poster img::attr(src)").get())
-        year        = secici.css("div.release a::text").re_first(r"(\d{4})")
-        description = secici.css("div.excerpt p::text").get()
-        tags        = secici.css("div.categories a::text").getall()
-        actors      = secici.css("div.actor a::text").getall()
+        title_el = secici.css_first("div.title h1")
+        title    = title_el.text(strip=True) if title_el else ""
+        title    = self.clean_title(title.split(" izle")[0]) if title else ""
+
+        poster_el = secici.css_first("div.poster img")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        # year: re_first kullanılamaz, re.search kullanıyoruz
+        year_el   = secici.css_first("div.release a")
+        year_text = year_el.text(strip=True) if year_el else ""
+        year_match = re.search(r"(\d{4})", year_text)
+        year = year_match.group(1) if year_match else None
+
+        desc_el     = secici.css_first("div.excerpt p")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        tags   = [a.text(strip=True) for a in secici.css("div.categories a") if a.text(strip=True)]
+        actors = [a.text(strip=True) for a in secici.css("div.actor a") if a.text(strip=True)]
 
         return MovieInfo(
             url         = url,
-            poster      = poster,
+            poster      = self.fix_url(poster) if poster else None,
             title       = title,
             description = description,
             tags        = tags,
@@ -86,12 +121,13 @@ class SuperFilmGeldi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        from KekikStream.Core import ExtractResult
-
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        iframe = self.fix_url(secici.css("div#vast iframe::attr(src)").get())
+        iframe_el = secici.css_first("div#vast iframe")
+        iframe    = iframe_el.attrs.get("src") if iframe_el else None
+        iframe    = self.fix_url(iframe) if iframe else None
+
         if not iframe:
             return []
 

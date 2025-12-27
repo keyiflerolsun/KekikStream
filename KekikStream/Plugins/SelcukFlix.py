@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
+from selectolax.parser import HTMLParser
 import re, base64, json, urllib.parse
 
 class SelcukFlix(PluginBase):
@@ -34,13 +34,17 @@ class SelcukFlix(PluginBase):
         if "tum-bolumler" in url:
             try:
                 resp = await self.httpx.get(url)
-                sel  = Selector(resp.text)
+                sel  = HTMLParser(resp.text)
 
                 for item in sel.css("div.col-span-3 a"):
-                    name    = item.css("h2::text").get()
-                    ep_info = item.css("div.opacity-80::text").get()
-                    href    = item.css("::attr(href)").get()
-                    poster  = item.css("div.image img::attr(src)").get()
+                    name_el   = item.css_first("h2")
+                    ep_el     = item.css_first("div.opacity-80")
+                    img_el    = item.css_first("div.image img")
+
+                    name    = name_el.text(strip=True) if name_el else None
+                    ep_info = ep_el.text(strip=True) if ep_el else None
+                    href    = item.attrs.get("href")
+                    poster  = img_el.attrs.get("src") if img_el else None
 
                     if name and href:
                         title     = f"{name} - {ep_info}" if ep_info else name
@@ -53,7 +57,7 @@ class SelcukFlix(PluginBase):
                             category = category,
                             title    = title,
                             url      = final_url,
-                            poster   = self.fix_url(poster)
+                            poster   = self.fix_url(poster) if poster else None
                         ))
             except Exception:
                 pass
@@ -184,9 +188,13 @@ class SelcukFlix(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
 
-        next_data = sel.css("script#__NEXT_DATA__::text").get()
+        next_data_el = sel.css_first("script#__NEXT_DATA__")
+        if not next_data_el:
+             return None
+
+        next_data = next_data_el.text(strip=True)
         if not next_data: 
              return None
 
@@ -258,9 +266,13 @@ class SelcukFlix(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
         
-        next_data = sel.css("script#__NEXT_DATA__::text").get()
+        next_data_el = sel.css_first("script#__NEXT_DATA__")
+        if not next_data_el:
+            return []
+
+        next_data = next_data_el.text(strip=True)
         if not next_data:
             return []
 
@@ -300,8 +312,9 @@ class SelcukFlix(PluginBase):
                                 source_content = res[0].get("source_content") or res[0].get("sourceContent")
 
             if source_content:
-                iframe_sel = Selector(source_content)
-                iframe_src = iframe_sel.css("iframe::attr(src)").get()
+                iframe_sel = HTMLParser(source_content)
+                iframe_el = iframe_sel.css_first("iframe")
+                iframe_src = iframe_el.attrs.get("src") if iframe_el else None
                 if iframe_src:
                     iframe_src = self.fix_url(iframe_src)
                     # Hotlinger domain değişimi (Kotlin referansı)

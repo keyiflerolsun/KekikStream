@@ -1,11 +1,11 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from parsel           import Selector
-from json             import loads
-from urllib.parse     import urlparse, urlunparse
-from Crypto.Cipher    import AES
-from base64           import b64decode
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
+from selectolax.parser import HTMLParser
+from json              import loads
+from urllib.parse      import urlparse, urlunparse
+from Crypto.Cipher     import AES
+from base64            import b64decode
 
 class Dizilla(PluginBase):
     name        = "Dizilla"
@@ -51,30 +51,45 @@ class Dizilla(PluginBase):
             ])
         else:
             istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-            secici = Selector(istek.text)
+            secici = HTMLParser(istek.text)
 
             for veri in secici.css("div.tab-content > div.grid a"):
-                name    = veri.css("h2::text").get()
-                ep_name = veri.xpath("normalize-space(//div[contains(@class, 'opacity-80')])").get()
+                h2_el = veri.css_first("h2")
+                name  = h2_el.text(strip=True) if h2_el else None
+
+                # opacity-80 div'den episode bilgisi - normalize-space yerine doğrudan text
+                opacity_el = veri.css_first("div[class*='opacity-80']")
+                ep_name = opacity_el.text(strip=True) if opacity_el else None
                 if not ep_name:
                     continue
 
                 ep_name = ep_name.replace(". Sezon", "x").replace(". Bölüm", "").replace("x ", "x")
                 title   = f"{name} - {ep_name}"
 
-                ep_req    = await self.httpx.get(self.fix_url(veri.css("::attr(href)").get()))
-                ep_secici = Selector(ep_req.text)
-                href      = self.fix_url(ep_secici.css("nav li:nth-of-type(3) a::attr(href)").get())
-                poster    = self.fix_url(ep_secici.css("img.imgt::attr(src)").get())
+                href = veri.attrs.get("href")
+                ep_req    = await self.httpx.get(self.fix_url(href))
+                ep_secici = HTMLParser(ep_req.text)
 
-                ana_sayfa.append(
-                    MainPageResult(
-                        category = category,
-                        title    = title,
-                        url      = href,
-                        poster   = poster
+                # nav li'leri alıp 3. elemana erişme (nth-of-type yerine)
+                nav_lis = ep_secici.css("nav li")
+                if len(nav_lis) >= 3:
+                    link_el = nav_lis[2].css_first("a")
+                    href = link_el.attrs.get("href") if link_el else None
+                else:
+                    href = None
+
+                poster_el = ep_secici.css_first("img.imgt")
+                poster = poster_el.attrs.get("src") if poster_el else None
+
+                if href:
+                    ana_sayfa.append(
+                        MainPageResult(
+                            category = category,
+                            title    = title,
+                            url      = self.fix_url(href),
+                            poster   = self.fix_url(poster) if poster else None
+                        )
                     )
-                )
 
         return ana_sayfa
 
@@ -125,8 +140,16 @@ class Dizilla(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
-        veri   = loads(secici.xpath("//script[@type='application/ld+json']/text()").getall()[-1])
+        secici = HTMLParser(istek.text)
+
+        # application/ld+json script'lerini al
+        ld_json_scripts = secici.css("script[type='application/ld+json']")
+        if not ld_json_scripts:
+            return None
+
+        # Son script'i al
+        last_script = ld_json_scripts[-1]
+        veri = loads(last_script.text(strip=True))
 
         title = veri.get("name")
         if alt_title := veri.get("alternateName"):
@@ -137,7 +160,8 @@ class Dizilla(PluginBase):
         year        = veri.get("datePublished").split("-")[0]
         
         # Tags extraction from page content (h3 tag)
-        tags_raw = secici.css("div.poster.poster h3::text").get()
+        tags_el = secici.css_first("div.poster.poster h3")
+        tags_raw = tags_el.text(strip=True) if tags_el else ""
         tags     = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
 
         rating = veri.get("aggregateRating", {}).get("ratingValue")
@@ -172,9 +196,13 @@ class Dizilla(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek   = await self.httpx.get(url)
-        secici  = Selector(istek.text)
+        secici  = HTMLParser(istek.text)
 
-        next_data   = loads(secici.css("script#__NEXT_DATA__::text").get())
+        next_data_el = secici.css_first("script#__NEXT_DATA__")
+        if not next_data_el:
+            return []
+
+        next_data   = loads(next_data_el.text(strip=True))
         secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData", {})
         decrypted   = await self.decrypt_response(secure_data)
         results     = decrypted.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
@@ -190,8 +218,9 @@ class Dizilla(PluginBase):
         cleaned_source = source_content.replace('"', '').replace('\\', '')
         
         # Parse cleaned HTML
-        iframe_src = Selector(cleaned_source).css("iframe::attr(src)").get()
-        iframe_url = self.fix_url(iframe_src)
+        iframe_el = HTMLParser(cleaned_source).css_first("iframe")
+        iframe_src = iframe_el.attrs.get("src") if iframe_el else None
+        iframe_url = self.fix_url(iframe_src) if iframe_src else None
         
         if not iframe_url:
             return []

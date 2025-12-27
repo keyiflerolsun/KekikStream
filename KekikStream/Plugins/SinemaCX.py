@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
-from parsel import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class SinemaCX(PluginBase):
@@ -39,57 +39,103 @@ class SinemaCX(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
+        results = []
+        for veri in secici.css("div.son div.frag-k, div.icerik div.frag-k"):
+            span_el = veri.css_first("div.yanac span")
+            if not span_el:
+                continue
+
+            title = span_el.text(strip=True)
+            if not title:
+                continue
+
+            link_el = veri.css_first("div.yanac a")
+            img_el  = veri.css_first("a.resim img")
+
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+
+            results.append(MainPageResult(
                 category = category,
-                title    = veri.css("div.yanac span::text").get(),
-                url      = self.fix_url(veri.css("div.yanac a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("a.resim img::attr(data-src)").get() or veri.css("a.resim img::attr(src)").get()),
-            )
-                for veri in secici.css("div.son div.frag-k, div.icerik div.frag-k")
-                    if veri.css("div.yanac span::text").get()
-        ]
+                title    = title,
+                url      = self.fix_url(href) if href else "",
+                poster   = self.fix_url(poster) if poster else None,
+            ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            SearchResult(
-                title  = veri.css("div.yanac span::text").get(),
-                url    = self.fix_url(veri.css("div.yanac a::attr(href)").get()),
-                poster = self.fix_url(veri.css("a.resim img::attr(data-src)").get() or veri.css("a.resim img::attr(src)").get()),
-            )
-                for veri in secici.css("div.icerik div.frag-k")
-                    if veri.css("div.yanac span::text").get()
-        ]
+        results = []
+        for veri in secici.css("div.icerik div.frag-k"):
+            span_el = veri.css_first("div.yanac span")
+            if not span_el:
+                continue
+
+            title = span_el.text(strip=True)
+            if not title:
+                continue
+
+            link_el = veri.css_first("div.yanac a")
+            img_el  = veri.css_first("a.resim img")
+
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+
+            results.append(SearchResult(
+                title  = title,
+                url    = self.fix_url(href) if href else "",
+                poster = self.fix_url(poster) if poster else None,
+            ))
+
+        return results
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         duration_match = re.search(r"Süre:.*?(\d+)\s*Dakika", istek.text)
-        description = secici.css("div.ackl div.scroll-liste::text").get()
+
+        desc_el     = secici.css_first("div.ackl div.scroll-liste")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        link_el   = secici.css_first("link[rel='image_src']")
+        poster    = link_el.attrs.get("href") if link_el else None
+
+        title_el  = secici.css_first("div.f-bilgi h1")
+        title     = title_el.text(strip=True) if title_el else None
+
+        tags      = [a.text(strip=True) for a in secici.css("div.f-bilgi div.tur a") if a.text(strip=True)]
+
+        year_el   = secici.css_first("div.f-bilgi ul.detay a[href*='yapim']")
+        year      = year_el.text(strip=True) if year_el else None
+
+        actors    = []
+        for li in secici.css("li.oync li.oyuncu-k"):
+            isim_el = li.css_first("span.isim")
+            if isim_el and isim_el.text(strip=True):
+                actors.append(isim_el.text(strip=True))
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(secici.css("link[rel='image_src']::attr(href)").get()),
-            title       = secici.css("div.f-bilgi h1::text").get(),
-            description = description.strip() if description else None,
-            tags        = [a.css("::text").get() for a in secici.css("div.f-bilgi div.tur a")],
-            year        = secici.css("div.f-bilgi ul.detay a[href*='yapim']::text").get(),
-            actors      = [li.css("span.isim::text").get() for li in secici.css("li.oync li.oyuncu-k")],
+            poster      = self.fix_url(poster) if poster else None,
+            title       = title,
+            description = description,
+            tags        = tags,
+            year        = year,
+            actors      = actors,
             duration    = int(duration_match[1]) if duration_match else None,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        iframe_list = [iframe.css("::attr(data-vsrc)").get() for iframe in secici.css("iframe")]
-        iframe_list = [i for i in iframe_list if i]
+        iframe_list = [iframe.attrs.get("data-vsrc") for iframe in secici.css("iframe") if iframe.attrs.get("data-vsrc")]
 
         # Sadece fragman varsa /2/ sayfasından dene
         has_only_trailer = all(
@@ -100,9 +146,8 @@ class SinemaCX(PluginBase):
         if has_only_trailer:
             alt_url   = url.rstrip("/") + "/2/"
             alt_istek = await self.httpx.get(alt_url)
-            alt_sec   = Selector(alt_istek.text)
-            iframe_list = [iframe.css("::attr(data-vsrc)").get() for iframe in alt_sec.css("iframe")]
-            iframe_list = [i for i in iframe_list if i]
+            alt_sec   = HTMLParser(alt_istek.text)
+            iframe_list = [iframe.attrs.get("data-vsrc") for iframe in alt_sec.css("iframe") if iframe.attrs.get("data-vsrc")]
 
         if not iframe_list:
             return []

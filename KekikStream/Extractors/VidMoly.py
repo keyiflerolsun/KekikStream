@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-from parsel           import Selector
+from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle
+from selectolax.parser import HTMLParser
 import re, contextlib, json
 
 class VidMoly(ExtractorBase):
@@ -29,16 +29,24 @@ class VidMoly(ExtractorBase):
         # VidMoly bazen redirect ediyor, takip et
         response = await self.httpx.get(url, follow_redirects=True)
         if "Select number" in response.text:
-            secici = Selector(response.text)
+            secici = HTMLParser(response.text)
+
+            op_el        = secici.css_first("input[name='op']")
+            file_code_el = secici.css_first("input[name='file_code']")
+            answer_el    = secici.css_first("div.vhint b")
+            ts_el        = secici.css_first("input[name='ts']")
+            nonce_el     = secici.css_first("input[name='nonce']")
+            ctok_el      = secici.css_first("input[name='ctok']")
+
             response = await self.httpx.post(
                 url  = url,
                 data = {
-                    "op"        : secici.css("input[name='op']::attr(value)").get(),
-                    "file_code" : secici.css("input[name='file_code']::attr(value)").get(),
-                    "answer"    : secici.css("div.vhint b::text").get(),
-                    "ts"        : secici.css("input[name='ts']::attr(value)").get(),
-                    "nonce"     : secici.css("input[name='nonce']::attr(value)").get(),
-                    "ctok"      : secici.css("input[name='ctok']::attr(value)").get()
+                    "op"        : op_el.attrs.get("value") if op_el else None,
+                    "file_code" : file_code_el.attrs.get("value") if file_code_el else None,
+                    "answer"    : answer_el.text(strip=True) if answer_el else None,
+                    "ts"        : ts_el.attrs.get("value") if ts_el else None,
+                    "nonce"     : nonce_el.attrs.get("value") if nonce_el else None,
+                    "ctok"      : ctok_el.attrs.get("value") if ctok_el else None
                 },
                 follow_redirects=True
             )

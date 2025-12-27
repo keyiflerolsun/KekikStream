@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class DiziYou(PluginBase):
@@ -31,38 +31,57 @@ class DiziYou(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.css("div#categorytitle a::text").get(),
-                url      = self.fix_url(veri.css("div#categorytitle a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(src)").get()),
-            )
-                for veri in secici.css("div.single-item")
-        ]
+        results = []
+        for veri in secici.css("div.single-item"):
+            title_el = veri.css_first("div#categorytitle a")
+            img_el   = veri.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = title_el.attrs.get("href") if title_el else None
+            poster = img_el.attrs.get("src") if img_el else None
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            SearchResult(
-                title  = afis.css("div#categorytitle a::text").get().strip(),
-                url    = self.fix_url(afis.css("div#categorytitle a::attr(href)").get()),
-                poster = self.fix_url(afis.css("img::attr(src)").get() or afis.css("img::attr(data-src)").get())
-            )
-                for afis in secici.css("div.incontent div#list-series")
-        ]
+        results = []
+        for afis in secici.css("div.incontent div#list-series"):
+            title_el = afis.css_first("div#categorytitle a")
+            img_el   = afis.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = title_el.attrs.get("href") if title_el else None
+            poster = (img_el.attrs.get("src") or img_el.attrs.get("data-src")) if img_el else None
+
+            if title and href:
+                results.append(SearchResult(
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
+        html_text = istek.text
 
         # Title - div.title h1 içinde
-        title_raw   = secici.css("div.title h1::text").get()
-        title       = title_raw.strip() if title_raw else ""
+        title_el = secici.css_first("div.title h1")
+        title    = title_el.text(strip=True) if title_el else ""
         
         # Fallback: Eğer title boşsa URL'den çıkar (telif kısıtlaması olan sayfalar için)
         if not title:
@@ -71,45 +90,66 @@ class DiziYou(PluginBase):
             title = slug.replace('-', ' ').title()
         
         # Poster
-        poster_raw  = secici.css("div.category_image img::attr(src)").get()
-        poster      = self.fix_url(poster_raw) if poster_raw else ""
-        year        = secici.xpath("//span[contains(., 'Yapım Yılı')]/following-sibling::text()[1]").get()
-        description = secici.css("div.diziyou_desc::text").get()
-        if description:
-            description = description.strip()
-        tags        = secici.css("div.genres a::text").getall()
-        rating      = secici.xpath("//span[contains(., 'IMDB')]/following-sibling::text()[1]").get()
-        _actors     = secici.xpath("//span[contains(., 'Oyuncular')]/following-sibling::text()[1]").get()
-        actors      = [actor.strip() for actor in _actors.split(",")] if _actors else []
+        poster_el = secici.css_first("div.category_image img")
+        poster    = self.fix_url(poster_el.attrs.get("src")) if poster_el else ""
 
-        episodes    = []
-        # Episodes - bolumust her bölüm için bir <a> içinde
-        # :has() parsel'de çalışmıyor, XPath kullanıyoruz
-        for link in secici.xpath('//a[div[@class="bolumust"]]'):
-            ep_name_raw = link.css("div.baslik::text").get()
-            if not ep_name_raw:
+        # Year - regex ile çıkarma (xpath yerine)
+        year = None
+        year_match = re.search(r"Yapım Yılı.*?(\d{4})", html_text, re.DOTALL | re.IGNORECASE)
+        if year_match:
+            year = year_match.group(1)
+
+        desc_el = secici.css_first("div.diziyou_desc")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        tags = [a.text(strip=True) for a in secici.css("div.genres a") if a.text(strip=True)]
+
+        # Rating - regex ile
+        rating = None
+        rating_match = re.search(r"IMDB.*?([0-9.]+)", html_text, re.DOTALL | re.IGNORECASE)
+        if rating_match:
+            rating = rating_match.group(1)
+
+        # Actors - regex ile
+        actors = []
+        actors_match = re.search(r"Oyuncular.*?</span>([^<]+)", html_text, re.DOTALL | re.IGNORECASE)
+        if actors_match:
+            actors = [actor.strip() for actor in actors_match.group(1).split(",") if actor.strip()]
+
+        episodes = []
+        # Episodes - bolumust div içeren a linklerini bul
+        for link in secici.css("a"):
+            bolumust = link.css_first("div.bolumust")
+            if not bolumust:
                 continue
-            ep_name = ep_name_raw.strip()
-            
-            ep_href = self.fix_url(link.css("::attr(href)").get())
+
+            baslik_el = link.css_first("div.baslik")
+            if not baslik_el:
+                continue
+
+            ep_name = baslik_el.text(strip=True)
+            ep_href = link.attrs.get("href")
             if not ep_href:
                 continue
 
             # Bölüm ismi varsa al
-            ep_name_raw_clean = link.css("div.bolumismi::text").get()
-            ep_name_clean = ep_name_raw_clean.strip().replace("(", "").replace(")", "").strip() if ep_name_raw_clean else ep_name
+            bolumismi_el = link.css_first("div.bolumismi")
+            ep_name_clean = bolumismi_el.text(strip=True).replace("(", "").replace(")", "").strip() if bolumismi_el else ep_name
 
-            ep_episode = re.search(r"(\d+)\. Bölüm", ep_name)[1]
-            ep_season  = re.search(r"(\d+)\. Sezon", ep_name)[1]
+            ep_episode_match = re.search(r"(\d+)\. Bölüm", ep_name)
+            ep_season_match  = re.search(r"(\d+)\. Sezon", ep_name)
 
-            episode = Episode(
-                season  = ep_season,
-                episode = ep_episode,
-                title   = ep_name_clean,
-                url     = ep_href,
-            )
+            ep_episode = ep_episode_match.group(1) if ep_episode_match else None
+            ep_season  = ep_season_match.group(1) if ep_season_match else None
 
-            episodes.append(episode)
+            if ep_episode and ep_season:
+                episode = Episode(
+                    season  = ep_season,
+                    episode = ep_episode,
+                    title   = ep_name_clean,
+                    url     = self.fix_url(ep_href),
+                )
+                episodes.append(episode)
 
         return SeriesInfo(
             url         = url,
@@ -125,17 +165,18 @@ class DiziYou(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         # Title ve episode name - None kontrolü ekle
-        item_title_raw = secici.css("div.title h1::text").get()
-        item_title = item_title_raw.strip() if item_title_raw else ""
+        title_el = secici.css_first("div.title h1")
+        item_title = title_el.text(strip=True) if title_el else ""
         
-        ep_name_raw = secici.css("div#bolum-ismi::text").get()
-        ep_name = ep_name_raw.strip() if ep_name_raw else ""
+        ep_name_el = secici.css_first("div#bolum-ismi")
+        ep_name = ep_name_el.text(strip=True) if ep_name_el else ""
         
         # Player src'den item_id çıkar
-        player_src = secici.css("iframe#diziyouPlayer::attr(src)").get()
+        player_el = secici.css_first("iframe#diziyouPlayer")
+        player_src = player_el.attrs.get("src") if player_el else None
         if not player_src:
             return []  # Player bulunamadıysa boş liste döndür
         
@@ -145,8 +186,8 @@ class DiziYou(PluginBase):
         stream_urls = []
 
         for secenek in secici.css("span.diziyouOption"):
-            opt_id  = secenek.css("::attr(id)").get()
-            op_name = secenek.css("::text").get()
+            opt_id  = secenek.attrs.get("id")
+            op_name = secenek.text(strip=True)
 
             match opt_id:
                 case "turkceAltyazili":

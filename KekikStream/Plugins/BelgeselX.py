@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
+from selectolax.parser import HTMLParser
 import re
 
 class BelgeselX(PluginBase):
@@ -43,19 +43,27 @@ class BelgeselX(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
-        for item in secici.css("div.gen-movie-contain > div.gen-info-contain > div.gen-movie-info"):
-            title  = item.css("div.gen-movie-info > h3 a::text").get()
-            href   = item.css("div.gen-movie-info > h3 a::attr(href)").get()
-            parent = item.xpath("../../..")
-            poster = parent.css("div.gen-movie-img > img::attr(src)").get()
+        # xpath kullanamıyoruz, en üst seviye gen-movie-contain'leri alıp içlerinden bilgileri çekelim
+        for container in secici.css("div.gen-movie-contain"):
+            # Poster için img'i container'ın içinden alalım
+            img_el = container.css_first("div.gen-movie-img img")
+            poster = img_el.attrs.get("src") if img_el else None
+
+            # Title ve href için gen-movie-info
+            h3_link = container.css_first("div.gen-movie-info h3 a")
+            if not h3_link:
+                continue
+
+            title = h3_link.text(strip=True)
+            href  = h3_link.attrs.get("href")
 
             if title and href:
                 results.append(MainPageResult(
                     category = category,
-                    title    = self._to_title_case(title.strip()),
+                    title    = self._to_title_case(title),
                     url      = self.fix_url(href),
                     poster   = self.fix_url(poster) if poster else None
                 ))
@@ -117,15 +125,20 @@ class BelgeselX(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("h2.gen-title::text").get()
-        poster      = secici.css("div.gen-tv-show-top img::attr(src)").get()
-        description = secici.css("div.gen-single-tv-show-info p::text").get()
+        title_el = secici.css_first("h2.gen-title")
+        title    = title_el.text(strip=True) if title_el else None
+
+        poster_el = secici.css_first("div.gen-tv-show-top img")
+        poster    = poster_el.attrs.get("src") if poster_el else None
+
+        desc_el     = secici.css_first("div.gen-single-tv-show-info p")
+        description = desc_el.text(strip=True) if desc_el else None
 
         tags = []
         for tag_link in secici.css("div.gen-socail-share a[href*='belgeselkanali']"):
-            tag_href = tag_link.css("::attr(href)").get()
+            tag_href = tag_link.attrs.get("href")
             if tag_href:
                 tag_name = tag_href.rsplit("/", 1)[-1].replace("-", " ")
                 tags.append(self._to_title_case(tag_name))
@@ -133,13 +146,19 @@ class BelgeselX(PluginBase):
         episodes = []
         counter  = 0
         for ep_item in secici.css("div.gen-movie-contain"):
-            ep_name = ep_item.css("div.gen-movie-info h3 a::text").get()
-            ep_href = ep_item.css("div.gen-movie-info h3 a::attr(href)").get()
+            ep_link = ep_item.css_first("div.gen-movie-info h3 a")
+            if not ep_link:
+                continue
+
+            ep_name = ep_link.text(strip=True)
+            ep_href = ep_link.attrs.get("href")
 
             if not ep_name or not ep_href:
                 continue
 
-            season_text   = ep_item.css("div.gen-single-meta-holder ul li::text").get() or ""
+            meta_el     = ep_item.css_first("div.gen-single-meta-holder ul li")
+            season_text = meta_el.text(strip=True) if meta_el else ""
+
             episode_match = re.search(r"Bölüm (\d+)", season_text)
             season_match  = re.search(r"Sezon (\d+)", season_text)
 
@@ -151,15 +170,15 @@ class BelgeselX(PluginBase):
             episodes.append(Episode(
                 season  = ep_season,
                 episode = ep_episode,
-                title   = ep_name.strip(),
+                title   = ep_name,
                 url     = self.fix_url(ep_href)
             ))
 
         return SeriesInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = self._to_title_case(title.strip()) if title else None,
-            description = description.strip() if description else None,
+            title       = self._to_title_case(title) if title else None,
+            description = description,
             tags        = tags,
             episodes    = episodes
         )

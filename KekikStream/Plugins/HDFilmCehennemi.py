@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
-from parsel           import Selector
-from Kekik.Sifreleme  import Packer, StreamDecoder
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
+from selectolax.parser import HTMLParser
+from Kekik.Sifreleme   import Packer, StreamDecoder
 import random, string, re
 
 class HDFilmCehennemi(PluginBase):
@@ -31,17 +31,26 @@ class HDFilmCehennemi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}", follow_redirects=True)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.css("strong.poster-title::text").get(),
-                url      = self.fix_url(veri.css("::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(data-src)").get()),
-            )
-                for veri in secici.css("div.section-content a.poster")
-        ]
+        results = []
+        for veri in secici.css("div.section-content a.poster"):
+            title_el = veri.css_first("strong.poster-title")
+            img_el   = veri.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = veri.attrs.get("href")
+            poster = img_el.attrs.get("data-src") if img_el else None
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None,
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek = await self.httpx.get(
@@ -54,57 +63,69 @@ class HDFilmCehennemi(PluginBase):
         )
 
         results = []
-        for veri in istek.json().get("results"):
-            secici = Selector(veri)
-            title  = secici.css("h4.title::text").get()
-            href   = secici.css("a::attr(href)").get()
-            poster = secici.css("img::attr(data-src)").get() or secici.css("img::attr(src)").get()
+        for veri in istek.json().get("results", []):
+            secici = HTMLParser(veri)
+            title_el = secici.css_first("h4.title")
+            link_el  = secici.css_first("a")
+            img_el   = secici.css_first("img")
+
+            title  = title_el.text(strip=True) if title_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
             
             if title and href:
-                results.append(
-                    SearchResult(
-                        title  = title.strip(),
-                        url    = self.fix_url(href.strip()),
-                        poster = self.fix_url(poster.strip()) if poster else None,
-                    )
-                )
+                results.append(SearchResult(
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster) if poster else None,
+                ))
             
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("h1.section-title::text").get()
-        title       = title.strip() if title else ""
-        poster      = secici.css("aside.post-info-poster img.lazyload::attr(data-src)").get() or ""
-        poster      = poster.strip() if poster else ""
-        description = secici.css("article.post-info-content > p::text").get() or ""
-        description = description.strip() if description else ""
-        tags        = secici.css("div.post-info-genres a::text").getall()
-        rating      = secici.css("div.post-info-imdb-rating span::text").get() or ""
-        rating      = rating.strip() if rating else ""
-        year        = secici.css("div.post-info-year-country a::text").get() or ""
-        year        = year.strip() if year else ""
-        actors      = secici.css("div.post-info-cast a > strong::text").getall()
-        duration    = secici.css("div.post-info-duration::text").get() or "0"
-        duration    = duration.replace("dakika", "").strip()
+        title_el = secici.css_first("h1.section-title")
+        title    = title_el.text(strip=True) if title_el else ""
+
+        poster_el = secici.css_first("aside.post-info-poster img.lazyload")
+        poster    = poster_el.attrs.get("data-src", "").strip() if poster_el else ""
+
+        desc_el     = secici.css_first("article.post-info-content > p")
+        description = desc_el.text(strip=True) if desc_el else ""
+
+        tags   = [a.text(strip=True) for a in secici.css("div.post-info-genres a") if a.text(strip=True)]
+
+        rating_el = secici.css_first("div.post-info-imdb-rating span")
+        rating    = rating_el.text(strip=True) if rating_el else ""
+
+        year_el = secici.css_first("div.post-info-year-country a")
+        year    = year_el.text(strip=True) if year_el else ""
+
+        actors = [a.text(strip=True) for a in secici.css("div.post-info-cast a > strong") if a.text(strip=True)]
+
+        duration_el = secici.css_first("div.post-info-duration")
+        duration_str = duration_el.text(strip=True) if duration_el else "0"
+        duration_str = duration_str.replace("dakika", "").strip()
 
         try:
-            duration_minutes = int(re.search(r'\d+', duration).group()) if re.search(r'\d+', duration) else 0
+            duration_match = re.search(r'\d+', duration_str)
+            duration_minutes = int(duration_match.group()) if duration_match else 0
         except Exception:
             duration_minutes = 0
 
         # Dizi mi film mi kontrol et (Kotlin referansı: div.seasons kontrolü)
-        is_series = len(secici.css("div.seasons").getall()) > 0
+        is_series = len(secici.css("div.seasons")) > 0
 
         if is_series:
             episodes = []
             for ep in secici.css("div.seasons-tab-content a"):
-                ep_name = ep.css("h4::text").get()
-                ep_href = ep.css("::attr(href)").get()
+                ep_name_el = ep.css_first("h4")
+                ep_name = ep_name_el.text(strip=True) if ep_name_el else None
+                ep_href = ep.attrs.get("href")
+
                 if ep_name and ep_href:
-                    ep_name = ep_name.strip()
                     # Regex ile sezon ve bölüm numarası çıkar
                     ep_match = re.search(r'(\d+)\.\s*Bölüm', ep_name)
                     sz_match = re.search(r'(\d+)\.\s*Sezon', ep_name)
@@ -120,7 +141,7 @@ class HDFilmCehennemi(PluginBase):
 
             return SeriesInfo(
                 url         = url,
-                poster      = self.fix_url(poster),
+                poster      = self.fix_url(poster) if poster else None,
                 title       = self.clean_title(title),
                 description = description,
                 tags        = tags,
@@ -132,7 +153,7 @@ class HDFilmCehennemi(PluginBase):
         else:
             return MovieInfo(
                 url         = url,
-                poster      = self.fix_url(poster),
+                poster      = self.fix_url(poster) if poster else None,
                 title       = self.clean_title(title),
                 description = description,
                 tags        = tags,
@@ -255,15 +276,19 @@ class HDFilmCehennemi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
         for alternatif in secici.css("div.alternative-links"):
-            lang_code = alternatif.css("::attr(data-lang)").get().upper()
+            lang_code = alternatif.attrs.get("data-lang", "").upper()
 
             for link in alternatif.css("button.alternative-link"):
-                source   = f"{link.css('::text').get().replace('(HDrip Xbet)', '').strip()} {lang_code}"
-                video_id = link.css("::attr(data-video)").get()
+                source_text = link.text(strip=True).replace('(HDrip Xbet)', '').strip()
+                source   = f"{source_text} {lang_code}"
+                video_id = link.attrs.get("data-video")
+
+                if not video_id:
+                    continue
 
                 api_get = await self.httpx.get(
                     url     = f"{self.main_url}/video/{video_id}/",

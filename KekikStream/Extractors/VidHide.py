@@ -2,7 +2,6 @@
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 from Kekik.Sifreleme  import Packer
-from parsel           import Selector
 import re
 
 class VidHide(ExtractorBase):

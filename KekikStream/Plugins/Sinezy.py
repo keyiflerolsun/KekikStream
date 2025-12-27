@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
+from selectolax.parser import HTMLParser
 import re, base64
 
 class Sinezy(PluginBase):
@@ -45,58 +45,72 @@ class Sinezy(PluginBase):
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{url}page/{page}/"
         resp     = await self.httpx.get(full_url)
-        sel      = Selector(resp.text)
+        sel      = HTMLParser(resp.text)
         
         results = []
         for item in sel.css("div.container div.content div.movie_box.move_k"):
-             title  = item.css("a::attr(title)").get()
-             href   = item.css("a::attr(href)").get()
-             poster = item.css("img::attr(data-src)").get()
+            link_el = item.css_first("a")
+            img_el  = item.css_first("img")
+
+            title  = link_el.attrs.get("title") if link_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
              
-             if title and href:
-                 results.append(MainPageResult(
-                     category = category,
-                     title    = title,
-                     url      = self.fix_url(href),
-                     poster   = self.fix_url(poster)
-                 ))
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None
+                ))
 
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
         url  = f"{self.main_url}/arama/?s={query}"
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
 
         results = []
         for item in sel.css("div.movie_box.move_k"):
-             title  = item.css("a::attr(title)").get()
-             href   = item.css("a::attr(href)").get()
-             poster = item.css("img::attr(data-src)").get()
+            link_el = item.css_first("a")
+            img_el  = item.css_first("img")
 
-             if title and href:
-                 results.append(SearchResult(
-                     title   = title,
-                     url     = self.fix_url(href),
-                     poster  = self.fix_url(poster)
-                 ))
+            title  = link_el.attrs.get("title") if link_el else None
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("data-src") if img_el else None
+
+            if title and href:
+                results.append(SearchResult(
+                    title   = title,
+                    url     = self.fix_url(href),
+                    poster  = self.fix_url(poster) if poster else None
+                ))
 
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
         resp = await self.httpx.get(url)
-        sel  = Selector(resp.text)
+        sel  = HTMLParser(resp.text)
 
-        title       = sel.css("div.detail::attr(title)").get()
-        poster      = sel.css("div.move_k img::attr(data-src)").get()
-        description = sel.css("div.desc.yeniscroll p::text").get()
-        rating      = sel.css("span.info span.imdb::text").get()
+        detail_el = sel.css_first("div.detail")
+        title     = detail_el.attrs.get("title") if detail_el else None
 
-        tags   = sel.css("div.detail span a::text").getall()
-        actors = sel.css("span.oyn p::text").getall()        # Might need splitting logic
+        poster_el = sel.css_first("div.move_k img")
+        poster    = poster_el.attrs.get("data-src") if poster_el else None
+
+        desc_el     = sel.css_first("div.desc.yeniscroll p")
+        description = desc_el.text(strip=True) if desc_el else None
+
+        rating_el = sel.css_first("span.info span.imdb")
+        rating    = rating_el.text(strip=True) if rating_el else None
+
+        tags   = [a.text(strip=True) for a in sel.css("div.detail span a") if a.text(strip=True)]
+        actors = [p.text(strip=True) for p in sel.css("span.oyn p") if p.text(strip=True)]
         
         year = None
-        info_text = sel.css("span.info::text").get()
+        info_el = sel.css_first("span.info")
+        info_text = info_el.text(strip=True) if info_el else ""
         if info_text:
             year_match = re.search(r'\b(19\d{2}|20\d{2})\b', info_text)
             if year_match:
@@ -104,7 +118,7 @@ class Sinezy(PluginBase):
         
         # Bulunamadıysa tüm sayfada ara
         if not year:
-            all_text = " ".join(sel.css("::text").getall())
+            all_text = sel.body.text() if sel.body else ""
             year_match = re.search(r'\b(19\d{2}|20\d{2})\b', all_text)
             if year_match:
                 year = year_match.group(1)
@@ -112,7 +126,7 @@ class Sinezy(PluginBase):
         return MovieInfo(
             title       = title,
             url         = url,
-            poster      = self.fix_url(poster),
+            poster      = self.fix_url(poster) if poster else None,
             description = description,
             tags        = tags,
             rating      = rating,
@@ -125,19 +139,19 @@ class Sinezy(PluginBase):
 
         match = re.search(r"ilkpartkod\s*=\s*'([^']+)'", resp.text, re.IGNORECASE)
         if match:
-             encoded = match.group(1)
-             try:
-                 decoded = base64.b64decode(encoded).decode('utf-8')
-                 iframe_match = re.search(r'src="([^"]*)"', decoded)
+            encoded = match.group(1)
+            try:
+                decoded = base64.b64decode(encoded).decode('utf-8')
+                iframe_match = re.search(r'src="([^"]*)"', decoded)
 
-                 if iframe_match:
-                     iframe = iframe_match.group(1)
-                     iframe = self.fix_url(iframe)
-                     
-                     data = await self.extract(iframe)
-                     if data:
-                         return [data]
-             except Exception:
-                 pass
+                if iframe_match:
+                    iframe = iframe_match.group(1)
+                    iframe = self.fix_url(iframe)
+                    
+                    data = await self.extract(iframe)
+                    if data:
+                        return [data]
+            except Exception:
+                pass
 
         return []

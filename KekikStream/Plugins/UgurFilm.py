@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from parsel           import Selector
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
+from selectolax.parser import HTMLParser
+import re
 
 class UgurFilm(PluginBase):
     name        = "UgurFilm"
@@ -25,53 +26,86 @@ class UgurFilm(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        return [
-            MainPageResult(
+        results = []
+        for veri in secici.css("div.icerik div"):
+            # Title is in the second span (a.baslik > span), not the first span (class="sol" which is empty)
+            title_el = veri.css_first("a.baslik span")
+            title = title_el.text(strip=True) if title_el else None
+            if not title:
+                continue
+
+            link_el = veri.css_first("a")
+            img_el  = veri.css_first("img")
+
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("src") if img_el else None
+
+            results.append(MainPageResult(
                 category = category,
-                title    = veri.css("span:nth-child(1)::text").get(),
-                url      = self.fix_url(veri.css("a::attr(href)").get()),
-                poster   = self.fix_url(veri.css("img::attr(src)").get()),
-            )
-                for veri in secici.css("div.icerik div") if veri.css("span:nth-child(1)::text").get()
-        ]
+                title    = title,
+                url      = self.fix_url(href) if href else "",
+                poster   = self.fix_url(poster) if poster else None,
+            ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
         results = []
         for film in secici.css("div.icerik div"):
-            title  = film.css("span:nth-child(1)::text").get()
-            href   = film.css("a::attr(href)").get()
-            poster = film.css("img::attr(src)").get()
+            # Title is in a.baslik > span, not the first span
+            title_el = film.css_first("a.baslik span")
+            title = title_el.text(strip=True) if title_el else None
+
+            link_el = film.css_first("a")
+            img_el  = film.css_first("img")
+
+            href   = link_el.attrs.get("href") if link_el else None
+            poster = img_el.attrs.get("src") if img_el else None
 
             if title and href:
-                results.append(
-                    SearchResult(
-                        title  = title.strip(),
-                        url    = self.fix_url(href.strip()),
-                        poster = self.fix_url(poster.strip()) if poster else None,
-                    )
-                )
+                results.append(SearchResult(
+                    title  = title.strip(),
+                    url    = self.fix_url(href.strip()),
+                    poster = self.fix_url(poster.strip()) if poster else None,
+                ))
 
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = Selector(istek.text)
+        secici = HTMLParser(istek.text)
 
-        title       = secici.css("div.bilgi h2::text").get().strip()
-        poster      = secici.css("div.resim img::attr(src)").get().strip()
-        description = secici.css("div.slayt-aciklama::text").get().strip()
-        tags        = secici.css("p.tur a[href*='/category/']::text").getall()
-        year        = secici.css("a[href*='/yil/']::text").re_first(r"\d+")
-        actors      = [actor.css("span::text").get() for actor in secici.css("li.oyuncu-k")]
+        title_el = secici.css_first("div.bilgi h2")
+        title    = title_el.text(strip=True) if title_el else ""
+
+        poster_el = secici.css_first("div.resim img")
+        poster    = poster_el.attrs.get("src", "").strip() if poster_el else ""
+
+        desc_el     = secici.css_first("div.slayt-aciklama")
+        description = desc_el.text(strip=True) if desc_el else ""
+
+        tags = [a.text(strip=True) for a in secici.css("p.tur a[href*='/category/']") if a.text(strip=True)]
+
+        # re_first yerine re.search
+        year_el   = secici.css_first("a[href*='/yil/']")
+        year_text = year_el.text(strip=True) if year_el else ""
+        year_match = re.search(r"\d+", year_text)
+        year = year_match.group() if year_match else None
+
+        actors = []
+        for actor in secici.css("li.oyuncu-k"):
+            span_el = actor.css_first("span")
+            if span_el and span_el.text(strip=True):
+                actors.append(span_el.text(strip=True))
 
         return MovieInfo(
             url         = self.fix_url(url),
-            poster      = self.fix_url(poster),
+            poster      = self.fix_url(poster) if poster else None,
             title       = title,
             description = description,
             tags        = tags,
@@ -81,14 +115,18 @@ class UgurFilm(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek   = await self.httpx.get(url)
-        secici  = Selector(istek.text)
+        secici  = HTMLParser(istek.text)
         results = []
 
-        for part_link in secici.css("li.parttab a::attr(href)").getall():
-            sub_response = await self.httpx.get(part_link)
-            sub_selector = Selector(sub_response.text)
+        part_links = [a.attrs.get("href") for a in secici.css("li.parttab a") if a.attrs.get("href")]
 
-            iframe = sub_selector.css("div#vast iframe::attr(src)").get()
+        for part_link in part_links:
+            sub_response = await self.httpx.get(part_link)
+            sub_selector = HTMLParser(sub_response.text)
+
+            iframe_el = sub_selector.css_first("div#vast iframe")
+            iframe = iframe_el.attrs.get("src") if iframe_el else None
+
             if iframe and self.main_url in iframe:
                 post_data = {
                     "vid"         : iframe.split("vid=")[-1],
