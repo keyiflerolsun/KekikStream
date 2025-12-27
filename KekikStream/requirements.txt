@@ -3,7 +3,7 @@ wheel
 Kekik
 httpx
 cloudscraper
-parsel
+selectolax
 pydantic
 InquirerPy
 yt-dlp
