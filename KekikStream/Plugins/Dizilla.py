@@ -10,7 +10,7 @@ from base64            import b64decode
 class Dizilla(PluginBase):
     name        = "Dizilla"
     language    = "tr"
-    main_url    = "https://dizilla40.com"
+    main_url    = "https://dizilla.to"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "1080p yabancı dizi izle. Türkçe altyazılı veya dublaj seçenekleriyle 1080p çözünürlükte yabancı dizilere anında ulaş. Popüler dizileri kesintisiz izle."
 
