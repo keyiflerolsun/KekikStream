@@ -2,7 +2,7 @@
 
 from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
 from selectolax.parser import HTMLParser
-import re, json
+import re, json, asyncio
 
 class SetFilmIzle(PluginBase):
     name        = "SetFilmIzle"
@@ -229,7 +229,7 @@ class SetFilmIzle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLParser(istek.text)
 
-        nonce = self._get_nonce("video_nonce", referer=url)
+        nonce = secici.css_first("div#playex").attrs.get("data-nonce") if secici.css_first("div#playex") else ""
 
         # partKey to dil label mapping
         part_key_labels = {
@@ -238,46 +238,49 @@ class SetFilmIzle(PluginBase):
             "orijinal"      : "Orijinal"
         }
 
-        links = []
+        semaphore = asyncio.Semaphore(5)
+        tasks = []
+
+        async def fetch_and_extract(player):
+            async with semaphore:
+                source_id   = player.attrs.get("data-post-id")
+                player_name = player.attrs.get("data-player-name")
+                part_key    = player.attrs.get("data-part-key")
+
+                if not source_id or "event" in source_id or source_id == "":
+                    return None
+
+                try:
+                    resp = self.cloudscraper.post(
+                        f"{self.main_url}/wp-admin/admin-ajax.php",
+                        headers = {"Referer": url},
+                        data    = {
+                            "action"      : "get_video_url",
+                            "nonce"       : nonce,
+                            "post_id"     : source_id,
+                            "player_name" : player_name or "",
+                            "part_key"    : part_key or ""
+                        }
+                    )
+                    data = resp.json()
+                except:
+                    return None
+
+                iframe_url = data.get("data", {}).get("url")
+                if not iframe_url:
+                    return None
+
+                if "setplay" not in iframe_url and part_key:
+                    iframe_url = f"{iframe_url}?partKey={part_key}"
+
+                label = part_key_labels.get(part_key, "")
+                if not label and part_key:
+                    label = part_key.replace("_", " ").title()
+
+                return await self.extract(iframe_url, prefix=label if label else None)
+
         for player in secici.css("nav.player a"):
-            source_id   = player.attrs.get("data-post-id")
-            player_name = player.attrs.get("data-player-name")
-            part_key    = player.attrs.get("data-part-key")
+            tasks.append(fetch_and_extract(player))
 
-            if not source_id or "event" in source_id or source_id == "":
-                continue
-
-            try:
-                resp = self.cloudscraper.post(
-                    f"{self.main_url}/wp-admin/admin-ajax.php",
-                    headers = {"Referer": url},
-                    data    = {
-                        "action"      : "get_video_url",
-                        "nonce"       : nonce,
-                        "post_id"     : source_id,
-                        "player_name" : player_name or "",
-                        "part_key"    : part_key or ""
-                    }
-                )
-                data = resp.json()
-            except:
-                continue
-
-            iframe_url = data.get("data", {}).get("url")
-            if not iframe_url:
-                continue
-
-            # SetPlay URL'si için part_key ekleme
-            if "setplay" not in iframe_url and part_key:
-                iframe_url = f"{iframe_url}?partKey={part_key}"
-
-            # Dil etiketi oluştur
-            label = part_key_labels.get(part_key, "")
-            if not label and part_key:
-                label = part_key.replace("_", " ").title()
-
-            data = await self.extract(iframe_url, prefix=label if label else None)
-            if data:
-                links.append(data)
-
-        return links
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r]

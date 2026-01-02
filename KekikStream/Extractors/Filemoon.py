@@ -22,13 +22,14 @@ class Filemoon(ExtractorBase):
         return any(domain in url for domain in self.supported_domains)
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        headers = {
-            "Referer"        : url,
-            "Sec-Fetch-Dest" : "iframe",
-            "Sec-Fetch-Mode" : "navigate",
-            "Sec-Fetch-Site" : "cross-site",
+        default_headers = {
+            "Referer"         : url,
+            "Sec-Fetch-Dest"  : "iframe",
+            "Sec-Fetch-Mode"  : "navigate",
+            "Sec-Fetch-Site"  : "cross-site",
+            "User-Agent"      : "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"
         }
-        self.httpx.headers.update(headers)
+        self.httpx.headers.update(default_headers)
 
         # İlk sayfayı al
         istek    = await self.httpx.get(url)
@@ -38,31 +39,44 @@ class Filemoon(ExtractorBase):
         # Eğer iframe varsa, iframe'e git
         iframe_el = secici.css_first("iframe")
         iframe_src = iframe_el.attrs.get("src") if iframe_el else None
-        if iframe_src:
-            iframe_url = self.fix_url(iframe_src)
-            self.httpx.headers.update({
-                "Accept-Language" : "en-US,en;q=0.5",
-                "Sec-Fetch-Dest"  : "iframe"
-            })
-            istek    = await self.httpx.get(iframe_url)
-            response = istek.text
-
-        # Packed script'i bul ve unpack et
+        
         m3u8_url = None
-
-        if Packer.detect_packed(response):
-            try:
-                unpacked = Packer.unpack(response)
-                # sources:[{file:"...» pattern'ını ara
-                if match := re.search(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"', unpacked):
+        
+        if not iframe_src:
+            # Fallback: Script içinde ara (Kotlin: selectFirst("script:containsData(function(p,a,c,k,e,d))"))
+            script_data = ""
+            for script in secici.css("script"):
+                if "function(p,a,c,k,e,d)" in script.text():
+                    script_data = script.text()
+                    break
+            
+            if script_data:
+                unpacked = Packer.unpack(script_data)
+                if match := re.search(r'sources:\[\{file:"(.*?)"', unpacked):
                     m3u8_url = match.group(1)
-                elif match := re.search(r'file:\s*"([^"]*?\.m3u8[^"]*)"', unpacked):
+        else:
+            # Iframe varsa devam et
+            iframe_url = self.fix_url(iframe_src)
+            iframe_headers = default_headers.copy()
+            iframe_headers["Accept-Language"] = "en-US,en;q=0.5"
+            
+            istek    = await self.httpx.get(iframe_url, headers=iframe_headers)
+            response = istek.text
+            secici   = HTMLParser(response)
+            
+            script_data = ""
+            for script in secici.css("script"):
+                if "function(p,a,c,k,e,d)" in script.text():
+                    script_data = script.text()
+                    break
+            
+            if script_data:
+                unpacked = Packer.unpack(script_data)
+                if match := re.search(r'sources:\[\{file:"(.*?)"', unpacked):
                     m3u8_url = match.group(1)
-            except Exception:
-                pass
 
-        # Fallback: Doğrudan response'ta ara
         if not m3u8_url:
+            # Son çare: Normal response içinde ara
             if match := re.search(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"', response):
                 m3u8_url = match.group(1)
             elif match := re.search(r'file:\s*"([^"]*?\.m3u8[^"]*)"', response):
@@ -75,5 +89,6 @@ class Filemoon(ExtractorBase):
             name      = self.name,
             url       = self.fix_url(m3u8_url),
             referer   = f"{self.main_url}/",
+            user_agent = default_headers["User-Agent"],
             subtitles = []
         )

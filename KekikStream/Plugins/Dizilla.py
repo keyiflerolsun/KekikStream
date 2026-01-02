@@ -142,44 +142,70 @@ class Dizilla(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLParser(istek.text)
 
-        # application/ld+json script'lerini al
-        ld_json_scripts = secici.css("script[type='application/ld+json']")
-        if not ld_json_scripts:
+        title = secici.css_first("div.poster.poster h2")
+        title = title.text(strip=True) if title else None
+        if not title:
             return None
 
-        # Son script'i al
-        last_script = ld_json_scripts[-1]
-        veri = loads(last_script.text(strip=True))
+        poster_el = secici.css_first("div.w-full.page-top.relative img")
+        poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
 
-        title = veri.get("name")
-        if alt_title := veri.get("alternateName"):
-            title += f" - ({alt_title})"
+        # Year extraction (Kotlin: [1] index for w-fit min-w-fit)
+        info_boxes = secici.css("div.w-fit.min-w-fit")
+        year = None
+        if len(info_boxes) > 1:
+            year_el = info_boxes[1].css_first("span.text-sm.opacity-60")
+            if year_el:
+                year_text = year_el.text(strip=True)
+                year = year_text.split(" ")[-1] if " " in year_text else year_text
 
-        poster      = self.fix_url(veri.get("image"))
-        description = veri.get("description")
-        year        = veri.get("datePublished").split("-")[0]
-        
-        # Tags extraction from page content (h3 tag)
+        description_el = secici.css_first("div.mt-2.text-sm")
+        description = description_el.text(strip=True) if description_el else None
+
         tags_el = secici.css_first("div.poster.poster h3")
-        tags_raw = tags_el.text(strip=True) if tags_el else ""
-        tags     = [t.strip() for t in tags_raw.split(",")] if tags_raw else []
+        tags = [t.strip() for t in tags_el.text(strip=True).split(",")] if tags_el else []
 
-        rating = veri.get("aggregateRating", {}).get("ratingValue")
-        actors = [actor.get("name") for actor in veri.get("actor", []) if actor.get("name")]
+        actors = [h5.text(strip=True) for h5 in secici.css("div.global-box h5")]
 
-        bolumler = []
-        sezonlar = veri.get("containsSeason") if isinstance(veri.get("containsSeason"), list) else [veri.get("containsSeason")]
-        for sezon in sezonlar:
-            episodes = sezon.get("episode")
-            if isinstance(episodes, dict):
-                episodes = [episodes]
+        episodeses = []
+        # Seasons links iteration
+        season_links = secici.css("div.flex.items-center.flex-wrap.gap-2.mb-4 a")
+        for sezon in season_links:
+            sezon_href = self.fix_url(sezon.attrs.get("href"))
+            sezon_req = await self.httpx.get(sezon_href)
             
-            for bolum in episodes:
-                bolumler.append(Episode(
-                    season  = sezon.get("seasonNumber"),
-                    episode = bolum.get("episodeNumber"),
-                    title   = bolum.get("name"),
-                    url     = await self.url_base_degis(bolum.get("url"), self.main_url),
+            season_num = None
+            try:
+                # URL'den sezon numarasını çek: ...-sezon-X
+                season_match = re.search(r"sezon-(\d+)", sezon_href)
+                if season_match:
+                    season_num = int(season_match.group(1))
+            except:
+                pass
+
+            sezon_secici = HTMLParser(sezon_req.text)
+            for bolum in sezon_secici.css("div.episodes div.cursor-pointer"):
+                # Kotlin: bolum.select("a").last()
+                links = bolum.css("a")
+                if not links:
+                    continue
+                
+                ep_link = links[-1]
+                ep_name = ep_link.text(strip=True)
+                ep_href = self.fix_url(ep_link.attrs.get("href"))
+                
+                # Episode number (first link's text usually)
+                ep_num = None
+                try:
+                    ep_num = int(links[0].text(strip=True))
+                except:
+                    pass
+
+                episodeses.append(Episode(
+                    season  = season_num,
+                    episode = ep_num,
+                    title   = ep_name,
+                    url     = ep_href
                 ))
 
         return SeriesInfo(
@@ -188,9 +214,8 @@ class Dizilla(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
-            rating      = rating,
-            year        = year,
-            episodes    = bolumler,
+            year        = str(year) if year else None,
+            episodes    = episodeses,
             actors      = actors
         )
 
@@ -212,7 +237,7 @@ class Dizilla(PluginBase):
 
         # Get first source (matching Kotlin)
         first_result = results[0]
-        source_content = first_result.get("source_content", "")
+        source_content = str(first_result.get("source_content", ""))
         
         # Clean the source_content string (matching Kotlin: .replace("\"", "").replace("\\", ""))
         cleaned_source = source_content.replace('"', '').replace('\\', '')
@@ -220,10 +245,12 @@ class Dizilla(PluginBase):
         # Parse cleaned HTML
         iframe_el = HTMLParser(cleaned_source).css_first("iframe")
         iframe_src = iframe_el.attrs.get("src") if iframe_el else None
+        
+        # Referer check (matching Kotlin: loadExtractor(iframe, "${mainUrl}/", ...))
         iframe_url = self.fix_url(iframe_src) if iframe_src else None
         
         if not iframe_url:
             return []
 
-        data = await self.extract(iframe_url, prefix=first_result.get('language_name', 'Unknown'))
+        data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=first_result.get('language_name', 'Unknown'))
         return [data] if data else []

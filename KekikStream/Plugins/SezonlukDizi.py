@@ -2,7 +2,7 @@
 
 from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
 from selectolax.parser import HTMLParser
-import re
+import re, asyncio
 
 class SezonlukDizi(PluginBase):
     name        = "SezonlukDizi"
@@ -39,6 +39,16 @@ class SezonlukDizi(PluginBase):
         f"{main_url}/diziler.asp?siralama_tipi=id&tur=western&s="    : "Western"
     }
 
+    async def _get_asp_data(self) -> dict:
+        js_req = await self.httpx.get(f"{self.main_url}/js/site.min.js")
+        alt_match   = re.search(r"dataAlternatif(.*?)\.asp", js_req.text)
+        embed_match = re.search(r"dataEmbed(.*?)\.asp", js_req.text)
+        
+        return {
+            "alternatif": alt_match.group(1) if alt_match else "",
+            "embed":      embed_match.group(1) if embed_match else ""
+        }
+
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}")
         secici = HTMLParser(istek.text)
@@ -67,7 +77,7 @@ class SezonlukDizi(PluginBase):
         secici = HTMLParser(istek.text)
 
         results = []
-        for afis in secici.css("div.afis a.column"):
+        for afis in secici.css("div.afis a"):
             desc_el = afis.css_first("div.description")
             img_el  = afis.css_first("img")
 
@@ -169,64 +179,54 @@ class SezonlukDizi(PluginBase):
             actors      = actors
         )
 
-    async def get_asp_data(self) -> tuple[str, str]:
-        """Fetch dynamic ASP version numbers from site.min.js"""
-        try:
-            js_content = await self.httpx.get(f"{self.main_url}/js/site.min.js")
-            alternatif_match = re.search(r'dataAlternatif(.*?)\.asp', js_content.text)
-            embed_match = re.search(r'dataEmbed(.*?)\.asp', js_content.text)
-            
-            alternatif_ver = alternatif_match.group(1) if alternatif_match else "22"
-            embed_ver = embed_match.group(1) if embed_match else "22"
-            
-            return (alternatif_ver, embed_ver)
-        except Exception:
-            return ("22", "22")  # Fallback to default versions
-
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLParser(istek.text)
-
-        dilsec_el = secici.css_first("div#dilsec")
-        bid = dilsec_el.attrs.get("data-id") if dilsec_el else None
+        asp_data = await self._get_asp_data()
+        
+        bid = secici.css_first("div#dilsec").attrs.get("data-id") if secici.css_first("div#dilsec") else None
         if not bid:
             return []
 
-        # Get dynamic ASP versions
-        alternatif_ver, embed_ver = await self.get_asp_data()
+        semaphore = asyncio.Semaphore(5)
+        tasks = []
 
-        results = []
-        for dil, label in [("1", "Altyazı"), ("0", "Dublaj")]:
-            dil_istek = await self.httpx.post(
-                url     = f"{self.main_url}/ajax/dataAlternatif{alternatif_ver}.asp",
+        async def fetch_and_extract(veri, dil_etiketi):
+            async with semaphore:
+                try:
+                    embed_resp = await self.httpx.post(
+                        f"{self.main_url}/ajax/dataEmbed{asp_data['embed']}.asp",
+                        headers = {"X-Requested-With": "XMLHttpRequest"},
+                        data    = {"id": str(veri.get("id"))}
+                    )
+                    embed_secici = HTMLParser(embed_resp.text)
+                    iframe_el = embed_secici.css_first("iframe")
+                    iframe_src = iframe_el.attrs.get("src") if iframe_el else None
+                    
+                    if iframe_src:
+                        if "link.asp" in iframe_src:
+                            return None
+                            
+                        iframe_url = self.fix_url(iframe_src)
+                        return await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=f"{dil_etiketi} - {veri.get('baslik')}")
+                except:
+                    pass
+                return None
+
+        for dil_kodu, dil_etiketi in [("1", "Altyazı"), ("0", "Dublaj")]:
+            altyazi_resp = await self.httpx.post(
+                f"{self.main_url}/ajax/dataAlternatif{asp_data['alternatif']}.asp",
                 headers = {"X-Requested-With": "XMLHttpRequest"},
-                data    = {"bid": bid, "dil": dil},
+                data    = {"bid": bid, "dil": dil_kodu}
             )
-
+            
             try:
-                dil_json = dil_istek.json()
-            except Exception:
+                data_json = altyazi_resp.json()
+                if data_json.get("status") == "success" and data_json.get("data"):
+                    for veri in data_json["data"]:
+                        tasks.append(fetch_and_extract(veri, dil_etiketi))
+            except:
                 continue
 
-            if dil_json.get("status") == "success":
-                for idx, veri in enumerate(dil_json.get("data", [])):
-                    veri_response = await self.httpx.post(
-                        url     = f"{self.main_url}/ajax/dataEmbed{embed_ver}.asp",
-                        headers = {"X-Requested-With": "XMLHttpRequest"},
-                        data    = {"id": veri.get("id")},
-                    )
-                    veri_secici = HTMLParser(veri_response.text)
-
-                    iframe_el = veri_secici.css_first("iframe")
-                    iframe = iframe_el.attrs.get("src") if iframe_el else None
-
-                    if iframe:
-                        if "link.asp" in iframe:
-                            continue
-                            
-                        iframe_url = self.fix_url(iframe)
-                        data = await self.extract(iframe_url, prefix=label)
-                        if data:
-                            results.append(data)
-
-        return results
+        results = await asyncio.gather(*tasks)
+        return [r for r in results if r]
