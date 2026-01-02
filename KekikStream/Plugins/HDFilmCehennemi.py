@@ -205,30 +205,23 @@ class HDFilmCehennemi(PluginBase):
 
         return results
 
-    def extract_hdch_url(self, unpacked: str) -> str:
-        """HDFilmCehennemi unpacked script'ten video URL'sini çıkar"""
-        # 1) Decode fonksiyonunun adını bul: function <NAME>(value_parts)
-        match_fn = re.search(r'function\s+(\w+)\s*\(\s*value_parts\s*\)', unpacked)
-        if not match_fn:
-            return ""
-        
-        fn_name = match_fn.group(1)
-        
-        # 2) Bu fonksiyonun array ile çağrıldığı yeri bul: <NAME>([ ... ])
-        array_call_regex = re.compile(rf'{re.escape(fn_name)}\(\s*\[(.*?)\]\s*\)', re.DOTALL)
-        match_call = array_call_regex.search(unpacked)
-        if not match_call:
-            return ""
-
-        array_body = match_call.group(1)
-
-        # 3) Array içindeki string parçalarını topla
-        parts = re.findall(r'["\']([^"\']+)["\']', array_body)
-        if not parts:
-            return ""
-
-        # 4) Özel decoder ile çöz
-        return StreamDecoder.extract_stream_url(unpacked)
+    def _extract_from_json_ld(self, html: str) -> str | None:
+        """JSON-LD script tag'inden contentUrl'i çıkar (Kotlin versiyonundaki gibi)"""
+        # Önce JSON-LD'den dene
+        json_ld_match = re.search(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL)
+        if json_ld_match:
+            try:
+                import json
+                data = json.loads(json_ld_match.group(1).strip())
+                if content_url := data.get("contentUrl"):
+                    if content_url.startswith("http"):
+                        return content_url
+            except Exception:
+                # Regex ile contentUrl'i çıkarmayı dene
+                match = re.search(r'"contentUrl"\s*:\s*"([^"]+)"', html)
+                if match and match.group(1).startswith("http"):
+                    return match.group(1)
+        return None
 
     async def invoke_local_source(self, iframe: str, source: str, url: str):
         self.httpx.headers.update({
@@ -240,18 +233,21 @@ class HDFilmCehennemi(PluginBase):
         if not istek.text:
             return await self.cehennempass(iframe.split("/")[-1])
 
-        # eval(function...) içeren packed script bul
-        eval_match = re.search(r'(eval\(function[\s\S]+)', istek.text)
-        if not eval_match:
-            return await self.cehennempass(iframe.split("/")[-1])
+        # Önce JSON-LD'den dene (Kotlin versiyonu gibi - daha güvenilir)
+        video_url = self._extract_from_json_ld(istek.text)
 
-        try:
-            unpacked = Packer.unpack(eval_match.group(1))
-        except Exception:
-            return await self.cehennempass(iframe.split("/")[-1])
+        # Fallback: Packed JavaScript'ten çıkar
+        if not video_url:
+            # eval(function...) içeren packed script bul
+            eval_match = re.search(r'(eval\(function[\s\S]+)', istek.text)
+            if not eval_match:
+                return await self.cehennempass(iframe.split("/")[-1])
 
-        # HDFilmCehennemi özel decoder ile video URL'sini çıkar
-        video_url = self.extract_hdch_url(unpacked)
+            try:
+                unpacked = Packer.unpack(eval_match.group(1))
+                video_url = StreamDecoder.extract_stream_url(unpacked)
+            except Exception:
+                return await self.cehennempass(iframe.split("/")[-1])
         
         if not video_url:
             return await self.cehennempass(iframe.split("/")[-1])
