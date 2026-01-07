@@ -6,6 +6,7 @@ from json              import loads
 from urllib.parse      import urlparse, urlunparse
 from Crypto.Cipher     import AES
 from base64            import b64decode
+import re
 
 class Dizilla(PluginBase):
     name        = "Dizilla"
@@ -45,7 +46,7 @@ class Dizilla(PluginBase):
                     category = category,
                     title    = veri.get("original_title"),
                     url      = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
-                    poster   = self.fix_url(veri.get("object_poster_url")),
+                    poster   = self.fix_poster_url(self.fix_url(veri.get("object_poster_url"))),
                 )
                     for veri in veriler
             ])
@@ -114,6 +115,20 @@ class Dizilla(PluginBase):
         # JSON decode
         return loads(decrypted.decode("utf-8"))
 
+    def fix_poster_url(self, url: str) -> str:
+        """AMP CDN URL'lerini düzelt."""
+        if not url:
+            return url
+        # AMP CDN URL'lerini orijinal URL'ye çevir
+        # https://images-macellan-online.cdn.ampproject.org/i/s/images.macellan.online/...
+        # -> https://images.macellan.online/...
+        if "cdn.ampproject.org" in url:
+            # /i/s/ veya /ii/s/ gibi AMP prefix'lerinden sonraki kısmı al
+            match = re.search(r"cdn\.ampproject\.org/[^/]+/s/(.+)$", url)
+            if match:
+                return f"https://{match.group(1)}"
+        return url
+
     async def search(self, query: str) -> list[SearchResult]:
         arama_istek = await self.httpx.post(f"{self.main_url}/api/bg/searchcontent?searchterm={query}")
         decrypted   = await self.decrypt_response(arama_istek.json().get("response"))
@@ -123,7 +138,7 @@ class Dizilla(PluginBase):
             SearchResult(
                 title  = veri.get("object_name"),
                 url    = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
-                poster = self.fix_url(veri.get("object_poster_url")),
+                poster = self.fix_poster_url(self.fix_url(veri.get("object_poster_url"))),
             )
                 for veri in arama_veri
         ]
@@ -176,8 +191,8 @@ class Dizilla(PluginBase):
             
             season_num = None
             try:
-                # URL'den sezon numarasını çek: ...-sezon-X
-                season_match = re.search(r"sezon-(\d+)", sezon_href)
+                # URL'den sezon numarasını çek: ...-N-sezon formatı
+                season_match = re.search(r"-(\d+)-sezon", sezon_href)
                 if season_match:
                     season_num = int(season_match.group(1))
             except:

@@ -100,13 +100,23 @@ class DiziYou(PluginBase):
             year = year_match.group(1)
 
         desc_el = secici.css_first("div.diziyou_desc")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = None
+        if desc_el:
+            # HTML'i al ve script + meta div'lerini temizle
+            desc_html = desc_el.html
+            # Script taglarını kaldır
+            desc_html = re.sub(r"<script.*?</script>", "", desc_html, flags=re.DOTALL)
+            # div#icerikcat2 ve sonrasını kaldır (meta bilgileri içeriyor)
+            desc_html = re.sub(r"<div id=\"icerikcat2\".*", "", desc_html, flags=re.DOTALL)
+            # Kalan HTML'den text çıkar
+            clean_sel = HTMLParser(desc_html)
+            description = clean_sel.text(strip=True)
 
         tags = [a.text(strip=True) for a in secici.css("div.genres a") if a.text(strip=True)]
 
-        # Rating - regex ile
+        # Rating - daha spesifik regex ile
         rating = None
-        rating_match = re.search(r"IMDB.*?([0-9.]+)", html_text, re.DOTALL | re.IGNORECASE)
+        rating_match = re.search(r"IMDB\s*:\s*</span>([0-9.]+)", html_text, re.DOTALL | re.IGNORECASE)
         if rating_match:
             rating = rating_match.group(1)
 

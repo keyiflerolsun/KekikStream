@@ -72,14 +72,14 @@ class HDFilmCehennemi(PluginBase):
             title  = title_el.text(strip=True) if title_el else None
             href   = link_el.attrs.get("href") if link_el else None
             poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
-            
+
             if title and href:
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster).replace("/thumb/", "/list/") if poster else None,
                 ))
-            
+
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
