@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
 from selectolax.parser import HTMLParser
+import re
 
 class FilmMakinesi(PluginBase):
     name        = "FilmMakinesi"
@@ -81,7 +82,7 @@ class FilmMakinesi(PluginBase):
 
         return results
 
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLParser(istek.text)
 
@@ -114,6 +115,60 @@ class FilmMakinesi(PluginBase):
             parts = duration_text.split()
             if len(parts) > 1:
                 duration = parts[1].strip()
+
+        # Dizi mi kontrol et - sezon/bölüm linkleri var mı?
+        episodes = []
+        all_links = secici.css("a[href]")
+        for link in all_links:
+            href = link.attrs.get("href", "")
+            match = re.search(r"/sezon-(\d+)/bolum-(\d+)", href)
+            if match:
+                season_no = int(match.group(1))
+                ep_no = int(match.group(2))
+                
+                # Bölüm başlığını çıkar - text'ten gerçek ismi al
+                # Format: "22 Eylül 2014 / 44 dk /1. Sezon / 1. BölümPilot"
+                full_text = link.text(strip=True)
+                # "Bölüm" kelimesinden sonraki kısmı al
+                ep_title = ""
+                if "Bölüm" in full_text:
+                    parts = full_text.split("Bölüm")
+                    if len(parts) > 1:
+                        ep_title = parts[-1].strip()
+                
+                episodes.append(Episode(
+                    season  = season_no,
+                    episode = ep_no,
+                    title   = ep_title,
+                    url     = self.fix_url(href)
+                ))
+        
+        # Bölümler varsa SeriesInfo döndür
+        if episodes:
+            # Tekrar eden bölümleri kaldır
+            seen = set()
+            unique_episodes = []
+            for ep in episodes:
+                key = (ep.season, ep.episode)
+                if key not in seen:
+                    seen.add(key)
+                    unique_episodes.append(ep)
+            
+            # Sırala
+            unique_episodes.sort(key=lambda x: (x.season or 0, x.episode or 0))
+            
+            return SeriesInfo(
+                url         = url,
+                poster      = self.fix_url(poster) if poster else None,
+                title       = self.clean_title(title),
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                duration    = duration,
+                episodes    = unique_episodes
+            )
 
         return MovieInfo(
             url         = url,

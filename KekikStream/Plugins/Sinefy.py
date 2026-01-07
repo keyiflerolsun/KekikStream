@@ -175,49 +175,60 @@ class Sinefy(PluginBase):
         year    = year_el.text(strip=True) if year_el else None
         
         episodes = []
-        season_elements = sel.css("section.episodes-box")
+        episodes_box = sel.css_first("section.episodes-box")
         
-        if season_elements:
-            # Get season links
-            season_links = []
-            menu = sel.css("div.ui.vertical.fluid.tabular.menu a")
-            for link in menu:
-                href = link.attrs.get("href")
-                if href:
-                    season_links.append(self.fix_url(href))
+        if episodes_box:
+            # Sezon menüsünden sezon linklerini al
+            season_menu = episodes_box.css("div.ui.vertical.fluid.tabular.menu a.item")
             
-            for s_url in season_links:
-                target_url = s_url if "/bolum-" in s_url else f"{s_url}/bolum-1"
-                
-                try:
-                    s_resp = await self.httpx.get(target_url)
-                    s_sel  = HTMLParser(s_resp.text)
-                    ep_links = s_sel.css("div.ui.list.celled a.item")
+            # Sezon tab içeriklerini al
+            season_tabs = episodes_box.css("div.ui.tab")
+            
+            # Eğer birden fazla sezon varsa, her sezon tab'ından bölümleri çek
+            if season_tabs:
+                for idx, season_tab in enumerate(season_tabs):
+                    # Sezon numarasını belirle
+                    current_season_no = idx + 1
                     
-                    current_season_no = 1
-                    match = re.search(r"sezon-(\d+)", target_url)
-                    if match:
-                        current_season_no = int(match.group(1))
+                    # Menüden sezon numarasını almaya çalış
+                    if idx < len(season_menu):
+                        menu_href = season_menu[idx].attrs.get("href", "")
+                        match = re.search(r"sezon-(\d+)", menu_href)
+                        if match:
+                            current_season_no = int(match.group(1))
                     
+                    # Bu sezon tab'ından bölüm linklerini çek
+                    ep_links = season_tab.css("a[href*='bolum']")
+                    
+                    seen_urls = set()
                     for ep_link in ep_links:
                         href = ep_link.attrs.get("href")
-                        name_el = ep_link.css_first("div.content div.header")
-                        name = name_el.text(strip=True) if name_el else ""
+                        if not href or href in seen_urls:
+                            continue
+                        seen_urls.add(href)
                         
-                        if href:
-                            ep_no = 0
-                            match_ep = re.search(r"bolum-(\d+)", href)
-                            if match_ep:
-                                ep_no = int(match_ep.group(1))
-                                
+                        # Bölüm numarasını URL'den çıkar
+                        ep_no = 0
+                        match_ep = re.search(r"bolum-(\d+)", href)
+                        if match_ep:
+                            ep_no = int(match_ep.group(1))
+                        
+                        # Bölüm başlığını çıkar (önce title attribute, sonra text)
+                        name = ep_link.attrs.get("title", "")
+                        if not name:
+                            name_el = ep_link.css_first("div.content div.header")
+                            if name_el:
+                                name = name_el.text(strip=True)
+                            else:
+                                name = ep_link.text(strip=True)
+                        
+                        if href and ep_no > 0:
                             episodes.append(Episode(
-                                season = current_season_no,
+                                season  = current_season_no,
                                 episode = ep_no,
-                                title = name,
-                                url = self.fix_url(href)
+                                title   = name.strip() if name else f"{ep_no}. Bölüm",
+                                url     = self.fix_url(href)
                             ))
-                except Exception:
-                    pass
         
         if episodes:
             return SeriesInfo(
