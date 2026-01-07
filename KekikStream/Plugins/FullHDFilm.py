@@ -110,11 +110,23 @@ class FullHDFilm(PluginBase):
                 actors_text = actors_text.replace("Oyuncular:", "").strip()
                 actors = [a.strip() for a in actors_text.split(",")]
 
-        # Year: re_first ile regex
+        # Year: önce div.yayin-tarihi.info dene
+        year = None
         year_el = secici.css_first("div.yayin-tarihi.info")
-        year_text = year_el.text(strip=True) if year_el else ""
-        year_match = re.search(r"(\d{4})", year_text)
-        year = year_match.group(1) if year_match else None
+        if year_el:
+            year_text = year_el.text(strip=True)
+            year_match = re.search(r"(\d{4})", year_text)
+            if year_match:
+                year = year_match.group(1)
+        
+        # Fallback: h1'in parent'ından (2019) formatında ara
+        if not year and title_el:
+            parent = title_el.parent
+            if parent:
+                parent_text = parent.text(strip=True)
+                year_match = re.search(r"\((\d{4})\)", parent_text)
+                if year_match:
+                    year = year_match.group(1)
 
         tags = [a.text(strip=True) for a in secici.css("div.tur.info a") if a.text(strip=True)]
 
@@ -124,12 +136,17 @@ class FullHDFilm(PluginBase):
         rating_match = re.search(r"IMDb\s*([\d\.]+)", rating_text)
         rating = rating_match.group(1) if rating_match else None
         
-        # Description: others div'den önceki div içindeki text
-        # XPath yerine basit yaklaşım: özet sınıfı ile veya ilk paragraf
+        # Description: önce div.film dene, yoksa og:description meta tag'ını kullan
         description = None
         desc_el = secici.css_first("div.film")
         if desc_el:
             description = desc_el.text(strip=True)
+        
+        # Fallback: og:description meta tag'ı
+        if not description:
+            og_desc = secici.css_first("meta[property='og:description']")
+            if og_desc:
+                description = og_desc.attrs.get("content", "")
 
         # Kotlin referansı: URL'de -dizi kontrolü veya tags içinde "dizi" kontrolü
         is_series = "-dizi" in url.lower() or any("dizi" in tag.lower() for tag in tags)
