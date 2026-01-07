@@ -65,36 +65,37 @@ class PluginValidator:
                 result["status"] = "⚠️"
                 result["message"] = "İçerik bulunamadı"
                 return result
-            
+
             # İlk öğeyi kontrol et
-            first_item = items[0]
-            if not isinstance(first_item, MainPageResult):
-                result["message"] = f"Yanlış tip: {type(first_item).__name__}"
+            random_item = choice(items)
+            konsol.print(random_item)
+            if not isinstance(random_item, MainPageResult):
+                result["message"] = f"Yanlış tip: {type(random_item).__name__}"
                 return result
-            
+
             # Model doğrulama
             issues = []
-            if not first_item.title:
+            if not random_item.title:
                 issues.append("title boş")
-            if not first_item.url:
+            if not random_item.url:
                 issues.append("url boş")
-            if not first_item.category:
+            if not random_item.category:
                 issues.append("category boş")
-            
+
             if issues:
                 result["status"] = "⚠️"
                 result["message"] = ", ".join(issues)
             else:
                 result["status"] = "✅"
                 result["message"] = f"{len(items)} öğe bulundu"
-            
-            result["data"] = first_item
-            
+
+            result["data"] = random_item
+
         except Exception as e:
-            result["message"] = f"Hata: {str(e)[:50]}"
-        
+            result["message"] = f"Hata: {str(e)}"
+
         return result
-    
+
     async def test_search(self, plugin, query: str = "adam") -> dict:
         """search metodu test eder."""
         result = {"status": "❌", "message": "", "data": None}
@@ -111,30 +112,31 @@ class PluginValidator:
                 result["status"] = "⚠️"
                 result["message"] = "Sonuç bulunamadı"
                 return result
-            
-            first_item = items[0]
-            if not isinstance(first_item, SearchResult):
-                result["message"] = f"Yanlış tip: {type(first_item).__name__}"
+
+            random_item = choice(items)
+            konsol.print(random_item)
+            if not isinstance(random_item, SearchResult):
+                result["message"] = f"Yanlış tip: {type(random_item).__name__}"
                 return result
-            
+
             issues = []
-            if not first_item.title:
+            if not random_item.title:
                 issues.append("title boş")
-            if not first_item.url:
+            if not random_item.url:
                 issues.append("url boş")
-            
+
             if issues:
                 result["status"] = "⚠️"
                 result["message"] = ", ".join(issues)
             else:
                 result["status"] = "✅"
                 result["message"] = f"{len(items)} sonuç"
-            
-            result["data"] = first_item
-            
+
+            result["data"] = random_item
+
         except Exception as e:
-            result["message"] = f"Hata: {str(e)[:50]}"
-        
+            result["message"] = f"Hata: {str(e)}"
+
         return result
     
     async def test_load_item(self, plugin, test_url: str) -> dict:
@@ -143,7 +145,8 @@ class PluginValidator:
         
         try:
             item = await plugin.load_item(test_url)
-            
+            konsol.print(item)
+
             if not item:
                 result["message"] = "Boş sonuç"
                 return result
@@ -157,21 +160,22 @@ class PluginValidator:
             if isinstance(item, SeriesInfo):
                 if not item.episodes or len(item.episodes) == 0:
                     validation["issues"].append("episodes boş")
-            
+
             if validation["issues"]:
                 result["status"] = "⚠️"
                 result["message"] = ", ".join(validation["issues"])
+
             else:
                 result["status"] = "✅"
                 if isinstance(item, SeriesInfo):
                     result["message"] = f"{len(item.episodes)} bölüm"
                 else:
                     result["message"] = "Tüm alanlar dolu"
-            
+
             result["data"] = item
             
         except Exception as e:
-            result["message"] = f"Hata: {str(e)[:50]}"
+            result["message"] = f"Hata: {str(e)}"
         
         return result
     
@@ -214,7 +218,7 @@ class PluginValidator:
             result["message"] += f"\nLinkler : {links}"
 
         except Exception as e:
-            result["message"] = f"Hata: {str(e)[:50]}"
+            result["message"] = f"Hata: {str(e)}"
 
         return result
     
@@ -262,7 +266,7 @@ class PluginValidator:
                 link_url = test_url
                 if isinstance(load_item_result["data"], SeriesInfo):
                     if load_item_result["data"].episodes and len(load_item_result["data"].episodes) > 0:
-                        link_url = load_item_result["data"].episodes[0].url
+                        link_url = choice(load_item_result["data"].episodes).url
                 
                 if link_url:
                     konsol.log("[yellow]▶ load_links test ediliyor...")
