@@ -132,7 +132,10 @@ class PluginBase(ABC):
             return None
 
     @staticmethod
-    def clean_title(title: str) -> str:
+    def clean_title(title: str | None) -> str | None:
+        if not title:
+            return None
+
         suffixes = [
             " izle", 
             " full film", 
