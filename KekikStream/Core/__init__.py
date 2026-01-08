@@ -17,3 +17,5 @@ from .Extractor.YTDLPCache       import get_ytdlp_extractors
 
 from .Media.MediaManager import MediaManager
 from .Media.MediaHandler import MediaHandler
+
+from .HTMLHelper import HTMLHelper

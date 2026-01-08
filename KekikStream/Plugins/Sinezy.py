@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
-import re, base64
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import base64
 
 class Sinezy(PluginBase):
     name        = "Sinezy"
@@ -45,16 +44,13 @@ class Sinezy(PluginBase):
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{url}page/{page}/"
         resp     = await self.httpx.get(full_url)
-        sel      = HTMLParser(resp.text)
+        secici   = HTMLHelper(resp.text)
         
         results = []
-        for item in sel.css("div.container div.content div.movie_box.move_k"):
-            link_el = item.css_first("a")
-            img_el  = item.css_first("img")
-
-            title  = link_el.attrs.get("title") if link_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for item in secici.select("div.container div.content div.movie_box.move_k"):
+            title  = secici.select_attr("a", "title", item)
+            href   = secici.select_attr("a", "href", item)
+            poster = secici.select_attr("img", "data-src", item)
              
             if title and href:
                 results.append(MainPageResult(
@@ -69,16 +65,13 @@ class Sinezy(PluginBase):
     async def search(self, query: str) -> list[SearchResult]:
         url  = f"{self.main_url}/arama/?s={query}"
         resp = await self.httpx.get(url)
-        sel  = HTMLParser(resp.text)
+        secici  = HTMLHelper(resp.text)
 
         results = []
-        for item in sel.css("div.movie_box.move_k"):
-            link_el = item.css_first("a")
-            img_el  = item.css_first("img")
-
-            title  = link_el.attrs.get("title") if link_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for item in secici.select("div.movie_box.move_k"):
+            title  = secici.select_attr("a", "title", item)
+            href   = secici.select_attr("a", "href", item)
+            poster = secici.select_attr("img", "data-src", item)
 
             if title and href:
                 results.append(SearchResult(
@@ -91,38 +84,19 @@ class Sinezy(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         resp = await self.httpx.get(url)
-        sel  = HTMLParser(resp.text)
+        secici = HTMLHelper(resp.text)
 
-        detail_el = sel.css_first("div.detail")
-        title     = detail_el.attrs.get("title") if detail_el else None
+        title = secici.select_attr("div.detail", "title")
+        poster = secici.select_attr("div.move_k img", "data-src")
+        description = secici.select_text("div.desc.yeniscroll p")
+        rating = secici.select_text("span.info span.imdb")
 
-        poster_el = sel.css_first("div.move_k img")
-        poster    = poster_el.attrs.get("data-src") if poster_el else None
+        tags = secici.select_all_text("div.detail span a")
+        actors = secici.select_all_text("span.oyn p")
 
-        desc_el     = sel.css_first("div.desc.yeniscroll p")
-        description = desc_el.text(strip=True) if desc_el else None
-
-        rating_el = sel.css_first("span.info span.imdb")
-        rating    = rating_el.text(strip=True) if rating_el else None
-
-        tags   = [a.text(strip=True) for a in sel.css("div.detail span a") if a.text(strip=True)]
-        actors = [p.text(strip=True) for p in sel.css("span.oyn p") if p.text(strip=True)]
-        
-        year = None
-        info_el = sel.css_first("span.info")
-        info_text = info_el.text(strip=True) if info_el else ""
-        if info_text:
-            year_match = re.search(r'\b(19\d{2}|20\d{2})\b', info_text)
-            if year_match:
-                year = year_match.group(1)
-        
-        # Bulunamadıysa tüm sayfada ara
+        year = secici.regex_first(r"\b(19\d{2}|20\d{2})\b")
         if not year:
-            all_text = sel.body.text() if sel.body else ""
-            year_match = re.search(r'\b(19\d{2}|20\d{2})\b', all_text)
-            if year_match:
-                year = year_match.group(1)
-
+            year = secici.regex_first(r"\b(19\d{2}|20\d{2})\b", secici.html)
         return MovieInfo(
             title       = title,
             url         = url,
@@ -136,18 +110,17 @@ class Sinezy(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
+        secici = HTMLHelper(resp.text)
 
-        match = re.search(r"ilkpartkod\s*=\s*'([^']+)'", resp.text, re.IGNORECASE)
-        if match:
-            encoded = match.group(1)
+        encoded = secici.regex_first(r"ilkpartkod\s*=\s*'([^']+)'", secici.html)
+        if encoded:
             try:
                 decoded = base64.b64decode(encoded).decode('utf-8')
-                iframe_match = re.search(r'src="([^"]*)"', decoded)
+                decoded_sec = HTMLHelper(decoded)
+                iframe = decoded_sec.select_attr('iframe', 'src')
 
-                if iframe_match:
-                    iframe = iframe_match.group(1)
+                if iframe:
                     iframe = self.fix_url(iframe)
-                    
                     data = await self.extract(iframe)
                     if data:
                         return [data]

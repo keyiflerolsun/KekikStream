@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class SibNet(ExtractorBase):
     name     = "SibNet"
@@ -14,11 +13,11 @@ class SibNet(ExtractorBase):
         response = await self.httpx.get(url)
         response.raise_for_status()
 
-        match = re.search(r'player\.src\(\[\{src: \"([^\"]+)\"', response.text)
-        if not match:
+        m3u_suffix = HTMLHelper(response.text).regex_first(r'player\.src\(\[\{src: "([^\"]+)"')
+        if not m3u_suffix:
             raise ValueError("m3u bağlantısı bulunamadı.")
 
-        m3u_link = f"{self.main_url}{match[1]}"
+        m3u_link = f"{self.main_url}{m3u_suffix}"
 
         return ExtractResult(
             name      = self.name,

@@ -1,9 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
-from selectolax.parser import HTMLParser
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
 from Kekik.Sifreleme   import Packer, StreamDecoder
-import random, string, re
+import random, string
 
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
@@ -31,16 +30,13 @@ class HDFilmCehennemi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}", follow_redirects=True)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.section-content a.poster"):
-            title_el = veri.css_first("strong.poster-title")
-            img_el   = veri.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = veri.attrs.get("href")
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("div.section-content a.poster"):
+            title = secici.select_text("strong.poster-title", veri)
+            href = veri.attrs.get("href")
+            poster = secici.select_attr("img", "data-src", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -64,14 +60,10 @@ class HDFilmCehennemi(PluginBase):
 
         results = []
         for veri in istek.json().get("results", []):
-            secici = HTMLParser(veri)
-            title_el = secici.css_first("h4.title")
-            link_el  = secici.css_first("a")
-            img_el   = secici.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            secici = HTMLHelper(veri)
+            title  = secici.select_text("h4.title")
+            href   = secici.select_attr("a", "href")
+            poster = secici.select_attr("img", "data-src") or secici.select_attr("img", "src")
 
             if title and href:
                 results.append(SearchResult(
@@ -84,53 +76,47 @@ class HDFilmCehennemi(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("h1.section-title")
-        title    = title_el.text(strip=True) if title_el else ""
+        title = secici.select_text("h1.section-title") or ""
 
-        poster_el = secici.css_first("aside.post-info-poster img.lazyload")
-        poster    = poster_el.attrs.get("data-src", "").strip() if poster_el else ""
+        poster = secici.select_attr("aside.post-info-poster img.lazyload", "data-src") or ""
+        poster = poster.strip()
 
-        desc_el     = secici.css_first("article.post-info-content > p")
-        description = desc_el.text(strip=True) if desc_el else ""
+        description = secici.select_text("article.post-info-content > p") or ""
 
-        tags   = [a.text(strip=True) for a in secici.css("div.post-info-genres a") if a.text(strip=True)]
+        tags = secici.select_all_text("div.post-info-genres a")
 
-        rating_el = secici.css_first("div.post-info-imdb-rating span")
-        rating    = rating_el.text(strip=True) if rating_el else ""
+        rating = secici.select_text("div.post-info-imdb-rating span") or ""
 
-        year_el = secici.css_first("div.post-info-year-country a")
-        year    = year_el.text(strip=True) if year_el else ""
+        year = secici.select_text("div.post-info-year-country a") or ""
 
-        actors = [a.text(strip=True) for a in secici.css("div.post-info-cast a > strong") if a.text(strip=True)]
+        actors = secici.select_all_text("div.post-info-cast a > strong")
 
-        duration_el = secici.css_first("div.post-info-duration")
-        duration_str = duration_el.text(strip=True) if duration_el else "0"
+        duration_str = secici.select_text("div.post-info-duration") or "0"
         duration_str = duration_str.replace("dakika", "").strip()
 
         try:
-            duration_match = re.search(r'\d+', duration_str)
-            duration_minutes = int(duration_match.group()) if duration_match else 0
+            duration_val = HTMLHelper(duration_str).regex_first(r'\d+')
+            duration_minutes = int(duration_val) if duration_val else 0
         except Exception:
             duration_minutes = 0
 
         # Dizi mi film mi kontrol et (Kotlin referansı: div.seasons kontrolü)
-        is_series = len(secici.css("div.seasons")) > 0
+        is_series = len(secici.select("div.seasons")) > 0
 
         if is_series:
             episodes = []
-            for ep in secici.css("div.seasons-tab-content a"):
-                ep_name_el = ep.css_first("h4")
-                ep_name = ep_name_el.text(strip=True) if ep_name_el else None
+            for ep in secici.select("div.seasons-tab-content a"):
+                ep_name = secici.select_text("h4", ep)
                 ep_href = ep.attrs.get("href")
 
                 if ep_name and ep_href:
                     # Regex ile sezon ve bölüm numarası çıkar
-                    ep_match = re.search(r'(\d+)\.\s*Bölüm', ep_name)
-                    sz_match = re.search(r'(\d+)\.\s*Sezon', ep_name)
-                    ep_num = int(ep_match.group(1)) if ep_match else 1
-                    sz_num = int(sz_match.group(1)) if sz_match else 1
+                    ep_val = HTMLHelper(ep_name).regex_first(r'(\d+)\.\s*Bölüm')
+                    sz_val = HTMLHelper(ep_name).regex_first(r'(\d+)\.\s*Sezon')
+                    ep_num = int(ep_val) if ep_val and ep_val.isdigit() else 1
+                    sz_num = int(sz_val) if sz_val and sz_val.isdigit() else 1
                     
                     episodes.append(Episode(
                         season  = sz_num,
@@ -208,19 +194,19 @@ class HDFilmCehennemi(PluginBase):
     def _extract_from_json_ld(self, html: str) -> str | None:
         """JSON-LD script tag'inden contentUrl'i çıkar (Kotlin versiyonundaki gibi)"""
         # Önce JSON-LD'den dene
-        json_ld_match = re.search(r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', html, re.DOTALL)
-        if json_ld_match:
+        json_ld = HTMLHelper(html).regex_first(r'(?s)<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>')
+        if json_ld:
             try:
                 import json
-                data = json.loads(json_ld_match.group(1).strip())
+                data = json.loads(json_ld.strip())
                 if content_url := data.get("contentUrl"):
                     if content_url.startswith("http"):
                         return content_url
             except Exception:
                 # Regex ile contentUrl'i çıkarmayı dene
-                match = re.search(r'"contentUrl"\s*:\s*"([^"]+)"', html)
-                if match and match.group(1).startswith("http"):
-                    return match.group(1)
+                content_url = HTMLHelper(html).regex_first(r'"contentUrl"\s*:\s*"([^"]+)"')
+                if content_url and content_url.startswith("http"):
+                    return content_url
         return None
 
     async def invoke_local_source(self, iframe: str, source: str, url: str):
@@ -239,12 +225,12 @@ class HDFilmCehennemi(PluginBase):
         # Fallback: Packed JavaScript'ten çıkar
         if not video_url:
             # eval(function...) içeren packed script bul
-            eval_match = re.search(r'(eval\(function[\s\S]+)', istek.text)
-            if not eval_match:
+            eval_script = HTMLHelper(istek.text).regex_first(r'(eval\(function[\s\S]+)')
+            if not eval_script:
                 return await self.cehennempass(iframe.split("/")[-1])
 
             try:
-                unpacked = Packer.unpack(eval_match.group(1))
+                unpacked = Packer.unpack(eval_script)
                 video_url = StreamDecoder.extract_stream_url(unpacked)
             except Exception:
                 return await self.cehennempass(iframe.split("/")[-1])
@@ -255,10 +241,10 @@ class HDFilmCehennemi(PluginBase):
         subtitles = []
         try:
             sub_data = istek.text.split("tracks: [")[1].split("]")[0]
-            for sub in re.findall(r'file":"([^"]+)".*?"language":"([^"]+)"', sub_data, flags=re.DOTALL):
+            for file_url, lang in HTMLHelper(sub_data).regex_all(r'(?s)file":"([^\\"]+)".*?"language":"([^\\"]+)"'):
                 subtitles.append(Subtitle(
-                    name = sub[1].upper(),
-                    url  = self.fix_url(sub[0].replace("\\", "")),
+                    name = lang.upper(),
+                    url  = self.fix_url(file_url.replace("\\", "")),
                 ))
         except Exception:
             pass
@@ -272,13 +258,13 @@ class HDFilmCehennemi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for alternatif in secici.css("div.alternative-links"):
+        for alternatif in secici.select("div.alternative-links"):
             lang_code = alternatif.attrs.get("data-lang", "").upper()
 
-            for link in alternatif.css("button.alternative-link"):
+            for link in secici.select("button.alternative-link", alternatif):
                 source_text = link.text(strip=True).replace('(HDrip Xbet)', '').strip()
                 source   = f"{source_text} {lang_code}"
                 video_id = link.attrs.get("data-video")
@@ -295,8 +281,8 @@ class HDFilmCehennemi(PluginBase):
                     },
                 )
 
-                match  = re.search(r'data-src=\\\"([^"]+)', api_get.text)
-                iframe = match[1].replace("\\", "") if match else None
+                iframe = HTMLHelper(api_get.text).regex_first(r'data-src=\\\"([^\"]+)')
+                iframe = iframe.replace("\\", "") if iframe else None
 
                 if not iframe:
                     continue

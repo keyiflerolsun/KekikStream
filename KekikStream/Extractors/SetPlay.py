@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 from urllib.parse import urlparse, parse_qs
-import re
 
 class SetPlay(ExtractorBase):
     name     = "SetPlay"
@@ -26,21 +25,22 @@ class SetPlay(ExtractorBase):
         istek = await self.httpx.get(url)
         istek.raise_for_status()
 
+        hp = HTMLHelper(istek.text)
+
         # videoUrl çıkar
-        video_url_match = re.search(r'videoUrl":"([^",]+)"', istek.text)
-        if not video_url_match:
+        video_url = hp.regex_first(r'videoUrl":"([^",]+)"')
+        if not video_url:
             raise ValueError("videoUrl not found")
-        video_url = video_url_match[1].replace("\\", "")
+        video_url = video_url.replace("\\", "")
 
         # videoServer çıkar
-        video_server_match = re.search(r'videoServer":"([^",]+)"', istek.text)
-        if not video_server_match:
+        video_server = hp.regex_first(r'videoServer":"([^",]+)"')
+        if not video_server:
             raise ValueError("videoServer not found")
-        video_server = video_server_match[1]
 
         # title çıkar (opsiyonel)
-        title_match = re.search(r'title":"([^",]+)"', istek.text)
-        title_base = title_match[1].split(".")[-1] if title_match else "Unknown"
+        title_base = hp.regex_first(r'title":"([^",]+)"')
+        title_base = title_base.split(".")[-1] if title_base else "Unknown"
         
         # partKey logic
         parsed = urlparse(url)

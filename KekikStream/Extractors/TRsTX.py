@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re, json
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+import json
 
 class TRsTX(ExtractorBase):
     name     = "TRsTX"
@@ -14,11 +14,11 @@ class TRsTX(ExtractorBase):
         istek = await self.httpx.get(url)
         istek.raise_for_status()
 
-        file_match = re.search(r'file\":\"([^\"]+)', istek.text)
-        if not file_match:
+        file_path = HTMLHelper(istek.text).regex_first(r'file":"([^\"]+)')
+        if not file_path:
             raise ValueError("File not found in response.")
 
-        file_path = file_match[1].replace("\\", "")
+        file_path = file_path.replace("\\", "")
         post_link = f"{self.main_url}/{file_path}"
 
         post_istek = await self.httpx.post(post_link)

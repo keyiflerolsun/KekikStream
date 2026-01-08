@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from selectolax.parser import HTMLParser
-import re, asyncio
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import asyncio
 
 class SezonlukDizi(PluginBase):
     name        = "SezonlukDizi"
@@ -41,26 +40,24 @@ class SezonlukDizi(PluginBase):
 
     async def _get_asp_data(self) -> dict:
         js_req = await self.httpx.get(f"{self.main_url}/js/site.min.js")
-        alt_match   = re.search(r"dataAlternatif(.*?)\.asp", js_req.text)
-        embed_match = re.search(r"dataEmbed(.*?)\.asp", js_req.text)
+        js = HTMLHelper(js_req.text)
+        alt = js.regex_first(r"dataAlternatif(.*?)\.asp")
+        emb = js.regex_first(r"dataEmbed(.*?)\.asp")
         
         return {
-            "alternatif": alt_match.group(1) if alt_match else "",
-            "embed":      embed_match.group(1) if embed_match else ""
+            "alternatif": alt or "",
+            "embed":      emb or ""
         }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.afis a"):
-            desc_el = veri.css_first("div.description")
-            img_el  = veri.css_first("img")
-
-            title  = desc_el.text(strip=True) if desc_el else None
-            href   = veri.attrs.get("href")
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("div.afis a"):
+            title  = secici.select_text("div.description", veri)
+            href   = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("img", "data-src", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -74,16 +71,13 @@ class SezonlukDizi(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for afis in secici.css("div.afis a"):
-            desc_el = afis.css_first("div.description")
-            img_el  = afis.css_first("img")
-
-            title  = desc_el.text(strip=True) if desc_el else None
-            href   = afis.attrs.get("href")
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for afis in secici.select("div.afis a"):
+            title  = secici.select_text("div.description", veri)
+            href   = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("img", "data-src", veri)
 
             if title and href:
                 results.append(SearchResult(
@@ -96,67 +90,56 @@ class SezonlukDizi(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("div.header")
-        title    = title_el.text(strip=True) if title_el else ""
+        title    = secici.select_text("div.header") or ""
 
-        poster_el = secici.css_first("div.image img")
-        poster    = poster_el.attrs.get("data-src", "").strip() if poster_el else ""
+        poster    = secici.select_attr("div.image img", "data-src") or ""
 
         # year: re_first yerine re.search
-        year_el = secici.css_first("div.extra span")
-        year_text = year_el.text(strip=True) if year_el else ""
-        year_match = re.search(r"(\d{4})", year_text)
-        year = year_match.group(1) if year_match else None
+        year_text = secici.select_text("div.extra span") or ""
+        year = secici.regex_first(r"(\d{4})", year_text)
 
         # xpath normalized-space yerine doğrudan ID ile element bulup text al
-        desc_el = secici.css_first("span#tartismayorum-konu")
-        description = desc_el.text(strip=True) if desc_el else ""
+        description = secici.select_text("span#tartismayorum-konu") or ""
 
-        tags = [a.text(strip=True) for a in secici.css("div.labels a[href*='tur']") if a.text(strip=True)]
+        tags = [a.text(strip=True) for a in secici.select("div.labels a[href*='tur']") if a.text(strip=True)]
 
-        # rating: re_first yerine re.search
-        rating_el = secici.css_first("div.dizipuani a div")
-        rating_text = rating_el.text(strip=True) if rating_el else ""
-        rating_match = re.search(r"[\d.,]+", rating_text)
-        rating = rating_match.group() if rating_match else None
+        # rating: regex ile çıkar
+        rating_text = secici.select_text("div.dizipuani a div") or ""
+        rating = secici.regex_first(r"[\d.,]+", rating_text)
 
         actors = []
 
         actors_istek  = await self.httpx.get(f"{self.main_url}/oyuncular/{url.split('/')[-1]}")
-        actors_secici = HTMLParser(actors_istek.text)
-        for actor in actors_secici.css("div.doubling div.ui"):
-            header_el = actor.css_first("div.header")
-            if header_el and header_el.text(strip=True):
-                actors.append(header_el.text(strip=True))
+        actors_secici = HTMLHelper(actors_istek.text)
+        for actor in actors_secici.select("div.doubling div.ui"):
+            header_text = actors_secici.select_text("div.header", actor)
+            if header_text:
+                actors.append(header_text)
 
         episodes_istek  = await self.httpx.get(f"{self.main_url}/bolumler/{url.split('/')[-1]}")
-        episodes_secici = HTMLParser(episodes_istek.text)
+        episodes_secici = HTMLHelper(episodes_istek.text)
         episodes        = []
 
-        for sezon in episodes_secici.css("table.unstackable"):
-            for bolum in sezon.css("tbody tr"):
+        for sezon in episodes_secici.select("table.unstackable"):
+            for bolum in episodes_secici.select("tbody tr", sezon):
                 # td:nth-of-type selectolax'ta desteklenmiyor, alternatif yol: tüm td'leri alıp indexle
-                tds = bolum.css("td")
+                tds = episodes_secici.select("td", bolum)
                 if len(tds) < 4:
                     continue
 
                 # 4. td'den isim ve href
-                ep_name_el = tds[3].css_first("a")
-                ep_name    = ep_name_el.text(strip=True) if ep_name_el else None
-                ep_href    = ep_name_el.attrs.get("href") if ep_name_el else None
+                ep_name    = episodes_secici.select_text("a", tds[3])
+                ep_href    = episodes_secici.select_attr("a", "href", tds[3])
 
-                # 3. td'den episode (re_first yerine re.search)
-                ep_episode_el = tds[2].css_first("a")
-                ep_episode_text = ep_episode_el.text(strip=True) if ep_episode_el else ""
-                ep_episode_match = re.search(r"(\d+)", ep_episode_text)
-                ep_episode = ep_episode_match.group(1) if ep_episode_match else None
+                # 3. td'den episode (re_first yerine regex)
+                ep_episode_text = episodes_secici.select_text("a", tds[2]) or ""
+                ep_episode = episodes_secici.regex_first(r"(\d+)", ep_episode_text)
 
-                # 2. td'den season (re_first yerine re.search)
+                # 2. td'den season (re_first yerine regex)
                 ep_season_text = tds[1].text(strip=True) if tds[1] else ""
-                ep_season_match = re.search(r"(\d+)", ep_season_text)
-                ep_season = ep_season_match.group(1) if ep_season_match else None
+                ep_season = secici.regex_first(r"(\d+)", ep_season_text)
 
                 if ep_name and ep_href:
                     episode = Episode(
@@ -181,10 +164,10 @@ class SezonlukDizi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
         asp_data = await self._get_asp_data()
         
-        bid = secici.css_first("div#dilsec").attrs.get("data-id") if secici.css_first("div#dilsec") else None
+        bid = secici.select_attr("div#dilsec", "data-id")
         if not bid:
             return []
 
@@ -199,9 +182,8 @@ class SezonlukDizi(PluginBase):
                         headers = {"X-Requested-With": "XMLHttpRequest"},
                         data    = {"id": str(veri.get("id"))}
                     )
-                    embed_secici = HTMLParser(embed_resp.text)
-                    iframe_el = embed_secici.css_first("iframe")
-                    iframe_src = iframe_el.attrs.get("src") if iframe_el else None
+                    embed_secici = HTMLHelper(embed_resp.text)
+                    iframe_src = embed_secici.select_attr("iframe", "src")
                     
                     if iframe_src:
                         if "link.asp" in iframe_src:

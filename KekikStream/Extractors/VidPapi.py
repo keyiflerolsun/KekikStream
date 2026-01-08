@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+
 
 class VidPapi(ExtractorBase):
     name     = "VidApi"
@@ -33,11 +33,9 @@ class VidPapi(ExtractorBase):
                 data    = {"hash": vid_id, "r": "https://kultfilmler.pro/"}
             )
             
-            subtitle_match = re.search(r'var playerjsSubtitle = "([^"]*)"', sub_istek.text, re.IGNORECASE)
-            if subtitle_match and subtitle_match.group(1):
-                raw_subs = subtitle_match.group(1)
-                
-                found_subs = re.findall(r'\[(.*?)\](.*?)(?:,|$)', raw_subs)
+            raw_subs = HTMLHelper(sub_istek.text).regex_first(r'var playerjsSubtitle\s*=\s*"([^"]*)"', flags=0)
+            if raw_subs:
+                found_subs = HTMLHelper(raw_subs).regex_all(r'\[(.*?)\](.*?)(?:,|$)')
                 for lang, sub_link in found_subs:
                     lang = lang.strip()
                     if "Türkçe" in lang:

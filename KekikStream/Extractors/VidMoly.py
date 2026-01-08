@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
-from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle
-from selectolax.parser import HTMLParser
+from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 import re, contextlib, json
 
 class VidMoly(ExtractorBase):
@@ -29,24 +28,24 @@ class VidMoly(ExtractorBase):
         # VidMoly bazen redirect ediyor, takip et
         response = await self.httpx.get(url, follow_redirects=True)
         if "Select number" in response.text:
-            secici = HTMLParser(response.text)
+            secici = HTMLHelper(response.text)
 
-            op_el        = secici.css_first("input[name='op']")
-            file_code_el = secici.css_first("input[name='file_code']")
-            answer_el    = secici.css_first("div.vhint b")
-            ts_el        = secici.css_first("input[name='ts']")
-            nonce_el     = secici.css_first("input[name='nonce']")
-            ctok_el      = secici.css_first("input[name='ctok']")
+            op_val        = secici.select_attr("input[name='op']", "value")
+            file_code_val = secici.select_attr("input[name='file_code']", "value")
+            answer_val    = secici.select_text("div.vhint b")
+            ts_val        = secici.select_attr("input[name='ts']", "value")
+            nonce_val     = secici.select_attr("input[name='nonce']", "value")
+            ctok_val      = secici.select_attr("input[name='ctok']", "value")
 
             response = await self.httpx.post(
                 url  = url,
                 data = {
-                    "op"        : op_el.attrs.get("value") if op_el else None,
-                    "file_code" : file_code_el.attrs.get("value") if file_code_el else None,
-                    "answer"    : answer_el.text(strip=True) if answer_el else None,
-                    "ts"        : ts_el.attrs.get("value") if ts_el else None,
-                    "nonce"     : nonce_el.attrs.get("value") if nonce_el else None,
-                    "ctok"      : ctok_el.attrs.get("value") if ctok_el else None
+                    "op"        : op_val,
+                    "file_code" : file_code_val,
+                    "answer"    : answer_val,
+                    "ts"        : ts_val,
+                    "nonce"     : nonce_val,
+                    "ctok"      : ctok_val
                 },
                 follow_redirects=True
             )
@@ -54,8 +53,9 @@ class VidMoly(ExtractorBase):
 
         # Altyazı kaynaklarını ayrıştır
         subtitles = []
-        if subtitle_match := re.search(r"tracks:\s*\[(.*?)\]", response.text, re.DOTALL):
-            subtitle_data = self._add_marks(subtitle_match[1], "file")
+        resp_sec = HTMLHelper(response.text)
+        if subtitle_str := resp_sec.regex_first(r"tracks:\s*\[(.*?)\]", flags= re.DOTALL):
+            subtitle_data = self._add_marks(subtitle_str, "file")
             subtitle_data = self._add_marks(subtitle_data, "label")
             subtitle_data = self._add_marks(subtitle_data, "kind")
 
@@ -70,9 +70,8 @@ class VidMoly(ExtractorBase):
                             if sub.get("kind") == "captions"
                 ]
 
-        script_match = re.search(r"sources:\s*\[(.*?)\],", response.text, re.DOTALL)
-        if script_match:
-            script_content = script_match[1]
+        if script_str := resp_sec.regex_first(r"sources:\s*\[(.*?)\],", flags= re.DOTALL):
+            script_content = script_str
             # Video kaynaklarını ayrıştır
             video_data = self._add_marks(script_content, "file")
             try:
@@ -91,17 +90,17 @@ class VidMoly(ExtractorBase):
 
         # Fallback: Doğrudan file regex ile ara (Kotlin mantığı)
         # file:"..." veya file: "..."
-        if file_match := re.search(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']', response.text):
+        if file_match := resp_sec.regex_first(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']'):
             return ExtractResult(
                 name      = self.name,
-                url       = file_match.group(1),
+                url       = file_match,
                 referer   = self.main_url,
                 subtitles = subtitles
             )
             
         # Fallback 2: Herhangi bir file (m3u8 olma şartı olmadan ama tercihen)
-        if file_match := re.search(r'file\s*:\s*["\']([^"\']+)["\']', response.text):
-            url_candidate = file_match.group(1)
+        if file_match := resp_sec.regex_first(r'file\s*:\s*["\']([^"\']+)["\']'):
+            url_candidate = file_match
             # Resim dosyalarını hariç tut
             if not url_candidate.endswith(('.jpg', '.png', '.jpeg')):
                 return ExtractResult(
@@ -117,4 +116,4 @@ class VidMoly(ExtractorBase):
         """
         Verilen alanı çift tırnak içine alır.
         """
-        return re.sub(rf"\"?{field}\"?", f"\"{field}\"", text)
+        return HTMLHelper(text).regex_replace(rf"\"?{field}\"?", f"\"{field}\"")

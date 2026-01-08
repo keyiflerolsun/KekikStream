@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme  import Packer
-import re
 
 class PlayerFilmIzle(ExtractorBase):
     name     = "PlayerFilmIzle"
@@ -20,11 +19,10 @@ class PlayerFilmIzle(ExtractorBase):
         video_req = istek.text
 
         subtitles = []
-        if sub_match := re.search(r'playerjsSubtitle = "([^"]*)"', video_req, re.IGNORECASE):
-            sub_yakala = sub_match.group(1)
+        hp = HTMLHelper(video_req)
+        sub_yakala = hp.regex_first(r'(?i)playerjsSubtitle = "([^"]*)"')
+        if sub_yakala:
             # Format örneği: [dil]url
-            # Kotlin kodunda: subYakala.substringAfter("]") -> url
-            # subYakala.substringBefore("]").removePrefix("[") -> lang
             if "]" in sub_yakala:
                 sub_lang_raw, sub_url = sub_yakala.split("]", 1)
                 sub_lang = sub_lang_raw.replace("[", "")
@@ -34,8 +32,7 @@ class PlayerFilmIzle(ExtractorBase):
         unpacked = Packer.unpack(video_req) if Packer.detect_packed(video_req) else video_req
 
         # Data yakalama: FirePlayer("DATA", ...) formatından
-        data_match = re.search(r'FirePlayer\s*\(\s*["\']([a-f0-9]+)["\']', unpacked, re.IGNORECASE)
-        data_val   = data_match.group(1) if data_match else None
+        data_val = HTMLHelper(unpacked).regex_first(r'(?i)FirePlayer\s*\(\s*["\']([a-f0-9]+)["\']')
 
         if not data_val:
              raise ValueError("PlayerFilmIzle: Data bulunamadı")
@@ -54,8 +51,7 @@ class PlayerFilmIzle(ExtractorBase):
         get_url  = response.text.replace("\\", "")
 
         m3u8_url = ""
-        if url_yakala := re.search(r'"securedLink":"([^"]*)"', get_url, re.IGNORECASE):
-            m3u8_url = url_yakala.group(1)
+        m3u8_url = HTMLHelper(get_url).regex_first(r'(?i)"securedLink":"([^\\"]*)"') or m3u8_url
 
         if not m3u8_url:
             raise ValueError("PlayerFilmIzle: M3U8 linki bulunamadı")

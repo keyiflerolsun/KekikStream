@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, HTMLHelper
 from json             import dumps, loads
-import re
 
 class RecTV(PluginBase):
     name        = "RecTV"
@@ -84,9 +83,13 @@ class RecTV(PluginBase):
                             "is_episode" : True
                         }
                         
+                        # Extract season/episode numbers using helper
+                        s1, _ = HTMLHelper.extract_season_episode(season.get("title") or "")
+                        _, e2 = HTMLHelper.extract_season_episode(episode.get("title") or "")
+
                         ep_model = Episode(
-                            season  = int(re.search(r"(\d+)\.S", season.get("title")).group(1)) if re.search(r"(\d+)\.S", season.get("title")) else 1,
-                            episode = int(re.search(r"Bölüm (\d+)", episode.get("title")).group(1)) if re.search(r"Bölüm (\d+)", episode.get("title")) else 1,
+                            season  = s1 or 1,
+                            episode = e2 or 1,
                             title   = episode.get("title"),
                             url     = dumps(ep_data),
                         )

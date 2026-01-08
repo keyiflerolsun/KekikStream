@@ -1,7 +1,7 @@
 # ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import json, re
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+import json
 
 class VideoSeyred(ExtractorBase):
     name     = "VideoSeyred"
@@ -16,7 +16,7 @@ class VideoSeyred(ExtractorBase):
             kontrol = await self.httpx.get(url)
             kontrol.raise_for_status()
 
-            video_id = re.search(r"playlist\/(.*)\.json", kontrol.text)[1]
+            video_id = HTMLHelper(kontrol.text).regex_first(r"playlist\/(.*)\.json")
 
         video_url = f"{self.main_url}/playlist/{video_id}.json"
 

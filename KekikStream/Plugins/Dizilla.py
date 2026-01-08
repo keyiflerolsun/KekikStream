@@ -1,12 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from selectolax.parser import HTMLParser
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 from json              import loads
 from urllib.parse      import urlparse, urlunparse
 from Crypto.Cipher     import AES
 from base64            import b64decode
-import re
 
 class Dizilla(PluginBase):
     name        = "Dizilla"
@@ -52,45 +50,26 @@ class Dizilla(PluginBase):
             ])
         else:
             istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-            secici = HTMLParser(istek.text)
+            secici = HTMLHelper(istek.text)
 
-            for veri in secici.css("div.tab-content > div.grid a"):
-                h2_el = veri.css_first("h2")
-                name  = h2_el.text(strip=True) if h2_el else None
-
-                # opacity-80 div'den episode bilgisi - normalize-space yerine doğrudan text
-                opacity_el = veri.css_first("div[class*='opacity-80']")
-                ep_name = opacity_el.text(strip=True) if opacity_el else None
-                if not ep_name:
+            # Genel olarak dizi sayfalarına giden linkleri al
+            for veri in secici.select('a[href*="/dizi/"]'):
+                href = secici.select_attr('a', 'href', veri)
+                title = secici.select_text(None, veri)
+                if not href or not title:
                     continue
 
-                ep_name = ep_name.replace(". Sezon", "x").replace(". Bölüm", "").replace("x ", "x")
-                title   = f"{name} - {ep_name}"
+                # Detay sayfasından poster vb. bilgileri al
+                ep_req = await self.httpx.get(self.fix_url(href))
+                ep_secici = HTMLHelper(ep_req.text)
+                poster = ep_secici.select_attr('img.imgt', 'src') or ep_secici.select_attr('img', 'src')
 
-                href = veri.attrs.get("href")
-                ep_req    = await self.httpx.get(self.fix_url(href))
-                ep_secici = HTMLParser(ep_req.text)
-
-                # nav li'leri alıp 3. elemana erişme (nth-of-type yerine)
-                nav_lis = ep_secici.css("nav li")
-                if len(nav_lis) >= 3:
-                    link_el = nav_lis[2].css_first("a")
-                    href = link_el.attrs.get("href") if link_el else None
-                else:
-                    href = None
-
-                poster_el = ep_secici.css_first("img.imgt")
-                poster = poster_el.attrs.get("src") if poster_el else None
-
-                if href:
-                    ana_sayfa.append(
-                        MainPageResult(
-                            category = category,
-                            title    = title,
-                            url      = self.fix_url(href),
-                            poster   = self.fix_url(poster) if poster else None
-                        )
-                    )
+                ana_sayfa.append(MainPageResult(
+                    category = category,
+                    title    = title,
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster) if poster else None
+                ))
 
         return ana_sayfa
 
@@ -124,9 +103,10 @@ class Dizilla(PluginBase):
         # -> https://images.macellan.online/...
         if "cdn.ampproject.org" in url:
             # /i/s/ veya /ii/s/ gibi AMP prefix'lerinden sonraki kısmı al
-            match = re.search(r"cdn\.ampproject\.org/[^/]+/s/(.+)$", url)
+            helper = HTMLHelper(url)
+            match = helper.regex_first(r"cdn\.ampproject\.org/[^/]+/s/(.+)$")
             if match:
-                return f"https://{match.group(1)}"
+                return f"https://{match}"
         return url
 
     async def search(self, query: str) -> list[SearchResult]:
@@ -155,64 +135,64 @@ class Dizilla(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title = secici.css_first("div.poster.poster h2")
-        title = title.text(strip=True) if title else None
+        title = secici.select_text("div.poster.poster h2")
         if not title:
             return None
 
-        poster_el = secici.css_first("div.w-full.page-top.relative img")
-        poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
+        poster = secici.select_attr("div.w-full.page-top.relative img", "src")
+        poster = self.fix_url(poster) if poster else None
 
         # Year extraction (Kotlin: [1] index for w-fit min-w-fit)
-        info_boxes = secici.css("div.w-fit.min-w-fit")
+        info_boxes = secici.select("div.w-fit.min-w-fit")
         year = None
         if len(info_boxes) > 1:
-            year_el = info_boxes[1].css_first("span.text-sm.opacity-60")
-            if year_el:
-                year_text = year_el.text(strip=True)
+            year_text = secici.select_text("span.text-sm.opacity-60", info_boxes[1])
+            if year_text:
                 year = year_text.split(" ")[-1] if " " in year_text else year_text
 
-        description_el = secici.css_first("div.mt-2.text-sm")
-        description = description_el.text(strip=True) if description_el else None
+        description = secici.select_text("div.mt-2.text-sm")
 
-        tags_el = secici.css_first("div.poster.poster h3")
-        tags = [t.strip() for t in tags_el.text(strip=True).split(",")] if tags_el else []
+        tags_text = secici.select_text("div.poster.poster h3")
+        tags = [t.strip() for t in tags_text.split(",")] if tags_text else []
 
-        actors = [h5.text(strip=True) for h5 in secici.css("div.global-box h5")]
+        actors = secici.select_all_text("div.global-box h5")
 
         episodeses = []
         # Seasons links iteration
-        season_links = secici.css("div.flex.items-center.flex-wrap.gap-2.mb-4 a")
+        season_links = secici.select("div.flex.items-center.flex-wrap.gap-2.mb-4 a")
         for sezon in season_links:
-            sezon_href = self.fix_url(sezon.attrs.get("href"))
+            sezon_href = secici.select_attr("a", "href", sezon)
+            sezon_href = self.fix_url(sezon_href)
             sezon_req = await self.httpx.get(sezon_href)
             
             season_num = None
             try:
                 # URL'den sezon numarasını çek: ...-N-sezon formatı
-                season_match = re.search(r"-(\d+)-sezon", sezon_href)
+                season_match = secici.regex_first(r"-(\d+)-sezon", sezon_href)
                 if season_match:
-                    season_num = int(season_match.group(1))
+                    season_num = int(season_match)
             except:
                 pass
 
-            sezon_secici = HTMLParser(sezon_req.text)
-            for bolum in sezon_secici.css("div.episodes div.cursor-pointer"):
+            sezon_secici = HTMLHelper(sezon_req.text)
+            for bolum in sezon_secici.select("div.episodes div.cursor-pointer"):
                 # Kotlin: bolum.select("a").last()
-                links = bolum.css("a")
+                links = sezon_secici.select("a", bolum)
                 if not links:
                     continue
                 
                 ep_link = links[-1]
-                ep_name = ep_link.text(strip=True)
-                ep_href = self.fix_url(ep_link.attrs.get("href"))
+                ep_name = sezon_secici.select_text("a", ep_link)
+                ep_href = sezon_secici.select_attr("a", "href", ep_link)
+                ep_href = self.fix_url(ep_href)
                 
                 # Episode number (first link's text usually)
                 ep_num = None
                 try:
-                    ep_num = int(links[0].text(strip=True))
+                    ep_num_text = sezon_secici.select_text("a", links[0])
+                    ep_num = int(ep_num_text) if ep_num_text else None
                 except:
                     pass
 
@@ -236,13 +216,13 @@ class Dizilla(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek   = await self.httpx.get(url)
-        secici  = HTMLParser(istek.text)
+        secici  = HTMLHelper(istek.text)
 
-        next_data_el = secici.css_first("script#__NEXT_DATA__")
-        if not next_data_el:
+        next_data_text = secici.select_text("script#__NEXT_DATA__")
+        if not next_data_text:
             return []
 
-        next_data   = loads(next_data_el.text(strip=True))
+        next_data = loads(next_data_text)
         secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData", {})
         decrypted   = await self.decrypt_response(secure_data)
         results     = decrypted.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
@@ -258,8 +238,8 @@ class Dizilla(PluginBase):
         cleaned_source = source_content.replace('"', '').replace('\\', '')
         
         # Parse cleaned HTML
-        iframe_el = HTMLParser(cleaned_source).css_first("iframe")
-        iframe_src = iframe_el.attrs.get("src") if iframe_el else None
+        iframe_secici = HTMLHelper(cleaned_source)
+        iframe_src = iframe_secici.select_attr("iframe", "src")
         
         # Referer check (matching Kotlin: loadExtractor(iframe, "${mainUrl}/", ...))
         iframe_url = self.fix_url(iframe_src) if iframe_src else None

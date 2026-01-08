@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 import re, json
 
 class Odnoklassniki(ExtractorBase):
@@ -45,12 +45,12 @@ class Odnoklassniki(ExtractorBase):
             response_text
         )
 
-        videos_match = re.search(r'"videos":(\[.*?\])', response_text)
-        if not videos_match:
+        videos_json = HTMLHelper(response_text).regex_first(r'"videos":(\[.*?\])')
+        if not videos_json:
             raise ValueError("No video data found in the response.")
 
         try:
-            videos = json.loads(videos_match[1])
+            videos = json.loads(videos_json)
         except json.JSONDecodeError as hata:
             raise ValueError("Failed to parse video data.") from hata
 

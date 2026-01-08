@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult, HTMLHelper
 
 class FilmModu(PluginBase):
     name        = "FilmModu"
@@ -42,16 +40,13 @@ class FilmModu(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.movie"):
-            link_el = veri.css_first("a")
-            img_el  = veri.css_first("picture img")
-
-            title  = link_el.text(strip=True) if link_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("div.movie"):
+            title = secici.select_text("a", veri)
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("picture img", "data-src", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -65,16 +60,13 @@ class FilmModu(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/film-ara?term={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.movie"):
-            link_el = veri.css_first("a")
-            img_el  = veri.css_first("picture img")
-
-            title  = link_el.text(strip=True) if link_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("div.movie"):
+            title = secici.select_text("a", veri)
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("picture img", "data-src", veri)
 
             if title and href:
                 results.append(SearchResult(
@@ -87,31 +79,25 @@ class FilmModu(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        org_title_el = secici.css_first("div.titles h1")
-        alt_title_el = secici.css_first("div.titles h2")
-
-        org_title = org_title_el.text(strip=True) if org_title_el else ""
-        alt_title = alt_title_el.text(strip=True) if alt_title_el else ""
+        org_title = secici.select_text("div.titles h1") or ""
+        alt_title = secici.select_text("div.titles h2") or ""
         title     = f"{org_title} - {alt_title}" if alt_title else org_title
 
-        poster_el = secici.css_first("img.img-responsive")
-        poster    = poster_el.attrs.get("src") if poster_el else None
+        poster = secici.select_attr("img.img-responsive", "src") if secici.select_attr("img.img-responsive", "src") else None
 
-        desc_el     = secici.css_first("p[itemprop='description']")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("p[itemprop='description']") or None
 
-        tags = [a.text(strip=True) for a in secici.css("a[href*='film-tur/']") if a.text(strip=True)]
+        tags = secici.select_all_text("a[href*='film-tur/']")
 
-        year_el = secici.css_first("span[itemprop='dateCreated']")
-        year    = year_el.text(strip=True) if year_el else None
+        year = secici.select_text("span[itemprop='dateCreated']") or None
 
         actors = []
-        for a in secici.css("a[itemprop='actor']"):
-            span_el = a.css_first("span")
-            if span_el and span_el.text(strip=True):
-                actors.append(span_el.text(strip=True))
+        for a in secici.select("a[itemprop='actor']"):
+            name = secici.select_text("span", a)
+            if name:
+                actors.append(name)
 
         return MovieInfo(
             url         = url,
@@ -125,9 +111,9 @@ class FilmModu(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        alternates = secici.css("div.alternates a")
+        alternates = secici.select("div.alternates a")
         if not alternates:
             return []
 
@@ -144,14 +130,14 @@ class FilmModu(PluginBase):
             alt_istek = await self.httpx.get(alt_link)
             alt_text  = alt_istek.text
 
-            vid_id   = re.search(r"var videoId = '(.*)'", alt_text)
-            vid_type = re.search(r"var videoType = '(.*)'", alt_text)
+            vid_id   = HTMLHelper(alt_text).regex_first(r"var videoId = '([^']*)'")
+            vid_type = HTMLHelper(alt_text).regex_first(r"var videoType = '([^']*)'")
 
             if not vid_id or not vid_type:
                 continue
 
             source_istek = await self.httpx.get(
-                f"{self.main_url}/get-source?movie_id={vid_id[1]}&type={vid_type[1]}"
+                f"{self.main_url}/get-source?movie_id={vid_id}&type={vid_type}"
             )
             source_data = source_istek.json()
 

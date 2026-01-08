@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import re, json
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+import json
 
 class JetTv(ExtractorBase):
     name     = "JetTv"
@@ -31,8 +31,8 @@ class JetTv(ExtractorBase):
 
         # 2. Yöntem: Regex Fallback
         if not master_url:
-             if match := re.search(r"file: '([^']*)'", document, re.IGNORECASE):
-                 master_url = match.group(1)
+             hp = HTMLHelper(document)
+             master_url = hp.regex_first(r"(?i)file: '([^']*)'") or master_url
         
         if not master_url:
             raise ValueError(f"JetTv: Video kaynağı bulunamadı. {url}")

@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle
-from selectolax.parser import HTMLParser
+from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 import re
 
 class MolyStream(ExtractorBase):
@@ -10,16 +9,13 @@ class MolyStream(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         if "doctype html" in url:
-            secici   = HTMLParser(url)
-            video_el = secici.css_first("video#sheplayer source")
-            video    = video_el.attrs.get("src") if video_el else None
+            secici   = HTMLHelper(url)
+            video    = secici.select_attr("video#sheplayer source", "src")
         else:
             video = url
 
-        matches = re.findall(
-            pattern = r"addSrtFile\(['\"]([^'\"]+\.srt)['\"]\s*,\s*['\"][a-z]{2}['\"]\s*,\s*['\"]([^'\"]+)['\"]",
-            string  = url
-        )
+        resp_sec = HTMLHelper(url)
+        matches = resp_sec.regex_all(r"addSrtFile\(['\"]([^'\"]+\.srt)['\"]\s*,\s*['\"][a-z]{2}['\"]\s*,\s*['\"]([^'\"]+)['\"]")
 
         subtitles = [
             Subtitle(name = name, url = self.fix_url(url))

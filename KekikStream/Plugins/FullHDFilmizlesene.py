@@ -1,9 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 from Kekik.Sifreleme   import StringCodec
-import json, re
+import json
 
 class FullHDFilmizlesene(PluginBase):
     name        = "FullHDFilmizlesene"
@@ -42,17 +41,13 @@ class FullHDFilmizlesene(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("li.film"):
-            title_el = veri.css_first("span.film-title")
-            link_el  = veri.css_first("a")
-            img_el   = veri.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("li.film"):
+            title = secici.select_text("span.film-title", veri)
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("img", "data-src", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -66,17 +61,13 @@ class FullHDFilmizlesene(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for film in secici.css("li.film"):
-            title_el = film.css_first("span.film-title")
-            link_el  = film.css_first("a")
-            img_el   = film.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for film in secici.select("li.film"):
+            title = secici.select_text("span.film-title", film)
+            href = secici.select_attr("a", "href", film)
+            poster = secici.select_attr("img", "data-src", film)
 
             if title and href:
                 results.append(SearchResult(
@@ -89,49 +80,42 @@ class FullHDFilmizlesene(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
         html_text = istek.text
 
         # Title: normalize-space yerine doğrudan class ile
-        title_el = secici.css_first("div.izle-titles")
-        title    = title_el.text(strip=True) if title_el else ""
+        title = secici.select_text("div.izle-titles") or ""
 
-        img_el = secici.css_first("div img[data-src]")
-        poster = img_el.attrs.get("data-src", "").strip() if img_el else ""
+        poster = secici.select_attr("div img[data-src]", "data-src") or ""
+        poster = poster.strip()
 
-        desc_el     = secici.css_first("div.ozet-ic p")
-        description = desc_el.text(strip=True) if desc_el else ""
+        description = secici.select_text("div.ozet-ic p") or ""
 
-        tags = [a.text(strip=True) for a in secici.css("a[rel='category tag']") if a.text(strip=True)]
+        tags = secici.select_all_text("a[rel='category tag']")
 
         # Rating: normalize-space yerine doğrudan class ile ve son kelimeyi al
-        rating_el = secici.css_first("div.puanx-puan")
+        rating_text = secici.select_text("div.puanx-puan") or None
         rating = None
-        if rating_el:
-            rating_text = rating_el.text(strip=True)
-            if rating_text:
-                parts = rating_text.split()
-                rating = parts[-1] if parts else None
+        if rating_text:
+            parts = rating_text.split()
+            rating = parts[-1] if parts else None
 
         # Year: ilk yıl formatında değer
-        year_el = secici.css_first("div.dd a.category")
+        year_text = secici.select_text("div.dd a.category") or None
         year = None
-        if year_el:
-            year_text = year_el.text(strip=True)
-            if year_text:
-                parts = year_text.split()
-                year = parts[0] if parts else None
+        if year_text:
+            parts = year_text.split()
+            year = parts[0] if parts else None
 
         # Actors: nth-child yerine tüm li'leri alıp 2. index
-        lis = secici.css("div.film-info ul li")
+        lis = secici.select("div.film-info ul li")
         actors = []
         if len(lis) >= 2:
-            actors = [a.text(strip=True) for a in lis[1].css("a > span") if a.text(strip=True)]
+            actors = secici.select_all_text("a > span", lis[1])
 
-        duration_el = secici.css_first("span.sure")
         duration = "0"
-        if duration_el:
-            duration_text = duration_el.text(strip=True)
+        duration_text = secici.select_text("span.sure") or None
+        if duration_text:
             duration_parts = duration_text.split()
             duration = duration_parts[0] if duration_parts else "0"
 
@@ -149,18 +133,18 @@ class FullHDFilmizlesene(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
         html_text = istek.text
 
         # İlk script'i al (xpath (//script)[1] yerine)
-        scripts = secici.css("script")
+        scripts = secici.select("script")
         script_content = scripts[0].text() if scripts else ""
 
-        scx_match = re.search(r"scx = (.*?);", script_content)
-        if not scx_match:
+        scx_json = HTMLHelper(script_content).regex_first(r"scx = (.*?);")
+        if not scx_json:
             return []
 
-        scx_data = json.loads(scx_match.group(1))
+        scx_data = json.loads(scx_json)
         scx_keys = list(scx_data.keys())
 
         link_list = []

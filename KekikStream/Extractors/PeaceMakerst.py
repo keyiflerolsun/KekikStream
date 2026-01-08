@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re, json
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+import json
 
 class PeaceMakerst(ExtractorBase):
     name     = "PeaceMakerst"
@@ -36,7 +36,7 @@ class PeaceMakerst(ExtractorBase):
         m3u_link      = None
 
         if "teve2.com.tr\\/embed\\/" in response_text:
-            teve2_id = re.search(r"teve2\.com\.tr\\\/embed\\\/(\d+)", response_text)[1]
+            teve2_id = HTMLHelper(response_text).regex_first(r"teve2\.com\.tr\\\/embed\\\/(\d+)")
             teve2_url = f"https://www.teve2.com.tr/action/media/{teve2_id}"
 
             teve2_response = await self.httpx.get(teve2_url, headers={"Referer": f"https://www.teve2.com.tr/embed/{teve2_id}"})

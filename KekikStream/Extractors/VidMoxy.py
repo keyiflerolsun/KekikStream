@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme  import Packer, HexCodec
-import re
 
 class VidMoxy(ExtractorBase):
     name     = "VidMoxy"
@@ -16,7 +15,7 @@ class VidMoxy(ExtractorBase):
         istek.raise_for_status()
 
         subtitles        = []
-        subtitle_matches = re.findall(r'captions","file":"([^"]+)","label":"([^"]+)"', istek.text)
+        subtitle_matches = HTMLHelper(istek.text).regex_all(r'captions","file":"([^\"]+)","label":"([^\"]+)"')
         seen_subtitles   = set()
 
         for sub_url, sub_lang in subtitle_matches:
@@ -32,12 +31,12 @@ class VidMoxy(ExtractorBase):
             )
             subtitles.append(Subtitle(name=decoded_lang, url=sub_url.replace("\\", "")))
 
-        try:
-            escaped_hex = re.findall(r'file": "(.*)",', istek.text)[0]
-        except Exception:
-            eval_jwsetup = re.compile(r'\};\s*(eval\(function[\s\S]*?)var played = \d+;').findall(istek.text)[0]
-            jwsetup      = Packer.unpack(Packer.unpack(eval_jwsetup))
-            escaped_hex  = re.findall(r'file":"(.*)","label', jwsetup)[0]
+        escaped_hex = HTMLHelper(istek.text).regex_first(r'file": "(.*)",')
+        if not escaped_hex:
+            eval_jwsetup = HTMLHelper(istek.text).regex_first(r'\};\s*(eval\(function[\s\S]*?)var played = \d+;')
+            jwsetup      = Packer.unpack(Packer.unpack(eval_jwsetup)) if eval_jwsetup else None
+            if jwsetup:
+                escaped_hex  = HTMLHelper(jwsetup).regex_first(r'file":"(.*)","label')
 
         m3u_link = HexCodec.decode(escaped_hex)
 

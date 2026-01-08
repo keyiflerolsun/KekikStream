@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
 
 class DiziPal(PluginBase):
     name        = "DiziPal"
@@ -27,21 +25,16 @@ class DiziPal(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
 
         if "/son-bolumler" in url:
-            for veri in secici.css("div.episode-item"):
-                name_el    = veri.css_first("div.name")
-                episode_el = veri.css_first("div.episode")
-                link_el    = veri.css_first("a")
-                img_el     = veri.css_first("img")
-
-                name    = name_el.text(strip=True) if name_el else None
-                episode = episode_el.text(strip=True) if episode_el else None
-                href    = link_el.attrs.get("href") if link_el else None
-                poster  = img_el.attrs.get("src") if img_el else None
+            for veri in secici.select("div.episode-item"):
+                name    = secici.select_text("div.name", veri)
+                episode = secici.select_text("div.episode", veri)
+                href    = secici.select_attr("a", "href", veri)
+                poster  = secici.select_attr("img", "src", veri)
 
                 if name and href:
                     ep_text = episode.replace(". Sezon ", "x").replace(". Bölüm", "") if episode else ""
@@ -56,14 +49,10 @@ class DiziPal(PluginBase):
                         poster   = self.fix_url(poster) if poster else None,
                     ))
         else:
-            for veri in secici.css("article.type2 ul li"):
-                title_el = veri.css_first("span.title")
-                link_el  = veri.css_first("a")
-                img_el   = veri.css_first("img")
-
-                title  = title_el.text(strip=True) if title_el else None
-                href   = link_el.attrs.get("href") if link_el else None
-                poster = img_el.attrs.get("src") if img_el else None
+            for veri in secici.select("article.type2 ul li"):
+                title  = secici.select_text("span.title", veri)
+                href   = secici.select_attr("a", "href", veri)
+                poster = secici.select_attr("img", "src", veri)
 
                 if title and href:
                     results.append(MainPageResult(
@@ -113,10 +102,10 @@ class DiziPal(PluginBase):
 
         return results
 
-    def _find_sibling_text(self, secici: HTMLParser, label_text: str) -> str | None:
+    def _find_sibling_text(self, secici: HTMLHelper, label_text: str) -> str | None:
         """Bir label'ın kardeş div'inden text çıkarır (xpath yerine)"""
-        for div in secici.css("div"):
-            if div.text(strip=True) == label_text:
+        for div in secici.select("div"):
+            if secici.select_text(element=div) == label_text:
                 # Sonraki kardeş elementi bul
                 next_sibling = div.next
                 while next_sibling:
@@ -133,50 +122,32 @@ class DiziPal(PluginBase):
         self.httpx.headers.pop("X-Requested-With", None)
 
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
         html_text = istek.text
 
-        og_image = secici.css_first("meta[property='og:image']")
-        poster   = self.fix_url(og_image.attrs.get("content")) if og_image else None
+        poster   = self.fix_url(secici.select_attr("meta[property='og:image']", "content")) if secici.select_attr("meta[property='og:image']", "content") else None
 
         # XPath yerine regex ile HTML'den çıkarma
-        year = None
-        year_match = re.search(r'Yapım Yılı.*?<div[^>]*>(\d{4})</div>', html_text, re.DOTALL | re.IGNORECASE)
-        if year_match:
-            year = year_match.group(1)
+        year = secici.regex_first(r'(?is)Yapım Yılı.*?<div[^>]*>(\d{4})</div>', secici.html)
 
-        desc_el     = secici.css_first("div.summary p")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("div.summary p")
 
-        rating = None
-        rating_match = re.search(r'IMDB Puanı.*?<div[^>]*>([0-9.]+)</div>', html_text, re.DOTALL | re.IGNORECASE)
-        if rating_match:
-            rating = rating_match.group(1)
+        rating = secici.regex_first(r'(?is)IMDB Puanı.*?<div[^>]*>([0-9.]+)</div>', secici.html)
 
-        tags = None
-        tags_match = re.search(r'Türler.*?<div[^>]*>([^<]+)</div>', html_text, re.DOTALL | re.IGNORECASE)
-        if tags_match:
-            tags_raw = tags_match.group(1)
-            tags = [t.strip() for t in tags_raw.split() if t.strip()]
+        tags_raw = secici.regex_first(r'(?is)Türler.*?<div[^>]*>([^<]+)</div>', secici.html)
+        tags = [t.strip() for t in tags_raw.split() if t.strip()] if tags_raw else None
 
-        duration = None
-        dur_match = re.search(r'Ortalama Süre.*?<div[^>]*>(\d+)', html_text, re.DOTALL | re.IGNORECASE)
-        if dur_match:
-            duration = int(dur_match.group(1))
+        duration_raw = secici.regex_first(r'(?is)Ortalama Süre.*?<div[^>]*>(\d+)', secici.html)
+        duration = int(duration_raw) if duration_raw else None
 
         if "/dizi/" in url:
-            title_el = secici.css_first("div.cover h5")
-            title    = title_el.text(strip=True) if title_el else None
+            title    = secici.select_text("div.cover h5")
 
             episodes = []
-            for ep in secici.css("div.episode-item"):
-                ep_name_el    = ep.css_first("div.name")
-                ep_link_el    = ep.css_first("a")
-                ep_episode_el = ep.css_first("div.episode")
-
-                ep_name = ep_name_el.text(strip=True) if ep_name_el else None
-                ep_href = ep_link_el.attrs.get("href") if ep_link_el else None
-                ep_text = ep_episode_el.text(strip=True) if ep_episode_el else ""
+            for ep in secici.select("div.episode-item"):
+                ep_name = secici.select_text("div.name", ep)
+                ep_href = secici.select_attr("a", "href", ep)
+                ep_text = secici.select_text("div.episode", ep)
                 ep_parts = ep_text.split(" ")
 
                 ep_season  = None
@@ -209,8 +180,8 @@ class DiziPal(PluginBase):
             )
         else:
             # Film için title - g-title div'lerinin 2. olanı
-            g_titles = secici.css("div.g-title div")
-            title = g_titles[1].text(strip=True) if len(g_titles) >= 2 else None
+            g_titles = secici.select("div.g-title div")
+            title = secici.select_text(element=g_titles[1]) if len(g_titles) >= 2 else None
 
             return MovieInfo(
                 url         = url,
@@ -231,13 +202,11 @@ class DiziPal(PluginBase):
         self.httpx.headers.pop("X-Requested-With", None)
 
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        iframe_el = secici.css_first(".series-player-container iframe")
-        if not iframe_el:
-            iframe_el = secici.css_first("div#vast_new iframe")
+            # iframe presence checked via select_attr below
 
-        iframe = iframe_el.attrs.get("src") if iframe_el else None
+        iframe = secici.select_attr(".series-player-container iframe", "src") or secici.select_attr("div#vast_new iframe", "src")
         if not iframe:
             return []
 
@@ -248,15 +217,13 @@ class DiziPal(PluginBase):
         i_text  = i_istek.text
 
         # m3u link çıkar
-        m3u_match = re.search(r'file:"([^"]+)"', i_text)
-        if m3u_match:
-            m3u_link = m3u_match[1]
+        m3u_link = secici.regex_first(r'file:"([^"]+)"', target=i_text)
+        if m3u_link:
 
             # Altyazıları çıkar
+            sub_text = secici.regex_first(r'"subtitle":"([^"]+)"', target=i_text)
             subtitles = []
-            sub_match = re.search(r'"subtitle":"([^"]+)"', i_text)
-            if sub_match:
-                sub_text = sub_match[1]
+            if sub_text:
                 if "," in sub_text:
                     for sub in sub_text.split(","):
                         lang = sub.split("[")[1].split("]")[0] if "[" in sub else "Türkçe"

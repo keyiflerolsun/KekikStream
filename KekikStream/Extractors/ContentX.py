@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 
 class ContentX(ExtractorBase):
     name     = "ContentX"
@@ -31,15 +30,13 @@ class ContentX(ExtractorBase):
         istek.raise_for_status()
         i_source = istek.text
 
-        i_extract = re.search(r"window\.openPlayer\('([^']+)'", i_source)
-        if not i_extract:
+        i_extract_value = HTMLHelper(i_source).regex_first(r"window\.openPlayer\('([^']+)'\)")
+        if not i_extract_value:
             raise ValueError("i_extract is null")
-        i_extract_value = i_extract[1]
 
         subtitles = []
         sub_urls  = set()
-        for match in re.finditer(r'"file":"([^"]+)","label":"([^"]+)"', i_source):
-            sub_url, sub_lang = match.groups()
+        for sub_url, sub_lang in HTMLHelper(i_source).regex_all(r'"file":"([^\"]+)","label":"([^\"]+)"'):
 
             if sub_url in sub_urls:
                 continue
@@ -60,11 +57,11 @@ class ContentX(ExtractorBase):
         vid_source_request.raise_for_status()
 
         vid_source  = vid_source_request.text
-        vid_extract = re.search(r'file":"([^"]+)"', vid_source)
-        if not vid_extract:
+        m3u_link = HTMLHelper(vid_source).regex_first(r'file":"([^\"]+)"')
+        if not m3u_link:
             raise ValueError("vidExtract is null")
 
-        m3u_link = vid_extract[1].replace("\\", "")
+        m3u_link = m3u_link.replace("\\", "")
         results  = [
             ExtractResult(
                 name      = self.name,
@@ -74,17 +71,17 @@ class ContentX(ExtractorBase):
             )
         ]
 
-        if i_dublaj := re.search(r',\"([^"]+)\",\"Türkçe"', i_source):
-            dublaj_value          = i_dublaj[1]
+        dublaj_value = HTMLHelper(i_source).regex_first(r',\"([^\"]+)\",\"Türkçe\"')
+        if dublaj_value:
             dublaj_source_request = await self.httpx.get(f"{base_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or base_url})
             dublaj_source_request.raise_for_status()
 
             dublaj_source  = dublaj_source_request.text
-            dublaj_extract = re.search(r'file":"([^"]+)"', dublaj_source)
-            if not dublaj_extract:
+            dublaj_link = HTMLHelper(dublaj_source).regex_first(r'file":"([^\"]+)"')
+            if not dublaj_link:
                 raise ValueError("dublajExtract is null")
 
-            dublaj_link = dublaj_extract[1].replace("\\", "")
+            dublaj_link = dublaj_link.replace("\\", "")
             results.append(
                 ExtractResult(
                     name      = f"{self.name} Türkçe Dublaj",

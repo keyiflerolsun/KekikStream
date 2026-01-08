@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class DzenRu(ExtractorBase):
     name     = "DzenRu"
@@ -18,7 +17,8 @@ class DzenRu(ExtractorBase):
         istek.raise_for_status()
 
         # okcdn.ru linklerini bul
-        matches = re.findall(r'https://vd\d+\.okcdn\.ru/\?[^"\'\\\s]+', istek.text)
+        hp = HTMLHelper(istek.text)
+        matches = hp.regex_all(r'https://vd\d+\.okcdn\.ru/\?[^"\'\\\s]+')
 
         if not matches:
             raise ValueError("DzenRu video link not found")

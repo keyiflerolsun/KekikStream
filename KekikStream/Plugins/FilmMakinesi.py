@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class FilmMakinesi(PluginBase):
     name        = "FilmMakinesi"
@@ -37,17 +35,13 @@ class FilmMakinesi(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{'' if page == 1 else f'page/{page}/'}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.item-relative"):
-            title_el = veri.css_first("div.title")
-            link_el  = veri.css_first("a")
-            img_el   = veri.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+        for veri in secici.select("div.item-relative"):
+            title = secici.select_text("div.title", veri)
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_poster("img", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -61,17 +55,13 @@ class FilmMakinesi(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for article in secici.css("div.item-relative"):
-            title_el = article.css_first("div.title")
-            link_el  = article.css_first("a")
-            img_el   = article.css_first("img")
-
-            title  = title_el.text(strip=True) if title_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+        for article in secici.select("div.item-relative"):
+            title = secici.select_text("div.title", article)
+            href = secici.select_attr("a", "href", article)
+            poster = secici.select_poster("img", article)
 
             if title and href:
                 results.append(SearchResult(
@@ -84,48 +74,42 @@ class FilmMakinesi(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("h1.title")
-        title    = title_el.text(strip=True) if title_el else ""
+        title = secici.select_text("h1.title") or ""
 
-        poster_el = secici.css_first("img.cover-img")
-        poster    = poster_el.attrs.get("src", "").strip() if poster_el else ""
+        poster = secici.select_attr("img.cover-img", "src") or ""
+        poster = poster.strip()
 
-        desc_el     = secici.css_first("div.info-description p")
-        description = desc_el.text(strip=True) if desc_el else ""
+        description = secici.select_text("div.info-description p") or ""
 
-        rating_el = secici.css_first("div.score")
-        rating    = None
-        if rating_el:
-            rating_text = rating_el.text(strip=True)
-            if rating_text:
-                rating = rating_text.split()[0]
+        rating_text = secici.select_text("div.score") or ""
+        rating = None
+        if rating_text:
+            rating = rating_text.split()[0]
 
-        year_el = secici.css_first("span.date a")
-        year    = year_el.text(strip=True) if year_el else ""
+        year = secici.select_text("span.date a") or ""
 
-        actors = [el.text(strip=True) for el in secici.css("div.cast-name") if el.text(strip=True)]
-        tags   = [el.text(strip=True) for el in secici.css("div.genre a") if el.text(strip=True)]
+        actors = secici.select_all_text("div.cast-name")
+        tags = secici.select_all_text("div.genre a")
 
-        duration_el = secici.css_first("div.time")
-        duration    = None
-        if duration_el:
-            duration_text = duration_el.text(strip=True)
+        duration = None
+        duration_text = secici.select_text("div.time") or None
+        if duration_text:
             parts = duration_text.split()
             if len(parts) > 1:
                 duration = parts[1].strip()
 
         # Dizi mi kontrol et - sezon/bölüm linkleri var mı?
         episodes = []
-        all_links = secici.css("a[href]")
+        all_links = secici.select("a[href]")
         for link in all_links:
             href = link.attrs.get("href", "")
-            match = re.search(r"/sezon-(\d+)/bolum-(\d+)", href)
-            if match:
-                season_no = int(match.group(1))
-                ep_no = int(match.group(2))
-                
+            pairs = HTMLHelper(href).regex_all(r"/sezon-(\d+)/bolum-(\d+)")
+            if pairs:
+                season_no = int(pairs[0][0])
+                ep_no = int(pairs[0][1])
+
                 # Bölüm başlığını çıkar - text'ten gerçek ismi al
                 # Format: "22 Eylül 2014 / 44 dk /1. Sezon / 1. BölümPilot"
                 full_text = link.text(strip=True)
@@ -184,12 +168,12 @@ class FilmMakinesi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         response = []
 
         # Video parts linklerini ve etiketlerini al
-        for link in secici.css("div.video-parts a[data-video_url]"):
+        for link in secici.select("div.video-parts a[data-video_url]"):
             video_url = link.attrs.get("data-video_url")
             label     = link.text(strip=True) if link.text(strip=True) else ""
 
@@ -200,8 +184,7 @@ class FilmMakinesi(PluginBase):
 
         # Eğer video-parts yoksa iframe kullan
         if not response:
-            iframe_el = secici.css_first("iframe")
-            iframe_src = iframe_el.attrs.get("data-src") if iframe_el else None
+            iframe_src = secici.select_attr("iframe", "data-src")
             if iframe_src:
                 data = await self.extract(iframe_src)
                 if data:

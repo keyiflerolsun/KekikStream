@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme  import Packer
 import re
 
@@ -54,19 +54,16 @@ class VidHide(ExtractorBase):
                 pass
         
         if not script:
-             if matches := re.search(r'sources:\s*(\[.*?\])', response, re.DOTALL):
-                 script = matches.group(1)
+             script = HTMLHelper(response).regex_first(r'(?s)sources:\s*(\[.*?\])')
 
         m3u8_url = None
         if script:
             # m3u8 urls could be prefixed by 'file:', 'hls2:' or 'hls4:', so we just match ':'
-            if match := re.search(r':\s*"([^"]*?m3u8[^"]*?)"', script):
-                 m3u8_url = match.group(1)
+            m3u8_url = HTMLHelper(script).regex_first(r':\s*"([^\"]*?m3u8[^\"]*?)"')
 
         if not m3u8_url:
             # Fallback direct search in response if unpacking failed or structure changed
-            if match := re.search(r'file:"(.*?\.m3u8.*?)"', response):
-                m3u8_url = match.group(1)
+            m3u8_url = HTMLHelper(response).regex_first(r'file:"(.*?\.m3u8.*?)"')
         
         if not m3u8_url:
             raise ValueError(f"VidHide: Video URL bulunamadı. {url}")

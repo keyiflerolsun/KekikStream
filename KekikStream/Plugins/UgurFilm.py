@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class UgurFilm(PluginBase):
     name        = "UgurFilm"
@@ -26,21 +24,17 @@ class UgurFilm(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.icerik div"):
+        for veri in secici.select("div.icerik div"):
             # Title is in the second span (a.baslik > span), not the first span (class="sol" which is empty)
-            title_el = veri.css_first("a.baslik span")
-            title = title_el.text(strip=True) if title_el else None
+            title = secici.select_text("a.baslik span", veri)
             if not title:
                 continue
 
-            link_el = veri.css_first("a")
-            img_el  = veri.css_first("img")
-
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("src") if img_el else None
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("img", "src", veri)
 
             results.append(MainPageResult(
                 category = category,
@@ -53,19 +47,13 @@ class UgurFilm(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for film in secici.css("div.icerik div"):
-            # Title is in a.baslik > span, not the first span
-            title_el = film.css_first("a.baslik span")
-            title = title_el.text(strip=True) if title_el else None
-
-            link_el = film.css_first("a")
-            img_el  = film.css_first("img")
-
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("src") if img_el else None
+        for film in secici.select("div.icerik div"):
+            title = secici.select_text("a.baslik span", film)
+            href = secici.select_attr("a", "href", film)
+            poster = secici.select_attr("img", "src", film)
 
             if title and href:
                 results.append(SearchResult(
@@ -78,30 +66,18 @@ class UgurFilm(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("div.bilgi h2")
-        title    = title_el.text(strip=True) if title_el else ""
+        title = secici.select_text("div.bilgi h2") or ""
+        poster = secici.select_attr("div.resim img", "src") or ""
+        description = secici.select_text("div.slayt-aciklama") or ""
 
-        poster_el = secici.css_first("div.resim img")
-        poster    = poster_el.attrs.get("src", "").strip() if poster_el else ""
+        tags = secici.select_all_text("p.tur a[href*='/category/']")
 
-        desc_el     = secici.css_first("div.slayt-aciklama")
-        description = desc_el.text(strip=True) if desc_el else ""
+        year_val = secici.extract_year("a[href*='/yil/']")
+        year = str(year_val) if year_val else None
 
-        tags = [a.text(strip=True) for a in secici.css("p.tur a[href*='/category/']") if a.text(strip=True)]
-
-        # re_first yerine re.search
-        year_el   = secici.css_first("a[href*='/yil/']")
-        year_text = year_el.text(strip=True) if year_el else ""
-        year_match = re.search(r"\d+", year_text)
-        year = year_match.group() if year_match else None
-
-        actors = []
-        for actor in secici.css("li.oyuncu-k"):
-            span_el = actor.css_first("span")
-            if span_el and span_el.text(strip=True):
-                actors.append(span_el.text(strip=True))
+        actors = secici.select_all_text("li.oyuncu-k span")
 
         return MovieInfo(
             url         = self.fix_url(url),
@@ -115,17 +91,16 @@ class UgurFilm(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek   = await self.httpx.get(url)
-        secici  = HTMLParser(istek.text)
+        secici  = HTMLHelper(istek.text)
         results = []
 
-        part_links = [a.attrs.get("href") for a in secici.css("li.parttab a") if a.attrs.get("href")]
+        part_links = secici.select_all_attr("li.parttab a", "href")
 
         for part_link in part_links:
             sub_response = await self.httpx.get(part_link)
-            sub_selector = HTMLParser(sub_response.text)
+            sub_selector = HTMLHelper(sub_response.text)
 
-            iframe_el = sub_selector.css_first("div#vast iframe")
-            iframe = iframe_el.attrs.get("src") if iframe_el else None
+            iframe = sub_selector.select_attr("div#vast iframe", "src")
 
             if iframe and self.main_url in iframe:
                 post_data = {

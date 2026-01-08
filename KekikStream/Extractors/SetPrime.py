@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 from urllib.parse import urlparse, parse_qs
-import re
 
 class SetPrime(ExtractorBase):
     name     = "SetPrime"
@@ -25,11 +24,9 @@ class SetPrime(ExtractorBase):
         response.raise_for_status()
         
         # Links parse
-        links_match = re.search(r'Links":\["([^"\]]+)"', response.text)
-        if not links_match:
+        link_suffix = HTMLHelper(response.text).regex_first(r'Links":\["([^"\]]+)"')
+        if not link_suffix:
             raise ValueError("Links not found in SetPrime response")
-            
-        link_suffix = links_match.group(1)
         if not link_suffix.startswith("/"):
             raise ValueError("Links not valid (must start with /)")
             

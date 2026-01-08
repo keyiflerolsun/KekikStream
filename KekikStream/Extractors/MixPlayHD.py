@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 from Kekik.Sifreleme import AESManager
-import re, json
+import json
 
 class MixPlayHD(ExtractorBase):
     name     = "MixPlayHD"
@@ -15,12 +15,12 @@ class MixPlayHD(ExtractorBase):
         istek = await self.httpx.get(url)
         istek.raise_for_status()
 
-        be_player_match = re.search(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);", istek.text)
-        if not be_player_match:
+        hp = HTMLHelper(istek.text)
+        be_player_matches = hp.regex_all(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);")
+        if not be_player_matches:
             raise ValueError("bePlayer not found in the response.")
 
-        be_player_pass = be_player_match[1]
-        be_player_data = be_player_match[2]
+        be_player_pass, be_player_data = be_player_matches[0]
 
         try:
             decrypted_data = AESManager.decrypt(be_player_data, be_player_pass).replace("\\", "")
@@ -28,13 +28,12 @@ class MixPlayHD(ExtractorBase):
         except Exception as hata:
             raise RuntimeError(f"Decryption failed: {hata}") from hata
 
-        if video_url_match := re.search(
-            pattern = r'"video_location":"([^"]+)"',
-            string  = decrypted_json.get("schedule", {}).get("client", ""),
-        ):
+        client_str = decrypted_json.get("schedule", {}).get("client", "")
+        video_url = HTMLHelper(client_str).regex_first(r'"video_location":"([^"]+)"')
+        if video_url:
             return ExtractResult(
                 name      = self.name,
-                url       = video_url_match[1],
+                url       = video_url,
                 referer   = self.main_url,
                 subtitles = []
             )

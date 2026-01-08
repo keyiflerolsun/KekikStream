@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
-import re, json, urllib.parse
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, MovieInfo, ExtractResult, HTMLHelper
+import json, urllib.parse
 
 class Sinefy(PluginBase):
     name        = "Sinefy"
@@ -44,17 +43,13 @@ class Sinefy(PluginBase):
             full_url = f"{url}&page={page}"
 
         resp = await self.httpx.get(full_url)
-        sel  = HTMLParser(resp.text)
+        sel  = HTMLHelper(resp.text)
 
         results = []
-        for item in sel.css("div.poster-with-subject, div.dark-segment div.poster-md.poster"):
-            h2_el = item.css_first("h2")
-            link_el = item.css_first("a")
-            img_el = item.css_first("img")
-
-            title  = h2_el.text(strip=True) if h2_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("data-srcset") if img_el else None
+        for item in sel.select("div.poster-with-subject, div.dark-segment div.poster-md.poster"):
+            title  = sel.select_text("h2", item)
+            href   = sel.select_attr("a", "href", item)
+            poster = sel.select_attr("img", "data-srcset", item)
 
             if poster:
                 poster = poster.split(",")[0].split(" ")[0]
@@ -76,13 +71,10 @@ class Sinefy(PluginBase):
 
         try:
             resp = await self.httpx.get(self.main_url)
-            sel  = HTMLParser(resp.text)
+            sel  = HTMLHelper(resp.text)
 
-            cke_el = sel.css_first("input[name='cKey']")
-            cval_el = sel.css_first("input[name='cValue']")
-
-            cke = cke_el.attrs.get("value") if cke_el else None
-            cval = cval_el.attrs.get("value") if cval_el else None
+            cke = sel.select_attr("input[name='cKey']", "value")
+            cval = sel.select_attr("input[name='cValue']", "value")
 
             if cke and cval:
                 c_key   = cke
@@ -145,44 +137,39 @@ class Sinefy(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         resp = await self.httpx.get(url)
-        sel  = HTMLParser(resp.text)
+        sel  = HTMLHelper(resp.text)
         
-        title_el = sel.css_first("h1")
-        title    = title_el.text(strip=True) if title_el else None
+        title    = sel.select_text("h1")
 
-        img_el      = sel.css_first("div.ui.items img")
-        poster_info = img_el.attrs.get("data-srcset") if img_el else None
-        poster      = None
+        poster_info = sel.select_attr("div.ui.items img", "data-srcset")
+        poster = None
         if poster_info:
-            # take 1x
             parts = str(poster_info).split(",")
             for p in parts:
                 if "1x" in p:
                     poster = p.strip().split(" ")[0]
                     break
-        
-        desc_el     = sel.css_first("p#tv-series-desc")
-        description = desc_el.text(strip=True) if desc_el else None
 
-        tags    = [a.text(strip=True) for a in sel.css("div.item.categories a") if a.text(strip=True)]
+        description = sel.select_text("p#tv-series-desc")
 
-        rating_el = sel.css_first("span.color-imdb")
-        rating    = rating_el.text(strip=True) if rating_el else None
+        tags    = [a.text(strip=True) for a in sel.select("div.item.categories a") if a.text(strip=True)]
 
-        actors = [h5.text(strip=True) for h5 in sel.css("div.content h5") if h5.text(strip=True)]
+        rating    = sel.select_text("span.color-imdb")
 
-        year_el = sel.css_first("span.item.year")
-        year    = year_el.text(strip=True) if year_el else None
+        actors = [h5.text(strip=True) for h5 in sel.select("div.content h5") if h5.text(strip=True)]
+
+        year    = sel.select_text("span.item.year")
         
         episodes = []
-        episodes_box = sel.css_first("section.episodes-box")
+        episodes_box_list = sel.select("section.episodes-box")
         
-        if episodes_box:
+        if episodes_box_list:
+            episodes_box = episodes_box_list[0]
             # Sezon menüsünden sezon linklerini al
-            season_menu = episodes_box.css("div.ui.vertical.fluid.tabular.menu a.item")
+            season_menu = sel.select("div.ui.vertical.fluid.tabular.menu a.item", episodes_box)
             
             # Sezon tab içeriklerini al
-            season_tabs = episodes_box.css("div.ui.tab")
+            season_tabs = sel.select("div.ui.tab", episodes_box)
             
             # Eğer birden fazla sezon varsa, her sezon tab'ından bölümleri çek
             if season_tabs:
@@ -193,12 +180,12 @@ class Sinefy(PluginBase):
                     # Menüden sezon numarasını almaya çalış
                     if idx < len(season_menu):
                         menu_href = season_menu[idx].attrs.get("href", "")
-                        match = re.search(r"sezon-(\d+)", menu_href)
+                        match = sel.regex_first(r"sezon-(\d+)", menu_href)
                         if match:
-                            current_season_no = int(match.group(1))
+                            current_season_no = int(match)
                     
                     # Bu sezon tab'ından bölüm linklerini çek
-                    ep_links = season_tab.css("a[href*='bolum']")
+                    ep_links = sel.select("a[href*='bolum']", season_tab)
                     
                     seen_urls = set()
                     for ep_link in ep_links:
@@ -209,17 +196,15 @@ class Sinefy(PluginBase):
                         
                         # Bölüm numarasını URL'den çıkar
                         ep_no = 0
-                        match_ep = re.search(r"bolum-(\d+)", href)
+                        match_ep = sel.regex_first(r"bolum-(\d+)", href)
                         if match_ep:
-                            ep_no = int(match_ep.group(1))
+                            ep_no = int(match_ep)
                         
                         # Bölüm başlığını çıkar (önce title attribute, sonra text)
                         name = ep_link.attrs.get("title", "")
                         if not name:
-                            name_el = ep_link.css_first("div.content div.header")
-                            if name_el:
-                                name = name_el.text(strip=True)
-                            else:
+                            name = sel.select_text("div.content div.header", ep_link)
+                            if not name:
                                 name = ep_link.text(strip=True)
                         
                         if href and ep_no > 0:
@@ -256,10 +241,9 @@ class Sinefy(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
-        sel  = HTMLParser(resp.text)
+        sel  = HTMLHelper(resp.text)
         
-        iframe_el = sel.css_first("iframe")
-        iframe    = iframe_el.attrs.get("src") if iframe_el else None
+        iframe = sel.select_attr("iframe", "src")
 
         if not iframe:
             return []

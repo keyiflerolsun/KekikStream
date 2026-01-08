@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class TurboImgz(ExtractorBase):
     name     = "TurboImgz"
@@ -14,10 +13,10 @@ class TurboImgz(ExtractorBase):
         istek = await self.httpx.get(url)
         istek.raise_for_status()
 
-        if video_match := re.search(r'file: "(.*)",', istek.text):
+        if video := HTMLHelper(istek.text).regex_first(r'file: "(.*)",'):
             return ExtractResult(
                 name      = self.name,
-                url       = video_match[1],
+                url       = video,
                 referer   = referer or self.main_url,
                 subtitles = []
             )

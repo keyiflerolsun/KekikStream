@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core.HTMLHelper import HTMLHelper
 
 class SinemaCX(PluginBase):
     name        = "SinemaCX"
@@ -39,23 +38,16 @@ class SinemaCX(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.son div.frag-k, div.icerik div.frag-k"):
-            span_el = veri.css_first("div.yanac span")
-            if not span_el:
-                continue
-
-            title = span_el.text(strip=True)
+        for veri in secici.select("div.son div.frag-k, div.icerik div.frag-k"):
+            title = secici.select_text("div.yanac span", veri)
             if not title:
                 continue
 
-            link_el = veri.css_first("div.yanac a")
-            img_el  = veri.css_first("a.resim img")
-
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            href = secici.select_attr("div.yanac a", "href", veri)
+            poster = secici.select_attr("a.resim img", "data-src", veri) or secici.select_attr("a.resim img", "src", veri)
 
             results.append(MainPageResult(
                 category = category,
@@ -68,23 +60,16 @@ class SinemaCX(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.icerik div.frag-k"):
-            span_el = veri.css_first("div.yanac span")
-            if not span_el:
-                continue
-
-            title = span_el.text(strip=True)
+        for veri in secici.select("div.icerik div.frag-k"):
+            title = secici.select_text("div.yanac span", veri)
             if not title:
                 continue
 
-            link_el = veri.css_first("div.yanac a")
-            img_el  = veri.css_first("a.resim img")
-
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            href = secici.select_attr("div.yanac a", "href", veri)
+            poster = secici.select_attr("a.resim img", "data-src", veri) or secici.select_attr("a.resim img", "src", veri)
 
             results.append(SearchResult(
                 title  = title,
@@ -96,29 +81,21 @@ class SinemaCX(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        duration_match = re.search(r"Süre:.*?(\d+)\s*Dakika", istek.text)
+        duration_match = secici.regex_first(r"Süre:.*?(\d+)\s*Dakika")
 
-        desc_el     = secici.css_first("div.ackl div.scroll-liste")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("div.ackl div.scroll-liste")
 
-        link_el   = secici.css_first("link[rel='image_src']")
-        poster    = link_el.attrs.get("href") if link_el else None
+        poster = secici.select_attr("link[rel='image_src']", "href")
 
-        title_el  = secici.css_first("div.f-bilgi h1")
-        title     = title_el.text(strip=True) if title_el else None
+        title = secici.select_text("div.f-bilgi h1")
 
-        tags      = [a.text(strip=True) for a in secici.css("div.f-bilgi div.tur a") if a.text(strip=True)]
+        tags = secici.select_all_text("div.f-bilgi div.tur a")
 
-        year_el   = secici.css_first("div.f-bilgi ul.detay a[href*='yapim']")
-        year      = year_el.text(strip=True) if year_el else None
+        year = secici.select_text("div.f-bilgi ul.detay a[href*='yapim']")
 
-        actors    = []
-        for li in secici.css("li.oync li.oyuncu-k"):
-            isim_el = li.css_first("span.isim")
-            if isim_el and isim_el.text(strip=True):
-                actors.append(isim_el.text(strip=True))
+        actors = secici.select_all_text("li.oync li.oyuncu-k span.isim")
 
         return MovieInfo(
             url         = url,
@@ -128,14 +105,14 @@ class SinemaCX(PluginBase):
             tags        = tags,
             year        = year,
             actors      = actors,
-            duration    = int(duration_match[1]) if duration_match else None,
+            duration    = int(duration_match) if duration_match else None,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        iframe_list = [iframe.attrs.get("data-vsrc") for iframe in secici.css("iframe") if iframe.attrs.get("data-vsrc")]
+        iframe_list = secici.select_all_attr("iframe", "data-vsrc")
 
         # Sadece fragman varsa /2/ sayfasından dene
         has_only_trailer = all(
@@ -146,8 +123,9 @@ class SinemaCX(PluginBase):
         if has_only_trailer:
             alt_url   = url.rstrip("/") + "/2/"
             alt_istek = await self.httpx.get(alt_url)
-            alt_sec   = HTMLParser(alt_istek.text)
-            iframe_list = [iframe.attrs.get("data-vsrc") for iframe in alt_sec.css("iframe") if iframe.attrs.get("data-vsrc")]
+            alt_istek = await self.httpx.get(alt_url)
+            alt_sec   = HTMLHelper(alt_istek.text)
+            iframe_list = alt_sec.select_all_attr("iframe", "data-vsrc")
 
         if not iframe_list:
             return []
@@ -164,17 +142,15 @@ class SinemaCX(PluginBase):
         iframe_text  = iframe_istek.text
 
         subtitles = []
-        sub_match = re.search(r'playerjsSubtitle\s*=\s*"(.+?)"', iframe_text)
-        if sub_match:
-            sub_section = sub_match[1]
-            for sub in re.finditer(r'\[(.*?)](https?://[^\s",]+)', sub_section):
-                subtitles.append(Subtitle(name=sub[1], url=self.fix_url(sub[2])))
+        sub_section = HTMLHelper(iframe_text).regex_first(r'playerjsSubtitle\s*=\s*"(.+?)"')
+        if sub_section:
+            for lang, link in HTMLHelper(sub_section).regex_all(r'\[(.*?)](https?://[^\s\",]+)'):
+                subtitles.append(Subtitle(name=lang, url=self.fix_url(link)))
 
         # player.filmizle.in kontrolü
         if "player.filmizle.in" in iframe.lower():
-            base_match = re.search(r"https?://([^/]+)", iframe)
-            if base_match:
-                base_url = base_match[1]
+            base_url = HTMLHelper(iframe).regex_first(r"https?://([^/]+)")
+            if base_url:
                 vid_id   = iframe.split("/")[-1]
 
                 self.httpx.headers.update({"X-Requested-With": "XMLHttpRequest"})

@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class FilmBip(PluginBase):
     name        = "FilmBip"
@@ -37,16 +35,13 @@ class FilmBip(PluginBase):
         page_url = page_url.rstrip("/")
 
         istek  = await self.httpx.get(page_url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.poster-long"):
-            img = veri.css_first("a.block img.lazy")
-            link_el = veri.css_first("a.block")
-
-            title  = img.attrs.get("alt") if img else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img.attrs.get("data-src") or img.attrs.get("src")) if img else None
+        for veri in secici.select("div.poster-long"):
+            title = secici.select_attr("a.block img.lazy", "alt", veri)
+            href = secici.select_attr("a.block", "href", veri)
+            poster = secici.select_poster("a.block img.lazy", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -80,17 +75,13 @@ class FilmBip(PluginBase):
         except Exception:
             return []
 
-        secici = HTMLParser(html_content)
+        secici = HTMLHelper(html_content)
 
         results = []
-        for veri in secici.css("li"):
-            link_el = veri.css_first("a.block.truncate")
-            href_el = veri.css_first("a")
-            img_el  = veri.css_first("img.lazy")
-
-            title  = link_el.text(strip=True) if link_el else None
-            href   = href_el.attrs.get("href") if href_el else None
-            poster = img_el.attrs.get("data-src") if img_el else None
+        for veri in secici.select("li"):
+            title = secici.select_text("a.block.truncate", veri)
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("img.lazy", "data-src", veri)
 
             if title and href:
                 results.append(SearchResult(
@@ -103,42 +94,27 @@ class FilmBip(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
         html_text = istek.text
 
-        title_el = secici.css_first("div.page-title h1")
-        title    = title_el.text(strip=True) if title_el else ""
+        title = secici.select_text("div.page-title h1") or ""
 
-        og_image = secici.css_first("meta[property='og:image']")
-        poster   = og_image.attrs.get("content") if og_image else None
+        poster = secici.select_attr("meta[property='og:image']", "content")
 
-        trailer_el = secici.css_first("div.series-profile-trailer")
-        trailer    = trailer_el.attrs.get("data-yt") if trailer_el else None
+        trailer = secici.select_attr("div.series-profile-trailer", "data-yt")
 
-        desc_el = secici.css_first("div.series-profile-infos-in.article p")
-        if not desc_el:
-            desc_el = secici.css_first("div.series-profile-summary p")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("div.series-profile-infos-in.article p") or secici.select_text("div.series-profile-summary p")
         
-        tags = [a.text(strip=True) for a in secici.css("div.series-profile-type.tv-show-profile-type a") if a.text(strip=True)]
+        tags = secici.select_all_text("div.series-profile-type.tv-show-profile-type a")
 
         # XPath yerine regex kullanarak yıl, süre vs. çıkarma
-        year = None
-        year_match = re.search(r'Yapım yılı.*?<p[^>]*>(\d{4})</p>', html_text, re.IGNORECASE | re.DOTALL)
-        if year_match:
-            year = year_match.group(1)
+        year = secici.regex_first(r'(?i)Yapım yılı.*?<p[^>]*>(\d{4})</p>', secici.html)
 
-        duration = None
-        duration_match = re.search(r'Süre.*?<p[^>]*>(\d+)', html_text, re.IGNORECASE | re.DOTALL)
-        if duration_match:
-            duration = duration_match.group(1)
+        duration = secici.regex_first(r'(?i)Süre.*?<p[^>]*>(\d+)', secici.html)
 
-        rating = None
-        rating_match = re.search(r'IMDB Puanı.*?<span[^>]*>([0-9.]+)</span>', html_text, re.IGNORECASE | re.DOTALL)
-        if rating_match:
-            rating = rating_match.group(1)
+        rating = secici.regex_first(r'(?i)IMDB Puanı.*?<span[^>]*>([0-9.]+)</span>', secici.html)
 
-        actors = [img.attrs.get("alt") for img in secici.css("div.series-profile-cast ul li a img") if img.attrs.get("alt")]
+        actors = [img.attrs.get("alt") for img in secici.select("div.series-profile-cast ul li a img") if img.attrs.get("alt")]
 
         return MovieInfo(
             url         = url,
@@ -154,13 +130,12 @@ class FilmBip(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
 
-        for player in secici.css("div#tv-spoox2"):
-            iframe_el = player.css_first("iframe")
-            iframe    = iframe_el.attrs.get("src") if iframe_el else None
+        for player in secici.select("div#tv-spoox2"):
+            iframe    = secici.select_attr("iframe", "src", player)
 
             if iframe:
                 iframe = self.fix_url(iframe)

@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class PixelDrain(ExtractorBase):
     name     = "PixelDrain"
@@ -11,11 +10,13 @@ class PixelDrain(ExtractorBase):
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
-        pixel_id_match = re.search(r"/u/([^/?]+)|([^\/]+)(?=\?download)", url)
-        if not pixel_id_match:
+        hp = HTMLHelper(url)
+        matches = hp.regex_all(r"/u/([^/?]+)|([^\/]+)(?=\?download)")
+        if not matches:
             raise ValueError("PixelDrain bağlantısından ID çıkarılamadı.")
 
-        pixel_id      = pixel_id_match[1]
+        m = matches[0]
+        pixel_id = next((g for g in m if g), None)
         download_link = f"{self.main_url}/api/file/{pixel_id}?download"
         referer_link  = f"{self.main_url}/u/{pixel_id}?download"
 

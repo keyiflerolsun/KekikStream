@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class BelgeselX(PluginBase):
     name        = "BelgeselX"
@@ -43,22 +41,17 @@ class BelgeselX(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
         # xpath kullanamıyoruz, en üst seviye gen-movie-contain'leri alıp içlerinden bilgileri çekelim
-        for container in secici.css("div.gen-movie-contain"):
+        for container in secici.select("div.gen-movie-contain"):
             # Poster için img'i container'ın içinden alalım
-            img_el = container.css_first("div.gen-movie-img img")
-            poster = img_el.attrs.get("src") if img_el else None
+            poster = secici.select_attr("div.gen-movie-img img", "src", container)
 
             # Title ve href için gen-movie-info
-            h3_link = container.css_first("div.gen-movie-info h3 a")
-            if not h3_link:
-                continue
-
-            title = h3_link.text(strip=True)
-            href  = h3_link.attrs.get("href")
+            title = secici.select_text("div.gen-movie-info h3 a", container)
+            href  = secici.select_attr("div.gen-movie-info h3 a", "href", container)
 
             if title and href:
                 results.append(MainPageResult(
@@ -77,14 +70,12 @@ class BelgeselX(PluginBase):
         token_resp = self.cloudscraper.get(f"https://cse.google.com/cse.js?cx={cx}")
         token_text = token_resp.text
 
-        cse_lib_match = re.search(r'cselibVersion": "(.*)"', token_text)
-        cse_tok_match = re.search(r'cse_token": "(.*)"', token_text)
+        secici = HTMLHelper(token_text)
+        cse_lib = secici.regex_first(r'cselibVersion": "(.*)"')
+        cse_tok = secici.regex_first(r'cse_token": "(.*)"')
 
-        if not cse_lib_match or not cse_tok_match:
+        if not cse_lib or not cse_tok:
             return []
-
-        cse_lib = cse_lib_match.group(1)
-        cse_tok = cse_tok_match.group(1)
 
         search_url = (
             f"https://cse.google.com/cse/element/v1?"
@@ -96,9 +87,10 @@ class BelgeselX(PluginBase):
         resp = self.cloudscraper.get(search_url)
         resp_text = resp.text
 
-        titles = re.findall(r'"titleNoFormatting": "(.*?)"', resp_text)
-        urls   = re.findall(r'"url": "(.*?)"', resp_text)
-        images = re.findall(r'"ogImage": "(.*?)"', resp_text)
+        secici2 = HTMLHelper(resp_text)
+        titles = secici2.regex_all(r'"titleNoFormatting": "(.*?)"')
+        urls   = secici2.regex_all(r'"url": "(.*?)"')
+        images = secici2.regex_all(r'"ogImage": "(.*?)"')
 
         results = []
         for i, title in enumerate(titles):
@@ -109,7 +101,8 @@ class BelgeselX(PluginBase):
                 # URL'den belgesel linkini oluştur
                 if poster and "diziresimleri" in poster:
                     file_name = poster.rsplit("/", 1)[-1]
-                    file_name = re.sub(r"\.(jpe?g|png|webp)$", "", file_name)
+                    secici3 = HTMLHelper(file_name)
+                    file_name = secici3.regex_replace(r"\.(jpe?g|png|webp)$", "")
                     url_val = f"{self.main_url}/belgeseldizi/{file_name}"
                 else:
                     continue
@@ -125,45 +118,37 @@ class BelgeselX(PluginBase):
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("h2.gen-title")
-        title    = title_el.text(strip=True) if title_el else None
+        title = secici.select_text("h2.gen-title")
 
-        poster_el = secici.css_first("div.gen-tv-show-top img")
-        poster    = poster_el.attrs.get("src") if poster_el else None
+        poster = secici.select_attr("div.gen-tv-show-top img", "src")
 
-        desc_el     = secici.css_first("div.gen-single-tv-show-info p")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("div.gen-single-tv-show-info p")
 
         tags = []
-        for tag_link in secici.css("div.gen-socail-share a[href*='belgeselkanali']"):
-            tag_href = tag_link.attrs.get("href")
+        for tag_link in secici.select("div.gen-socail-share a[href*='belgeselkanali']"):
+            tag_href = secici.select_attr("a", "href", tag_link)
             if tag_href:
                 tag_name = tag_href.rsplit("/", 1)[-1].replace("-", " ")
                 tags.append(self._to_title_case(tag_name))
 
         episodes = []
         counter  = 0
-        for ep_item in secici.css("div.gen-movie-contain"):
-            ep_link = ep_item.css_first("div.gen-movie-info h3 a")
-            if not ep_link:
-                continue
-
-            ep_name = ep_link.text(strip=True)
-            ep_href = ep_link.attrs.get("href")
+        for ep_item in secici.select("div.gen-movie-contain"):
+            ep_name = secici.select_text("div.gen-movie-info h3 a", ep_item)
+            ep_href = secici.select_attr("div.gen-movie-info h3 a", "href", ep_item)
 
             if not ep_name or not ep_href:
                 continue
 
-            meta_el     = ep_item.css_first("div.gen-single-meta-holder ul li")
-            season_text = meta_el.text(strip=True) if meta_el else ""
+            season_text = secici.select_text("div.gen-single-meta-holder ul li", ep_item)
 
-            episode_match = re.search(r"Bölüm (\d+)", season_text)
-            season_match  = re.search(r"Sezon (\d+)", season_text)
+            episode_num = secici.regex_first(r"Bölüm (\d+)", season_text)
+            season_num  = secici.regex_first(r"Sezon (\d+)", season_text)
 
-            ep_episode = int(episode_match.group(1)) if episode_match else counter
-            ep_season  = int(season_match.group(1)) if season_match else 1
+            ep_episode = int(episode_num) if episode_num else counter
+            ep_season  = int(season_num) if season_num else 1
 
             counter += 1
 
@@ -187,21 +172,25 @@ class BelgeselX(PluginBase):
         istek = await self.httpx.get(url)
         text  = istek.text
 
+        secici = HTMLHelper(text)
         # fnc_addWatch div'inden data-episode ID'sini al
-        ep_match = re.search(r'<div[^>]*class=["\'][^"\']*fnc_addWatch[^"\']*["\'][^>]*data-episode=["\'](\d+)["\']', text)
-        if not ep_match:
+        episode_id = secici.regex_first(r'<div[^>]*class=["\'][^"\']*fnc_addWatch[^"\']*["\'][^>]*data-episode=["\'](\d+)["\']')
+        if not episode_id:
             return []
 
-        episode_id  = ep_match.group(1)
         iframe_url  = f"{self.main_url}/video/data/new4.php?id={episode_id}"
 
         iframe_resp = await self.httpx.get(iframe_url, headers={"Referer": url})
         iframe_text = iframe_resp.text
 
+        secici2 = HTMLHelper(iframe_text)
+        # file:"url", label: "quality" patternlerini al
+        file_matches = secici2.regex_all(r'file:"([^"]+)"')
+        label_matches = secici2.regex_all(r'label: "([^"]+)"')
+
         links = []
-        for match in re.finditer(r'file:"([^"]+)", label: "([^"]+)"', iframe_text):
-            video_url = match.group(1)
-            quality   = match.group(2)
+        for i, video_url in enumerate(file_matches):
+            quality = label_matches[i] if i < len(label_matches) else "Unknown"
 
             source_name = "Google" if quality == "FULL" else self.name
             quality_str = "1080p" if quality == "FULL" else quality

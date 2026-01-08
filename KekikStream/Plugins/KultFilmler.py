@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle
-from selectolax.parser import HTMLParser
-import re, base64
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle, HTMLHelper
+import base64
 
 class KultFilmler(PluginBase):
     name        = "KultFilmler"
@@ -38,16 +37,13 @@ class KultFilmler(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.col-md-12 div.movie-box"):
-            img_el  = veri.css_first("div.img img")
-            link_el = veri.css_first("a")
-
-            title  = img_el.attrs.get("alt") if img_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("src") if img_el else None
+        for veri in secici.select("div.col-md-12 div.movie-box"):
+            title  = secici.select_attr("div.img img", "alt", veri)
+            href   = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("div.img img", "src", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -61,16 +57,13 @@ class KultFilmler(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek  = await self.httpx.get(f"{self.main_url}?s={query}")
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("div.movie-box"):
-            img_el  = veri.css_first("div.img img")
-            link_el = veri.css_first("a")
-
-            title  = img_el.attrs.get("alt") if img_el else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = img_el.attrs.get("src") if img_el else None
+        for veri in secici.select("div.movie-box"):
+            title  = secici.select_attr("div.img img", "alt", veri)
+            href   = secici.select_attr("a", "href", veri)
+            poster = secici.select_attr("div.img img", "src", veri)
 
             if title and href:
                 results.append(SearchResult(
@@ -83,58 +76,43 @@ class KultFilmler(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        film_img = secici.css_first("div.film-bilgileri img")
-        og_title = secici.css_first("[property='og:title']")
-        og_image = secici.css_first("[property='og:image']")
+        title       = secici.select_attr("div.film-bilgileri img", "alt") or secici.select_attr("[property='og:title']", "content")
+        poster      = self.fix_url(secici.select_attr("[property='og:image']", "content")) if secici.select_attr("[property='og:image']", "content") else None
 
-        title       = (film_img.attrs.get("alt") if film_img else None) or (og_title.attrs.get("content") if og_title else None)
-        poster      = self.fix_url(og_image.attrs.get("content")) if og_image else None
+        description = secici.select_text("div.description")
 
-        desc_el     = secici.css_first("div.description")
-        description = desc_el.text(strip=True) if desc_el else None
-
-        tags = [a.text(strip=True) for a in secici.css("ul.post-categories a") if a.text(strip=True)]
+        tags = [a.text(strip=True) for a in secici.select("ul.post-categories a") if a.text(strip=True)]
 
         # HTML analizine göre güncellenen alanlar
-        year_el = secici.css_first("li.release span a")
-        year    = year_el.text(strip=True) if year_el else None
+        year    = secici.select_text("li.release span a")
 
-        time_el = secici.css_first("li.time span")
-        duration = None
-        if time_el:
-            time_text = time_el.text(strip=True)
-            dur_match = re.search(r"(\d+)", time_text)
-            duration  = dur_match.group(1) if dur_match else None
+        time_text = secici.select_text("li.time span")
+        duration = secici.regex_first(r"(\d+)", time_text) if time_text else None
 
-        rating_el = secici.css_first("div.imdb-count")
-        rating    = rating_el.text(strip=True) if rating_el else None
+        rating    = secici.select_text("div.imdb-count")
 
-        actors = [a.text(strip=True) for a in secici.css("div.actors a") if a.text(strip=True)]
+        actors = [a.text(strip=True) for a in secici.select("div.actors a") if a.text(strip=True)]
 
         # Dizi mi kontrol et
         if "/dizi/" in url:
             episodes = []
-            for bolum in secici.css("div.episode-box"):
-                name_link = bolum.css_first("div.name a")
-                ep_href   = name_link.attrs.get("href") if name_link else None
+            for bolum in secici.select("div.episode-box"):
+                ep_href   = secici.select_attr("div.name a", "href", bolum)
 
-                ssn_el = bolum.css_first("span.episodetitle")
-                ssn_detail = ssn_el.text(strip=True) if ssn_el else ""
-
-                ep_b_el = bolum.css_first("span.episodetitle b")
-                ep_detail = ep_b_el.text(strip=True) if ep_b_el else ""
+                ssn_detail = secici.select_text("span.episodetitle", bolum) or ""
+                ep_detail  = secici.select_text("span.episodetitle b", bolum) or ""
 
                 ep_name = f"{ssn_detail} - {ep_detail}"
 
                 if ep_href:
-                    ep_season  = re.search(r"(\d+)\.", ssn_detail)
-                    ep_episode = re.search(r"(\d+)\.", ep_detail)
+                    ep_season  = secici.regex_first(r"(\d+)\.", ssn_detail)
+                    ep_episode = secici.regex_first(r"(\d+)\.", ep_detail)
 
                     episodes.append(Episode(
-                        season  = int(ep_season[1]) if ep_season else 1,
-                        episode = int(ep_episode[1]) if ep_episode else 1,
+                        season  = int(ep_season) if ep_season else 1,
+                        episode = int(ep_episode) if ep_episode else 1,
                         title   = ep_name.strip(" -"),
                         url     = self.fix_url(ep_href),
                     ))
@@ -165,11 +143,9 @@ class KultFilmler(PluginBase):
 
     def _get_iframe(self, source_code: str) -> str:
         """Base64 kodlu iframe'i çözümle"""
-        atob_match = re.search(r"PHA\+[0-9a-zA-Z+/=]*", source_code)
-        if not atob_match:
+        atob = HTMLHelper(source_code).regex_first(r"PHA\+[0-9a-zA-Z+/=]*")
+        if not atob:
             return ""
-
-        atob = atob_match.group()
 
         # Padding düzelt
         padding = 4 - len(atob) % 4
@@ -178,20 +154,19 @@ class KultFilmler(PluginBase):
 
         try:
             decoded = base64.b64decode(atob).decode("utf-8")
-            secici  = HTMLParser(decoded)
-            iframe_el = secici.css_first("iframe")
-            return self.fix_url(iframe_el.attrs.get("src")) if iframe_el else ""
+            secici  = HTMLHelper(decoded)
+            iframe_src = secici.select_attr("iframe", "src")
+            return self.fix_url(iframe_src) if iframe_src else ""
         except Exception:
             return ""
 
     def _extract_subtitle_url(self, source_code: str) -> str | None:
         """Altyazı URL'sini çıkar"""
-        match = re.search(r"(https?://[^\s\"]+\.srt)", source_code)
-        return match[1] if match else None
+        return HTMLHelper(source_code).regex_first(r"(https?://[^\s\"]+\.srt)")
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         iframes = set()
 
@@ -201,9 +176,9 @@ class KultFilmler(PluginBase):
             iframes.add(main_frame)
 
         # Alternatif player'lar
-        for player in secici.css("div.container#player"):
-            iframe_el = player.css_first("iframe")
-            alt_iframe = self.fix_url(iframe_el.attrs.get("src")) if iframe_el else None
+        for player in secici.select("div.container#player"):
+            iframe_src = secici.select_attr("iframe", "src", player)
+            alt_iframe = self.fix_url(iframe_src) if iframe_src else None
             if alt_iframe:
                 alt_istek = await self.httpx.get(alt_iframe)
                 alt_frame = self._get_iframe(alt_istek.text)
@@ -222,12 +197,12 @@ class KultFilmler(PluginBase):
                     "Sec-Fetch-Dest" : "iframe"
                 }
                 iframe_istek = await self.httpx.get(iframe, headers=headers)
-                m3u_match    = re.search(r'file:"([^"]+)"', iframe_istek.text)
+                m3u_match    = HTMLHelper(iframe_istek.text).regex_first(r'file:"([^"]+)"')
 
                 if m3u_match:
                     results.append(ExtractResult(
                         name      = "VidMoly",
-                        url       = m3u_match[1],
+                        url       = m3u_match,
                         referer   = self.main_url,
                         subtitles = []
                     ))

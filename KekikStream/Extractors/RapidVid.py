@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme  import Packer, HexCodec, StreamDecoder
-import re, base64
+import base64
 
 class RapidVid(ExtractorBase):
     name     = "RapidVid"
@@ -22,7 +22,8 @@ class RapidVid(ExtractorBase):
         istek.raise_for_status()
 
         subtitles        = []
-        subtitle_matches = re.findall(r'captions\",\"file\":\"([^\"]+)\",\"label\":\"([^\"]+)\"', istek.text)
+        hp = HTMLHelper(istek.text)
+        subtitle_matches = hp.regex_all(r'captions\",\"file\":\"([^\"]+)\",\"label\":\"([^\"]+)\"')
         seen_subtitles   = set()
 
         for sub_url, sub_lang in subtitle_matches:
@@ -42,13 +43,13 @@ class RapidVid(ExtractorBase):
             decoded_url = None
 
             # Method 1: file": "..." pattern (HexCodec)
-            if extracted_value := re.search(r'file": "(.*)",', istek.text):
-                escaped_hex = extracted_value[1]
+            if extracted_value := hp.regex_first(r'file": "(.*)",'):
+                escaped_hex = extracted_value
                 decoded_url = HexCodec.decode(escaped_hex)
 
             # Method 2: av('...') pattern
-            elif av_encoded := re.search(r"av\('([^']+)'\)", istek.text):
-                decoded_url = self.decode_secret(av_encoded[1])
+            elif av_encoded := hp.regex_first(r"av\('([^']+)'\)"):
+                decoded_url = self.decode_secret(av_encoded)
 
             # Method 3: Packed script with dc_* function (StreamDecoder)
             elif Packer.detect_packed(istek.text):

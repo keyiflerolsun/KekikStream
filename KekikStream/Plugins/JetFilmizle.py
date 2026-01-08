@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult
-from selectolax.parser import HTMLParser
-import re
+from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
@@ -40,23 +38,21 @@ class JetFilmizle(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.css("article.movie"):
+        for veri in secici.select("article.movie"):
             # h2-h6 içindeki a linki
-            title_link = None
+            title_text = None
             for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
-                title_link = veri.css_first(f"{h_tag} a")
-                if title_link:
+                title_text = secici.select_text(f"{h_tag} a", veri)
+                if title_text:
                     break
 
-            link_el = veri.css_first("a")
-            img_el  = veri.css_first("img")
+            href = secici.select_attr("a", "href", veri)
+            poster = secici.select_poster("img", veri)
 
-            title  = self.clean_title(title_link.text(strip=True)) if title_link else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            title  = self.clean_title(title_text) if title_text else None
 
             if title and href:
                 results.append(MainPageResult(
@@ -74,23 +70,21 @@ class JetFilmizle(PluginBase):
             data    = {"s": query},
             headers = {"Referer": f"{self.main_url}/"}
         )
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for article in secici.css("article.movie"):
+        for article in secici.select("article.movie"):
             # h2-h6 içindeki a linki
-            title_link = None
+            title_text = None
             for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
-                title_link = article.css_first(f"{h_tag} a")
-                if title_link:
+                title_text = secici.select_text(f"{h_tag} a", article)
+                if title_text:
                     break
 
-            link_el = article.css_first("a")
-            img_el  = article.css_first("img")
+            href = secici.select_attr("a", "href", article)
+            poster = secici.select_poster("img", article)
 
-            title  = self.clean_title(title_link.text(strip=True)) if title_link else None
-            href   = link_el.attrs.get("href") if link_el else None
-            poster = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            title  = self.clean_title(title_text) if title_text else None
 
             if title and href:
                 results.append(SearchResult(
@@ -103,33 +97,22 @@ class JetFilmizle(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
-        html_text = istek.text
+        secici = HTMLHelper(istek.text)
 
-        title_el = secici.css_first("div.movie-exp-title")
-        title    = self.clean_title(title_el.text(strip=True)) if title_el else None
+        title    = self.clean_title(secici.select_text("div.movie-exp-title")) if secici.select_text("div.movie-exp-title") else None
 
-        img_el     = secici.css_first("section.movie-exp img")
-        poster_raw = (img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
-        poster     = poster_raw.strip() if poster_raw else None
+        poster = secici.select_poster("section.movie-exp img")
+        poster = poster.strip() if poster else None
         
-        desc_el = secici.css_first("section.movie-exp p.aciklama")
-        description = desc_el.text(strip=True) if desc_el else None
+        description = secici.select_text("section.movie-exp p.aciklama")
         
-        tags = [a.text(strip=True) for a in secici.css("section.movie-exp div.catss a") if a.text(strip=True)]
+        tags = secici.select_all_text("section.movie-exp div.catss a")
         
-        rating_el = secici.css_first("section.movie-exp div.imdb_puan span")
-        rating    = rating_el.text(strip=True) if rating_el else None
+        rating = secici.select_text("section.movie-exp div.imdb_puan span")
         
-        # Year - div.yap içinde 4 haneli sayı ara (xpath yerine regex)
-        year = None
-        yap_match = re.search(r'<div class="yap"[^>]*>([^<]*(?:Vizyon|Yapım)[^<]*)</div>', html_text, re.IGNORECASE)
-        if yap_match:
-            year_match = re.search(r'(\d{4})', yap_match.group(1))
-            if year_match:
-                year = year_match.group(1)
+        year = secici.extract_year("div.yap")
         
-        actors = [a.text(strip=True) for a in secici.css("div[itemprop='actor'] a span") if a.text(strip=True)]
+        actors = secici.select_all_text("div[itemprop='actor'] a span")
 
         return MovieInfo(
             url         = url,
@@ -144,12 +127,12 @@ class JetFilmizle(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
-        secici = HTMLParser(istek.text)
+        secici = HTMLHelper(istek.text)
 
         results = []
 
         # 1) Ana iframe'leri kontrol et
-        for iframe in secici.css("iframe"):
+        for iframe in secici.select("iframe"):
             src = (iframe.attrs.get("src") or 
                    iframe.attrs.get("data-src") or
                    iframe.attrs.get("data-lazy-src"))
@@ -162,9 +145,8 @@ class JetFilmizle(PluginBase):
 
         # 2) Sayfa numaralarından linkleri topla (Fragman hariç)
         page_links = []
-        for link in secici.css("a.post-page-numbers"):
-            span_el = link.css_first("span")
-            isim = span_el.text(strip=True) if span_el else ""
+        for link in secici.select("a.post-page-numbers"):
+            isim = secici.select_text("span", link) or ""
             if isim != "Fragman":
                 href = link.attrs.get("href")
                 if href:
@@ -174,9 +156,9 @@ class JetFilmizle(PluginBase):
         for page_url, isim in page_links:
             try:
                 page_resp = await self.httpx.get(page_url)
-                page_sel = HTMLParser(page_resp.text)
+                page_sel = HTMLHelper(page_resp.text)
                 
-                for iframe in page_sel.css("div#movie iframe"):
+                for iframe in page_sel.select("div#movie iframe"):
                     src = (iframe.attrs.get("src") or 
                            iframe.attrs.get("data-src") or
                            iframe.attrs.get("data-lazy-src"))

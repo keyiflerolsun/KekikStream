@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme   import AESManager
-import re, json
+import json
 
 class DonilasPlay(ExtractorBase):
     name     = "DonilasPlay"
@@ -20,10 +20,10 @@ class DonilasPlay(ExtractorBase):
         subtitles  = []
 
         # bePlayer pattern
-        be_player_match = re.search(r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\);", i_source)
-        if be_player_match:
-            be_player_pass = be_player_match.group(1)
-            be_player_data = be_player_match.group(2)
+        hp = HTMLHelper(i_source)
+        be_player_matches = hp.regex_all(r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\);")
+        if be_player_matches:
+            be_player_pass, be_player_data = be_player_matches[0]
 
             try:
                 # AES decrypt
@@ -54,15 +54,15 @@ class DonilasPlay(ExtractorBase):
 
         # Fallback: file pattern
         if not m3u_link:
-            file_match = re.search(r'file:"([^"]+)"', i_source)
+            file_match = hp.regex_first(r'file:"([^"]+)"')
             if file_match:
-                m3u_link = file_match.group(1)
+                m3u_link = file_match
 
             # tracks pattern for subtitles
-            tracks_match = re.search(r'tracks:\[([^\]]+)', i_source)
+            tracks_match = hp.regex_first(r'tracks:\[([^\]]+)')
             if tracks_match:
                 try:
-                    tracks_str = f"[{tracks_match.group(1)}]"
+                    tracks_str = f"[{tracks_match}]"
                     tracks = json.loads(tracks_str)
                     for track in tracks:
                         file_url = track.get("file")
