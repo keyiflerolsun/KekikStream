@@ -96,27 +96,49 @@ class RecTV(PluginBase):
 
                         episodes.append(ep_model)
 
+                # Süreyi dakikaya çevir (Örn: "1h 59min")
+                duration_raw = veri.get("duration")
+                duration = None
+                if duration_raw:
+                    try:
+                        h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
+                        m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
+                        duration = h * 60 + m
+                    except: pass
+
                 return SeriesInfo(
                     url         = url,
                     poster      = self.fix_url(veri.get("image")),
                     title       = veri.get("title"),
                     description = veri.get("description"),
                     tags        = [genre.get("title") for genre in veri.get("genres")] if veri.get("genres") else [],
-                    rating      = veri.get("imdb") or veri.get("rating"),
-                    year        = veri.get("year"),
+                    rating      = str(veri.get("imdb") or veri.get("rating") or ""),
+                    year        = str(veri.get("year") or ""),
                     actors      = [],
+                    duration    = duration,
                     episodes    = episodes
                 )
             case _:
+                # Süreyi dakikaya çevir
+                duration_raw = veri.get("duration")
+                duration = None
+                if duration_raw:
+                    try:
+                        h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
+                        m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
+                        duration = h * 60 + m
+                    except: pass
+
                 return MovieInfo(
                     url         = url,
                     poster      = self.fix_url(veri.get("image")),
                     title       = veri.get("title"),
                     description = veri.get("description"),
                     tags        = [genre.get("title") for genre in veri.get("genres")] if veri.get("genres") else [],
-                    rating      = veri.get("imdb") or veri.get("rating"),
-                    year        = veri.get("year"),
-                    actors      = []
+                    rating      = str(veri.get("imdb") or veri.get("rating") or ""),
+                    year        = str(veri.get("year") or ""),
+                    actors      = [],
+                    duration    = duration
                 )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

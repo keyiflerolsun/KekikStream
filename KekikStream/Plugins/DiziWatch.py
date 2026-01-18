@@ -27,10 +27,10 @@ class DiziWatch(PluginBase):
         "1"   : "Suç",
     }
 
+    c_key     = ""
+    c_value   = ""
+
     async def _init_session(self):
-        if getattr(self, "c_key", None) and getattr(self, "c_value", None):
-            return
-        
         # Fetch anime-arsivi to get CSRF tokens
         resp = await self.httpx.get(f"{self.main_url}/anime-arsivi")
         sel  = HTMLHelper(resp.text)
@@ -137,9 +137,9 @@ class DiziWatch(PluginBase):
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
 
-        title    = sel.select_text("h2")
-        poster   = sel.select_attr("img.rounded-md", "src")
-        description = sel.select_text("div.text-sm")
+        title    = sel.select_text("h2") or sel.select_text("h1")
+        poster   = sel.select_attr("img.rounded-md", "src") or sel.select_attr("meta[property='og:image']", "content")
+        description = sel.select_text("div.text-sm") or sel.select_text("div.summary")
         
         year = sel.regex_first(r"Yap\u0131m Y\u0131l\u0131\s*:\s*(\d+)", resp.text)
         

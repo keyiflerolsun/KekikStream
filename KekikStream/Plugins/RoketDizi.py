@@ -84,89 +84,87 @@ class RoketDizi(PluginBase):
         except Exception:
             return []
 
-    async def load_item(self, url: str) -> SeriesInfo:
-        # Note: Handling both Movie and Series logic in one, returning SeriesInfo generally or MovieInfo
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
-        html_text = resp.text
+        
+        next_data_text = sel.select_text("script#__NEXT_DATA__")
+        if not next_data_text:
+            return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
 
-        title    = sel.select_text("h1.text-white")
-
-        poster    = sel.select_attr("div.w-full.page-top img", "src")
-
-        description = sel.select_text("div.mt-2.text-sm")
-
-        # Tags - genre bilgileri (Detaylar bölümünde)
-        tags = []
-        genre_text = sel.select_text("h3.text-white.opacity-90")
-        if genre_text:
-            tags = [t.strip() for t in genre_text.split(",")]
-
-        # Rating
-        rating    = sel.select_text("span.text-white.text-sm.font-bold")
-
-        # Year ve Actors - Detaylar (Details) bölümünden
-        year = None
-        actors = []
-
-        # Detaylar bölümündeki tüm flex-col div'leri al
-        detail_items = sel.select("div.flex.flex-col")
-        for item in detail_items:
-            label = sel.select_text("span.text-base", item)
-            value = sel.select_text("span.text-sm.opacity-90", item)
+        try:
+            next_data = json.loads(next_data_text)
+            secure_data_raw = next_data["props"]["pageProps"]["secureData"]
+            secure_data = json.loads(base64.b64decode(secure_data_raw).decode('utf-8'))
             
-            label = label if label else None
-            value = value if value else None
+            content_item = secure_data.get("contentItem", {})
+            content      = secure_data.get("content", {}).get("result", {})
             
-            if label and value:
-                # Yayın tarihi (yıl)
-                if label == "Yayın tarihi":
-                    # "16 Ekim 2018" formatından yılı çıkar
-                    year = HTMLHelper(value).regex_first(r'\d{4}')
-                # Yaratıcılar veya Oyuncular
-                elif label in ["Yaratıcılar", "Oyuncular"]:
-                    if value:
-                        actors.append(value)
+            title       = content_item.get("original_title") or content_item.get("culture_title")
+            poster      = content_item.get("poster_url") or content_item.get("face_url")
+            description = content_item.get("description")
+            rating      = str(content_item.get("imdb_point") or "")
+            year        = str(content_item.get("release_year") or "")
+            tags        = content_item.get("categories", "").split(",")
+            
+            # Actors extraction from getSerieCastsById or getMovieCastsById
+            actors = []
+            casts_data = content.get("getSerieCastsById") or content.get("getMovieCastsById")
+            if casts_data and casts_data.get("result"):
+                actors = [cast.get("name") for cast in casts_data["result"] if cast.get("name")]
 
-        # Check urls for episodes
-        all_urls = HTMLHelper(html_text).regex_all(r'"url":"([^"]*)"')
-        is_series = any("bolum-" in u for u in all_urls)
+            # Episodes extraction
+            episodes = []
+            if "Series" in str(content.get("FindedType")):
+                # Check for episodes in SecureData -> RelatedResults -> getEpisodeSources (this might be for the current episode)
+                # Usually full episode list isn't in secureData, but we can get it from HTML or another API
+                # However, many times Next.js pages have them in props
+                # Let's fallback to the previous regex method for episodes if not in JSON
+                all_urls = HTMLHelper(resp.text).regex_all(r'"url":"([^"]*)"')
+                episodes_dict = {}
+                for u in all_urls:
+                    if "bolum" in u and u not in episodes_dict:
+                        s_match = HTMLHelper(u).regex_first(r'/sezon-(\d+)')
+                        e_match = HTMLHelper(u).regex_first(r'/bolum-(\d+)')
+                        s_val = int(s_match) if s_match else 1
+                        e_val = int(e_match) if e_match else 1
+                        episodes_dict[(s_val, e_val)] = Episode(
+                            season  = s_val,
+                            episode = e_val,
+                            title   = f"{s_val}. Sezon {e_val}. Bölüm",
+                            url     = self.fix_url(u)
+                        )
+                episodes = [episodes_dict[key] for key in sorted(episodes_dict.keys())]
 
-        episodes = []
-        if is_series:
-            # Dict kullanarak duplicate'leri önle ama sıralı tut
-            episodes_dict = {}
-            for u in all_urls:
-                if "bolum" in u and u not in episodes_dict:
-                    season = HTMLHelper(u).regex_first(r'/sezon-(\d+)')
-                    ep_num = HTMLHelper(u).regex_first(r'/bolum-(\d+)')
+                return SeriesInfo(
+                    url         = url,
+                    poster      = self.fix_url(poster) if poster else None,
+                    title       = self.clean_title(title),
+                    description = description,
+                    tags        = tags,
+                    rating      = rating,
+                    year        = year,
+                    actors      = actors,
+                    episodes    = episodes
+                )
+            else:
+                return MovieInfo(
+                    url         = url,
+                    poster      = self.fix_url(poster) if poster else None,
+                    title       = self.clean_title(title),
+                    description = description,
+                    tags        = tags,
+                    rating      = rating,
+                    year        = year,
+                    actors      = actors
+                )
 
-                    season = int(season) if season else 1
-                    episode_num = int(ep_num) if ep_num else 1
-
-                    # Key olarak (season, episode) tuple kullan
-                    key = (season, episode_num)
-                    episodes_dict[key] = Episode(
-                        season  = season,
-                        episode = episode_num,
-                        title   = f"{season}. Sezon {episode_num}. Bölüm",
-                        url     = self.fix_url(u)
-                    )
-
-            # Sıralı liste oluştur
-            episodes = [episodes_dict[key] for key in sorted(episodes_dict.keys())]
-
-        return SeriesInfo(
-            title       = title,
-            url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            description = description,
-            tags        = tags,
-            rating      = rating,
-            actors      = actors,
-            episodes    = episodes,
-            year        = year
-        )
+        except Exception:
+            # Fallback to simple extraction if JSON parsing fails
+            return SeriesInfo(
+                url   = url,
+                title = self.clean_title(sel.select_text("h1")) or "Bilinmeyen"
+            )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)

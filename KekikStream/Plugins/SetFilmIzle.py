@@ -33,8 +33,8 @@ class SetFilmIzle(PluginBase):
         f"{main_url}/tur/western/"     : "Western"
     }
 
-    def _get_nonce(self, nonce_type: str = "video_nonce", referer: str = None) -> str:
-        """Site cache'lenmiş nonce'ları expire olabiliyor, fresh nonce al"""
+    def _get_nonce(self, nonce_type: str = "video", referer: str = None) -> str:
+        """Site cache'lenmiş nonce'ları expire olabiliyor, fresh nonce al veya sayfadan çek"""
         try:
             resp = self.cloudscraper.post(
                 f"{self.main_url}/wp-admin/admin-ajax.php",
@@ -45,8 +45,19 @@ class SetFilmIzle(PluginBase):
                 },
                 data = "action=st_cache_refresh_nonces"
             )
-            nonces = resp.json().get("data", {}).get("nonces", {})
-            return nonces.get(nonce_type, "")
+            data = resp.json()
+            if data and data.get("success"):
+                nonces = data.get("data", {}).get("nonces", {})
+                return nonces.get(nonce_type if nonce_type != "search" else "dt_ajax_search", "")
+        except:
+            pass
+
+        # AJAX başarısızsa sayfadan çekmeyi dene
+        try:
+            main_resp = self.cloudscraper.get(referer or self.main_url)
+            # STMOVIE_AJAX = { ... nonces: { search: "...", ... } }
+            nonce = HTMLHelper(main_resp.text).regex_first(rf'"{nonce_type}":\s*"([^"]+)"')
+            return nonce or ""
         except:
             return ""
 
@@ -112,7 +123,7 @@ class SetFilmIzle(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = self.cloudscraper.get(url)
         secici = HTMLHelper(istek.text)
         html_text = istek.text
 
@@ -123,15 +134,21 @@ class SetFilmIzle(PluginBase):
 
         description = secici.select_text("div.wp-content p")
 
-        year_text = secici.select_text("div.extra span.C a")
-        year = secici.regex_first(r"\d{4}", year_text) if year_text else None
+        rating = secici.select_text("b#repimdb strong") or secici.regex_first(r'repimdb"><strong>\s*([^<]+)</strong>', html_text)
+        
+        # Yıl için info bölümünden veya regex ile yakala
+        year = secici.regex_first(r'(\d{4})', secici.select_text("div.extra span.valor") or secici.select_text("span.valor") or "")
+        if not year:
+            year = secici.regex_first(r'<span>(\d{4})</span>', html_text) or secici.regex_first(r'(\d{4})', html_text)
 
         tags = [a.text(strip=True) for a in secici.select("div.sgeneros a") if a.text(strip=True)]
 
         duration_text = secici.select_text("span.runtime")
         duration = int(secici.regex_first(r"\d+", duration_text)) if duration_text and secici.regex_first(r"\d+", duration_text) else None
 
-        actors = [span.text(strip=True) for span in secici.select("span.valor a > span") if span.text(strip=True)]
+        actors = [a.text(strip=True) for a in secici.select("span.valor a") if "/oyuncu/" in (a.attrs.get("href") or "")]
+        if not actors:
+             actors = secici.regex_all(r'href="[^"]*/oyuncu/[^"]*">([^<]+)</a>')
 
         trailer = None
         if trailer_id := secici.regex_first(r'embed/([^?]*)\?rel', html_text):
@@ -179,6 +196,7 @@ class SetFilmIzle(PluginBase):
                 title       = title,
                 description = description,
                 tags        = tags,
+                rating      = rating,
                 year        = year,
                 duration    = duration,
                 actors      = actors,
@@ -191,6 +209,7 @@ class SetFilmIzle(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
+            rating      = rating,
             year        = year,
             duration    = duration,
             actors      = actors

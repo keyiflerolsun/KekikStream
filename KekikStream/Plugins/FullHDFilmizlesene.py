@@ -93,19 +93,13 @@ class FullHDFilmizlesene(PluginBase):
 
         tags = secici.select_all_text("a[rel='category tag']")
 
-        # Rating: normalize-space yerine doğrudan class ile ve son kelimeyi al
-        rating_text = secici.select_text("div.puanx-puan") or None
-        rating = None
-        if rating_text:
-            parts = rating_text.split()
-            rating = parts[-1] if parts else None
+        # Rating: regex ile sayısal değeri yakala
+        rating_text = secici.select_text("div.puanx-puan") or ""
+        rating = secici.regex_first(r"(\d+\.\d+|\d+)", rating_text)
 
         # Year: ilk yıl formatında değer
-        year_text = secici.select_text("div.dd a.category") or None
-        year = None
-        if year_text:
-            parts = year_text.split()
-            year = parts[0] if parts else None
+        year_text = secici.select_text("div.dd a.category") or ""
+        year = secici.regex_first(r"(\d{4})", year_text)
 
         # Actors: nth-child yerine tüm li'leri alıp 2. index
         lis = secici.select("div.film-info ul li")
@@ -113,11 +107,8 @@ class FullHDFilmizlesene(PluginBase):
         if len(lis) >= 2:
             actors = secici.select_all_text("a > span", lis[1])
 
-        duration = "0"
-        duration_text = secici.select_text("span.sure") or None
-        if duration_text:
-            duration_parts = duration_text.split()
-            duration = duration_parts[0] if duration_parts else "0"
+        # Duration: regex ile yakala (örn: 201 dk)
+        duration = secici.regex_first(r"(\d+)\s*(?:dk|dakika)", html_text)
 
         return MovieInfo(
             url         = url,

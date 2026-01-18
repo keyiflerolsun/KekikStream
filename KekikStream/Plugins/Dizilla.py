@@ -137,70 +137,60 @@ class Dizilla(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("div.poster.poster h2")
-        if not title:
+        next_data_text = secici.select_text("script#__NEXT_DATA__")
+        if not next_data_text:
             return None
 
-        poster = secici.select_attr("div.w-full.page-top.relative img", "src")
-        poster = self.fix_url(poster) if poster else None
+        next_data   = loads(next_data_text)
+        secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData")
+        if not secure_data:
+            return None
 
-        # Year extraction (Kotlin: [1] index for w-fit min-w-fit)
-        info_boxes = secici.select("div.w-fit.min-w-fit")
-        year = None
-        if len(info_boxes) > 1:
-            year_text = secici.select_text("span.text-sm.opacity-60", info_boxes[1])
-            if year_text:
-                year = year_text.split(" ")[-1] if " " in year_text else year_text
+        decrypted = await self.decrypt_response(secure_data)
+        content   = decrypted.get("contentItem", {})
+        if not content:
+            return None
 
-        description = secici.select_text("div.mt-2.text-sm")
+        title       = content.get("original_title") or content.get("used_title")
+        description = content.get("description") or content.get("used_description")
+        rating      = content.get("imdb_point") or content.get("local_vote_avg")
+        year        = content.get("release_year")
+        
+        # Poster and Backdrop - prefer backdrop if available for SeriesInfo
+        poster = self.fix_poster_url(self.fix_url(content.get("back_url") or content.get("poster_url")))
 
-        tags_text = secici.select_text("div.poster.poster h3")
-        tags = [t.strip() for t in tags_text.split(",")] if tags_text else []
+        # Tags
+        tags = []
+        categories = decrypted.get("RelatedResults", {}).get("getSerieCategoriesById", {}).get("result", [])
+        for cat in categories:
+            tags.append(cat.get("name"))
 
-        actors = secici.select_all_text("div.global-box h5")
+        # Actors
+        actors = []
+        casts = decrypted.get("RelatedResults", {}).get("getSerieCastsById", {}).get("result", [])
+        for cast in casts:
+            actors.append(cast.get("name"))
 
-        episodeses = []
-        # Seasons links iteration
-        season_links = secici.select("div.flex.items-center.flex-wrap.gap-2.mb-4 a")
-        for sezon in season_links:
-            sezon_href = secici.select_attr("a", "href", sezon)
-            sezon_href = self.fix_url(sezon_href)
-            sezon_req = await self.httpx.get(sezon_href)
-            
-            season_num = None
-            try:
-                # URL'den sezon numarasını çek: ...-N-sezon formatı
-                season_match = secici.regex_first(r"-(\d+)-sezon", sezon_href)
-                if season_match:
-                    season_num = int(season_match)
-            except:
-                pass
-
-            sezon_secici = HTMLHelper(sezon_req.text)
-            for bolum in sezon_secici.select("div.episodes div.cursor-pointer"):
-                # Kotlin: bolum.select("a").last()
-                links = sezon_secici.select("a", bolum)
-                if not links:
+        # Episodes
+        episodes = []
+        seasons_data = decrypted.get("RelatedResults", {}).get("getSerieSeasonAndEpisodes", {}).get("result", [])
+        for season_item in seasons_data:
+            season_num = season_item.get("season_no")
+            for ep_item in season_item.get("episodes", []):
+                ep_num = ep_item.get("episode_no")
+                ep_slug = ep_item.get("used_slug")
+                ep_name = ep_item.get("episode_text") or ""
+                
+                # Filter out duplicate language entries if any (we just need one link per episode)
+                # Usually they share the same slug for the episode page
+                if any(e.season == season_num and e.episode == ep_num for e in episodes):
                     continue
-                
-                ep_link = links[-1]
-                ep_name = sezon_secici.select_text("a", ep_link)
-                ep_href = sezon_secici.select_attr("a", "href", ep_link)
-                ep_href = self.fix_url(ep_href)
-                
-                # Episode number (first link's text usually)
-                ep_num = None
-                try:
-                    ep_num_text = sezon_secici.select_text("a", links[0])
-                    ep_num = int(ep_num_text) if ep_num_text else None
-                except:
-                    pass
 
-                episodeses.append(Episode(
+                episodes.append(Episode(
                     season  = season_num,
                     episode = ep_num,
                     title   = ep_name,
-                    url     = ep_href
+                    url     = self.fix_url(f"{self.main_url}/{ep_slug}")
                 ))
 
         return SeriesInfo(
@@ -209,8 +199,9 @@ class Dizilla(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
+            rating      = str(rating) if rating else None,
             year        = str(year) if year else None,
-            episodes    = episodeses,
+            episodes    = episodes,
             actors      = actors
         )
 

@@ -91,7 +91,8 @@ class KultFilmler(PluginBase):
         time_text = secici.select_text("li.time span")
         duration = secici.regex_first(r"(\d+)", time_text) if time_text else None
 
-        rating    = secici.select_text("div.imdb-count")
+        rating_text = secici.select_text("div.imdb-count")
+        rating = secici.regex_first(r"(\d+\.\d+|\d+)", rating_text) if rating_text else None
 
         actors = [a.text(strip=True) for a in secici.select("div.actors a") if a.text(strip=True)]
 

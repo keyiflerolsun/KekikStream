@@ -91,7 +91,7 @@ class FilmMakinesi(PluginBase):
         year = secici.select_text("span.date a") or ""
 
         actors = secici.select_all_text("div.cast-name")
-        tags = secici.select_all_text("div.genre a")
+        tags = [a.text(strip=True) for a in secici.select("div.type a") if "/tur/" in (a.attrs.get("href") or "")]
 
         duration = None
         duration_text = secici.select_text("div.time") or None

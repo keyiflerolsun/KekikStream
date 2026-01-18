@@ -108,18 +108,22 @@ class FilmBip(PluginBase):
         tags = secici.select_all_text("div.series-profile-type.tv-show-profile-type a")
 
         # XPath yerine regex kullanarak yıl, süre vs. çıkarma
-        year = secici.regex_first(r'(?i)Yapım yılı.*?<p[^>]*>(\d{4})</p>', secici.html)
+        year = secici.regex_first(r"(?is)Yap\u0131m y\u0131l\u0131.*?<p[^>]*>(.*?)<\/p>")
+        if not year:
+            # Fallback: Başlığın sonundaki parantezli yılı yakala
+            year = secici.regex_first(r"\((\d{4})\)", title)
 
-        duration = secici.regex_first(r'(?i)Süre.*?<p[^>]*>(\d+)', secici.html)
+        duration_raw = secici.regex_first(r"(?is)S\u00fcre.*?<p[^>]*>(.*?)<\/p>")
+        duration = secici.regex_first(r"(\d+)", duration_raw) if duration_raw else None
 
-        rating = secici.regex_first(r'(?i)IMDB Puanı.*?<span[^>]*>([0-9.]+)</span>', secici.html)
+        rating = secici.regex_first(r"(?is)IMDB Puan\u0131.*?<span[^>]*>(.*?)<\/span>")
 
         actors = [img.attrs.get("alt") for img in secici.select("div.series-profile-cast ul li a img") if img.attrs.get("alt")]
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = self.clean_title(title) if title else "",
+            title       = HTMLHelper(title).regex_replace(r"\(\d{4}\)", "").strip() if title else "",
             description = description,
             tags        = tags,
             year        = year,

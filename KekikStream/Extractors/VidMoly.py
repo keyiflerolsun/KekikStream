@@ -24,6 +24,8 @@ class VidMoly(ExtractorBase):
 
         if ".me" in url:
             url = url.replace(".me", ".net")
+        if ".to" in url:
+            url = url.replace(".to", ".net")
 
         # VidMoly bazen redirect ediyor, takip et
         response = await self.httpx.get(url, follow_redirects=True)
@@ -69,6 +71,17 @@ class VidMoly(ExtractorBase):
                         for sub in subtitle_sources
                             if sub.get("kind") == "captions"
                 ]
+
+        if "#EXTM3U" in response.text:
+            for line in response.text.splitlines():
+                line = line.strip().replace('"', '').replace("'", "")
+                if line.startswith("http"):
+                    return ExtractResult(
+                        name      = self.name,
+                        url       = line,
+                        referer   = self.main_url,
+                        subtitles = subtitles
+                    )
 
         if script_str := resp_sec.regex_first(r"sources:\s*\[(.*?)\],", flags= re.DOTALL):
             script_content = script_str

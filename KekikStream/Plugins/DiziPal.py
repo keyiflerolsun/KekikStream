@@ -127,18 +127,27 @@ class DiziPal(PluginBase):
 
         poster   = self.fix_url(secici.select_attr("meta[property='og:image']", "content")) if secici.select_attr("meta[property='og:image']", "content") else None
 
-        # XPath yerine regex ile HTML'den çıkarma
-        year = secici.regex_first(r'(?is)Yapım Yılı.*?<div[^>]*>(\d{4})</div>', secici.html)
+        # Sidebar bilgilerini topla
+        info = {}
+        for li in secici.select("li"):
+             key = secici.select_text("div.key", li)
+             val = secici.select_text("div.value", li)
+             if key and val:
+                 info[key.strip(":")] = val.strip()
+
+        year   = info.get("Yapım Yılı")
+        rating = info.get("IMDB Puanı")
+        
+        tags_raw = info.get("Türler", "")
+        tags = [t.strip() for t in tags_raw.split() if t.strip()] if tags_raw else None
+
+        actors_raw = info.get("Oyuncular")
+        actors = [a.strip() for a in actors_raw.split(",") if a.strip()] if actors_raw else None
 
         description = secici.select_text("div.summary p")
 
-        rating = secici.regex_first(r'(?is)IMDB Puanı.*?<div[^>]*>([0-9.]+)</div>', secici.html)
-
-        tags_raw = secici.regex_first(r'(?is)Türler.*?<div[^>]*>([^<]+)</div>', secici.html)
-        tags = [t.strip() for t in tags_raw.split() if t.strip()] if tags_raw else None
-
-        duration_raw = secici.regex_first(r'(?is)Ortalama Süre.*?<div[^>]*>(\d+)', secici.html)
-        duration = int(duration_raw) if duration_raw else None
+        duration_raw = info.get("Ortalama Süre")
+        duration = int(secici.regex_first(r"(\d+)", duration_raw)) if duration_raw else None
 
         if "/dizi/" in url:
             title    = secici.select_text("div.cover h5")
@@ -177,6 +186,7 @@ class DiziPal(PluginBase):
                 year        = year,
                 duration    = duration,
                 episodes    = episodes if episodes else None,
+                actors      = actors,
             )
         else:
             # Film için title - g-title div'lerinin 2. olanı
@@ -192,6 +202,7 @@ class DiziPal(PluginBase):
                 rating      = rating,
                 year        = year,
                 duration    = duration,
+                actors      = actors,
             )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

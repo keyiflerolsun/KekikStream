@@ -113,6 +113,10 @@ class JetFilmizle(PluginBase):
         year = secici.extract_year("div.yap")
         
         actors = secici.select_all_text("div[itemprop='actor'] a span")
+        if not actors: # Fallback to img alt
+            actors = [img.attrs.get("alt") for img in secici.select("div.oyuncular div.oyuncu img") if img.attrs.get("alt")]
+
+        duration = secici.regex_first(r"(\d+)\s*dk", istek.text)
 
         return MovieInfo(
             url         = url,
@@ -122,7 +126,8 @@ class JetFilmizle(PluginBase):
             tags        = tags,
             rating      = rating,
             year        = year,
-            actors      = actors
+            actors      = actors,
+            duration    = int(duration) if duration else None
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

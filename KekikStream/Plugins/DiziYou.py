@@ -72,7 +72,7 @@ class DiziYou(PluginBase):
         html_text = istek.text
 
         # Title - div.title h1 içinde
-        title = secici.select_text("div.title h1")
+        title = (secici.select_text("div.title h1") or "").strip()
 
         # Fallback: Eğer title boşsa URL'den çıkar (telif kısıtlaması olan sayfalar için)
         if not title:
@@ -81,23 +81,19 @@ class DiziYou(PluginBase):
             title = slug.replace('-', ' ').title()
 
         # Poster
-        poster_src = secici.select_attr("div.category_image img", "src")
+        poster_src = secici.select_attr("div.category_image img", "src") or secici.select_attr("meta[property='og:image']", "content")
         poster = self.fix_url(poster_src) if poster_src else ""
 
         # Year - regex ile çıkarma (xpath yerine)
         year = secici.regex_first(r"(?is)Yapım Yılı.*?(\d{4})", secici.html)
 
-        description = None
-        # Extract inner HTML via regex and clean
-        desc_html = secici.regex_first(r'(?s)<div class="diziyou_desc">(.*?)</div>', secici.html)
-        if desc_html:
-            # Script taglarını kaldır
-            desc_html = HTMLHelper(desc_html).regex_replace(r"(?s)<script.*?</script>", "")
-            # div#icerikcat2 ve sonrasını kaldır (meta bilgileri içeriyor)
-            desc_html = HTMLHelper(desc_html).regex_replace(r"(?s)<div id=\"icerikcat2\".*", "")
-            # Kalan HTML'den text çıkar
-            clean_sel = HTMLHelper(desc_html)
-            description = clean_sel.select_text()
+        description_el = secici.select("div.diziyou_desc") or secici.select("div#icerikcat")
+        description = ""
+        if description_el:
+             # Scriptleri temizle
+             for script in secici.select("script", description_el[0]):
+                  script.decompose()
+             description = secici.select_text(None, description_el[0])
 
         tags = [secici.select_text(None, a) for a in secici.select("div.genres a") if secici.select_text(None, a)]
 
@@ -109,9 +105,9 @@ class DiziYou(PluginBase):
         actors = [actor.strip() for actor in actors_raw.split(",") if actor.strip()] if actors_raw else []
 
         episodes = []
-        # Episodes - daha fazla DOM/URL kalıbını destekle
-        for link in secici.select("a"):
-            ep_href = secici.select_attr("a", "href", link)
+        # Episodes - div#scrollbar-container a (kısıtlı alan)
+        for link in secici.select("div#scrollbar-container a"):
+            ep_href = secici.select_attr(None, "href", link)
             if not ep_href:
                 continue
 
@@ -179,9 +175,9 @@ class DiziYou(PluginBase):
         # Player src'den item_id çıkar - önce özel player seçicisini dene
         player_src = None
         # Yaygın locatorlar
-        for sel in ["iframe#diziyouPlayer", "div.player iframe", "iframe[src*='/episodes/']", "iframe"]:
+        for sel in ["iframe#diziyouPlayer", "div.player iframe", "iframe[src*='/player/']", "iframe[src*='/episodes/']", "iframe"]:
             p = secici.select_attr(sel, "src")
-            if p and "youtube.com" not in p.lower():
+            if p and any(x in p.lower() for x in ["/player/", "/episodes/", "diziyou"]):
                 player_src = p
                 break
 

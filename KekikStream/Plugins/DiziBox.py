@@ -167,34 +167,44 @@ class DiziBox(PluginBase):
 
                 crypt_data = iframe_secici.regex_first(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", iframe_istek.text)
                 crypt_pass = iframe_secici.regex_first(r"\",\"(.*)\"\);", iframe_istek.text)
-                decode     = CryptoJS.decrypt(crypt_pass, crypt_data)
-
-                if video_match := iframe_secici.regex_first(r"file: '(.*)',", decode):
-                    results.append(video_match)
-                else:
-                    results.append(decode)
+                if crypt_data and crypt_pass:
+                    decode = CryptoJS.decrypt(crypt_pass, crypt_data)
+                    if video_match := iframe_secici.regex_first(r"file: '(.*)',", decode):
+                        results.append(video_match)
+                    else:
+                        results.append(decode)
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")
-            while True:
+            for _ in range(3): # Max 3 attempts
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
                     moly_istek  = await self.httpx.get(iframe_link)
                     moly_secici = HTMLHelper(moly_istek.text)
 
-                    if atob_data := moly_secici.regex_first(r"unescape\(\"(.*)\"\)", moly_istek.text):
+                    if atob_data := moly_secici.regex_first(r"unescape\(\"(.*)\"\)"):
                         decoded_atob = urllib.parse.unquote(atob_data)
                         str_atob     = base64.b64decode(decoded_atob).decode("utf-8")
 
-                    iframe_src = HTMLHelper(str_atob).select_attr("div#Player iframe", "src")
-                    if iframe_src:
-                        results.append(iframe_src)
-
-                    break
+                        iframe_src = HTMLHelper(str_atob).select_attr("div#Player iframe", "src")
+                        if iframe_src:
+                            # ! Sheila replacement (Kotlin referansı)
+                            if "/embed/" in iframe_src:
+                                iframe_src = iframe_src.replace("/embed/", "/embed/sheila/").replace("vidmoly.me", "vidmoly.net")
+                            
+                            results.append(iframe_src)
+                            break
+                    elif embed_matches := moly_secici.regex_all(r'iframe.*?src="(.*?)"'):
+                        for src in embed_matches:
+                            if "/embed/" in src:
+                                src = src.replace("/embed/", "/embed/sheila/").replace("vidmoly.me", "vidmoly.net")
+                            results.append(src)
+                        break
 
         elif "/player/haydi.php" in iframe_link:
-            okru_url = base64.b64decode(iframe_link.split("?v=")[-1]).decode("utf-8")
-            results.append(okru_url)
+            with contextlib.suppress(Exception):
+                okru_url = base64.b64decode(iframe_link.split("?v=")[-1]).decode("utf-8")
+                results.append(okru_url)
 
         return results
 

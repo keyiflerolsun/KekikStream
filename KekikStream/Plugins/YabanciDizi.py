@@ -90,14 +90,17 @@ class YabanciDizi(PluginBase):
         poster   = sel.select_attr("meta[property='og:image']", "content")
         description = sel.select_text("p#tv-series-desc")
         
-        year = sel.select_text("td div.truncate")
-        if year:
-            year = year.strip()
+        # Try to extract year from table first
+        year_cell = sel.select_text("td div.truncate")
+        year = None
+        if year_cell:
+            year_match = sel.regex_first(r"(\d{4})", year_cell)
+            if year_match:
+                year = year_match
             
         tags = []
         rating = None
         duration = None
-        year = None
         actors = []
         for item in sel.select("div.item"):
             text = item.text(strip=True)
@@ -174,13 +177,14 @@ class YabanciDizi(PluginBase):
             )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        resp = await self.httpx.get(url, headers={"Referer": f"{self.main_url}/"})
+        # Use cloudscraper to bypass Cloudflare
+        resp = self.cloudscraper.get(url, headers={"Referer": f"{self.main_url}/"})
         sel  = HTMLHelper(resp.text)
         
         results = []
         
-        # Method 1: alternatives-for-this
-        for alt in sel.select("div.alternatives-for-this div.item:not(.active)"):
+        # Method 1: alternatives-for-this (include active too)
+        for alt in sel.select("div.alternatives-for-this div.item"):
             data_hash = alt.attrs.get("data-hash")
             data_link = alt.attrs.get("data-link")
             q_type    = alt.attrs.get("data-querytype")
@@ -188,7 +192,7 @@ class YabanciDizi(PluginBase):
             if not data_hash or not data_link: continue
             
             try:
-                post_resp = await self.httpx.post(
+                post_resp = self.cloudscraper.post(
                     f"{self.main_url}/ajax/service",
                     data = {
                         "link"      : data_link,
@@ -219,7 +223,7 @@ class YabanciDizi(PluginBase):
             data_eid = id_el.attrs.get("data-eid")
             
             try:
-                post_resp = await self.httpx.post(
+                post_resp = self.cloudscraper.post(
                     f"{self.main_url}/ajax/service",
                     data = {
                         "e_id"   : data_eid,
@@ -244,9 +248,10 @@ class YabanciDizi(PluginBase):
 
         return results
 
-    async def _fetch_and_extract(self, iframe_url, prefix=""):
+    def _fetch_and_extract_sync(self, iframe_url, prefix=""):
+        """Synchronous helper for _fetch_and_extract using cloudscraper."""
         # Initial fetch
-        resp = await self.httpx.get(
+        resp = self.cloudscraper.get(
             iframe_url,
             headers = {"Referer": f"{self.main_url}/"},
             cookies = {"udys": "1760709729873", "level": "1"}
@@ -254,11 +259,12 @@ class YabanciDizi(PluginBase):
         
         # Handle "Lütfen bekleyiniz" check from Kotlin
         if "Lütfen bekleyiniz" in resp.text:
-            await asyncio.sleep(1)
-            timestamp = int(time.time())
+            import time as time_module
+            time_module.sleep(1)
+            timestamp = int(time_module.time())
             # Retry with t=timestamp as in Kotlin
             sep = "&" if "?" in iframe_url else "?"
-            resp = await self.httpx.get(
+            resp = self.cloudscraper.get(
                 f"{iframe_url}{sep}t={timestamp}",
                 headers = {"Referer": f"{self.main_url}/"},
                 cookies = resp.cookies # Use cookies from first response
@@ -266,6 +272,11 @@ class YabanciDizi(PluginBase):
 
         sel = HTMLHelper(resp.text)
         final_iframe = sel.select_attr("iframe", "src")
+        
+        return final_iframe
+
+    async def _fetch_and_extract(self, iframe_url, prefix=""):
+        final_iframe = self._fetch_and_extract_sync(iframe_url, prefix)
         
         if final_iframe:
             final_url = self.fix_url(final_iframe)
