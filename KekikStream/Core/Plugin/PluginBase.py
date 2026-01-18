@@ -31,11 +31,16 @@ class PluginBase(ABC):
         if proxy:
             self.cloudscraper.proxies = proxy if isinstance(proxy, dict) else {"http": proxy, "https": proxy}
 
+        # Convert dict proxy to string for httpx if necessary
+        httpx_proxy = proxy
+        if isinstance(proxy, dict):
+            httpx_proxy = proxy.get("https") or proxy.get("http")
+
         # httpx - lightweight and safe for most HTTP requests
         self.httpx = AsyncClient(
             timeout          = 3,
             follow_redirects = True,
-            proxy            = proxy
+            proxy            = httpx_proxy
         )
         self.httpx.headers.update(self.cloudscraper.headers)
         self.httpx.cookies.update(self.cloudscraper.cookies)
