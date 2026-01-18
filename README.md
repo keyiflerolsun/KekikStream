@@ -26,13 +26,13 @@ Terminal üzerinden içerik arayın, VLC/MPV ile doğrudan izleyin veya kendi AP
 
 ## 🚦 Ne Sunar?
 
-KekikStream, Türkçe medya kaynaklarını tek CLI arayüzünde toplayarak hızlı arama ve oynatma sunar. Plugin mimarisi sayesinde yeni kaynaklar eklemek ve [KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI) ile web/API üzerinden yayın yapmak kolaydır.
+KekikStream, Türkçe medya kaynaklarını tek CLI arayüzünde toplayarak hızlı arama ve oynatma sunar. Plugin mimarisi sayesinde yeni kaynaklar eklemek ve [WatchBuddy](https://github.com/WatchBuddy-tv/Stream) ile web/API üzerinden yayın yapmak kolaydır.
 
 - 🎥 Çoklu kaynak desteği: Onlarca Türkçe medya sitesi  
 - 🔌 Plugin mimarisi: Yeni kaynak eklemek dakikalar sürer  
 - 🎬 Çoklu oynatıcı: VLC, MPV, MX Player  
 - 🖥️ CLI & kütüphane: Terminalde veya kod içinde kullanın  
-- 🌐 API/Web UI: KekikStreamAPI üzerinden uzak erişim
+- 🌐 API/Web UI: WatchBuddy üzerinden uzak erişim
 
 ---
 
