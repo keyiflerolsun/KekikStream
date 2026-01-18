@@ -122,7 +122,14 @@ class PluginBase(ABC):
         try:
             data = await extractor.extract(url, referer=referer)
 
-            # prefix varsa name'e ekle
+            # Liste ise her bir öğe için prefix ekle
+            if isinstance(data, list):
+                for item in data:
+                    if prefix and item.name:
+                        item.name = f"{prefix} | {item.name}"
+                return data
+
+            # Tekil öğe ise
             if prefix and data.name:
                 data.name = f"{prefix} | {data.name}"
 
