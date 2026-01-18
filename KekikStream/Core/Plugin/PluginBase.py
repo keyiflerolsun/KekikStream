@@ -25,14 +25,17 @@ class PluginBase(ABC):
         self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
         self.main_url  = new_url
 
-    def __init__(self):
+    def __init__(self, proxy: str | dict | None = None):
         # cloudscraper - for bypassing Cloudflare
         self.cloudscraper = CloudScraper()
+        if proxy:
+            self.cloudscraper.proxies = proxy if isinstance(proxy, dict) else {"http": proxy, "https": proxy}
 
         # httpx - lightweight and safe for most HTTP requests
         self.httpx = AsyncClient(
             timeout          = 3,
-            follow_redirects = True
+            follow_redirects = True,
+            proxy            = proxy
         )
         self.httpx.headers.update(self.cloudscraper.headers)
         self.httpx.cookies.update(self.cloudscraper.cookies)
