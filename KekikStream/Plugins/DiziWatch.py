@@ -27,13 +27,8 @@ class DiziWatch(PluginBase):
         "1"   : "Suç",
     }
 
-    def __init__(self):
-        super().__init__()
-        self.c_key   = None
-        self.c_value = None
-
     async def _init_session(self):
-        if self.c_key and self.c_value:
+        if getattr(self, "c_key", None) and getattr(self, "c_value", None):
             return
         
         # Fetch anime-arsivi to get CSRF tokens

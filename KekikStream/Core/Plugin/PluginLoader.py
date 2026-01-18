@@ -6,8 +6,9 @@ from pathlib     import Path
 import os, importlib.util, traceback
 
 class PluginLoader:
-    def __init__(self, plugins_dir: str):
+    def __init__(self, plugins_dir: str, proxy: str | dict | None = None):
         # Yerel ve global eklenti dizinlerini ayarla
+        self.proxy = proxy
         self.local_plugins_dir  = Path(plugins_dir).resolve()
         self.global_plugins_dir = Path(__file__).parent.parent.parent / plugins_dir
 
@@ -70,7 +71,7 @@ class PluginLoader:
                 obj = getattr(module, attr)
                 if isinstance(obj, type) and issubclass(obj, PluginBase) and obj is not PluginBase:
                     # konsol.log(f"[yellow]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/yellow]")
-                    return obj()
+                    return obj(proxy=self.proxy)
 
         except Exception as hata:
             konsol.print(f"[red][!] Eklenti yüklenirken hata oluştu: {module_name}\nHata: {hata}")
