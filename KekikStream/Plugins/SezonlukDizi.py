@@ -75,9 +75,9 @@ class SezonlukDizi(PluginBase):
 
         results = []
         for afis in secici.select("div.afis a"):
-            title  = secici.select_text("div.description", veri)
-            href   = secici.select_attr("a", "href", veri)
-            poster = secici.select_attr("img", "data-src", veri)
+            title  = secici.select_text("div.description", afis)
+            href   = secici.select_attr("a", "href", afis)
+            poster = secici.select_attr("img", "data-src", afis)
 
             if title and href:
                 results.append(SearchResult(

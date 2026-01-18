@@ -30,7 +30,7 @@ class ContentX(ExtractorBase):
         istek.raise_for_status()
         i_source = istek.text
 
-        i_extract_value = HTMLHelper(i_source).regex_first(r"window\.openPlayer\('([^']+)'\)")
+        i_extract_value = HTMLHelper(i_source).regex_first(r"window\.openPlayer\('([^']+)'")
         if not i_extract_value:
             raise ValueError("i_extract is null")
 
@@ -47,8 +47,12 @@ class ContentX(ExtractorBase):
                     name = sub_lang.replace("\\u0131", "ı")
                                  .replace("\\u0130", "İ")
                                  .replace("\\u00fc", "ü")
-                                 .replace("\\u00e7", "ç"),
-                    url  = self.fix_url(sub_url.replace("\\", ""))
+                                 .replace("\\u00e7", "ç")
+                                 .replace("\\u011f", "ğ")
+                                 .replace("\\u015f", "ş")
+                                 .replace("\\u011e", "Ğ")
+                                 .replace("\\u015e", "Ş"),
+                    url  = self.fix_url(sub_url.replace("\\/", "/").replace("\\", ""))
                 )
             )
 
@@ -61,7 +65,7 @@ class ContentX(ExtractorBase):
         if not m3u_link:
             raise ValueError("vidExtract is null")
 
-        m3u_link = m3u_link.replace("\\", "")
+        m3u_link = m3u_link.replace("\\", "").replace("/m.php", "/master.m3u8")
         results  = [
             ExtractResult(
                 name      = self.name,
@@ -71,24 +75,25 @@ class ContentX(ExtractorBase):
             )
         ]
 
-        dublaj_value = HTMLHelper(i_source).regex_first(r',\"([^\"]+)\",\"Türkçe\"')
+        dublaj_value = HTMLHelper(i_source).regex_first(r'["\']([^"\']+)["\'],["\']Türkçe["\']')
         if dublaj_value:
-            dublaj_source_request = await self.httpx.get(f"{base_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or base_url})
-            dublaj_source_request.raise_for_status()
+            try:
+                dublaj_source_request = await self.httpx.get(f"{base_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or base_url})
+                dublaj_source_request.raise_for_status()
 
-            dublaj_source  = dublaj_source_request.text
-            dublaj_link = HTMLHelper(dublaj_source).regex_first(r'file":"([^\"]+)"')
-            if not dublaj_link:
-                raise ValueError("dublajExtract is null")
-
-            dublaj_link = dublaj_link.replace("\\", "")
-            results.append(
-                ExtractResult(
-                    name      = f"{self.name} Türkçe Dublaj",
-                    url       = dublaj_link,
-                    referer   = url,
-                    subtitles = []
-                )
-            )
+                dublaj_source  = dublaj_source_request.text
+                dublaj_link = HTMLHelper(dublaj_source).regex_first(r'file":"([^\"]+)"')
+                if dublaj_link:
+                    dublaj_link = dublaj_link.replace("\\", "")
+                    results.append(
+                        ExtractResult(
+                            name      = f"{self.name} Türkçe Dublaj",
+                            url       = dublaj_link,
+                            referer   = url,
+                            subtitles = []
+                        )
+                    )
+            except Exception:
+                pass
 
         return results[0] if len(results) == 1 else results

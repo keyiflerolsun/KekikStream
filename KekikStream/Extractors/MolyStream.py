@@ -7,6 +7,16 @@ class MolyStream(ExtractorBase):
     name     = "MolyStream"
     main_url = "https://dbx.molystream.org"
 
+    # Birden fazla domain destekle
+    supported_domains = [
+        "ydx.molystream.org",
+        "yd.sheila.stream",
+        "ydf.popcornvakti.net",
+    ]
+
+    def can_handle_url(self, url: str) -> bool:
+        return any(domain in url for domain in self.supported_domains)
+
     async def extract(self, url, referer=None) -> ExtractResult:
         if "doctype html" in url:
             secici   = HTMLHelper(url)

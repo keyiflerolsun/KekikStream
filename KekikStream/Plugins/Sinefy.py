@@ -159,6 +159,11 @@ class Sinefy(PluginBase):
         actors = [h5.text(strip=True) for h5 in sel.select("div.content h5") if h5.text(strip=True)]
 
         year    = sel.select_text("span.item.year")
+        if not year and title:
+            # Try to extract year from title like "Movie Name(2024)"
+            year_match = sel.regex_first(r"\((\d{4})\)", title)
+            if year_match:
+                year = year_match
         
         episodes = []
         episodes_box_list = sel.select("section.episodes-box")

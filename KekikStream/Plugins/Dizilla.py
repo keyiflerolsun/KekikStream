@@ -248,4 +248,6 @@ class Dizilla(PluginBase):
             return []
 
         data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=first_result.get('language_name', 'Unknown'))
-        return [data] if data else []
+        if not data:
+            return []
+        return data if isinstance(data, list) else [data]
