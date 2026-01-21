@@ -12,11 +12,33 @@ class Watch32(PluginBase):
     description = "Watch Your Favorite Movies &amp; TV Shows Online - Streaming For Free. With Movies &amp; TV Shows Full HD. Find Your Movies &amp; Watch NOW!"
 
     main_page = {
-        f"{main_url}/movie?page="      : "Popular Movies",
-        f"{main_url}/tv-show?page="    : "Popular TV Shows",
-        f"{main_url}/coming-soon?page=" : "Coming Soon",
-        f"{main_url}/top-imdb?page="   : "Top IMDB Rating",
+        # Main Categories
+        f"{main_url}/movie?page="           : "Popular Movies",
+        f"{main_url}/tv-show?page="         : "Popular TV Shows",
+        f"{main_url}/coming-soon?page="     : "Coming Soon",
+        f"{main_url}/top-imdb?page="        : "Top IMDB Rating",
+        # Genre Categories
+        f"{main_url}/genre/action?page="    : "Action",
+        f"{main_url}/genre/adventure?page=" : "Adventure",
+        f"{main_url}/genre/animation?page=" : "Animation",
+        f"{main_url}/genre/biography?page=" : "Biography",
+        f"{main_url}/genre/comedy?page="    : "Comedy",
+        f"{main_url}/genre/crime?page="     : "Crime",
+        f"{main_url}/genre/documentary?page=" : "Documentary",
+        f"{main_url}/genre/drama?page="     : "Drama",
+        f"{main_url}/genre/family?page="    : "Family",
+        f"{main_url}/genre/fantasy?page="   : "Fantasy",
+        f"{main_url}/genre/history?page="   : "History",
+        f"{main_url}/genre/horror?page="    : "Horror",
+        f"{main_url}/genre/music?page="     : "Music",
+        f"{main_url}/genre/mystery?page="   : "Mystery",
+        f"{main_url}/genre/romance?page="   : "Romance",
+        f"{main_url}/genre/science-fiction?page=" : "Science Fiction",
+        f"{main_url}/genre/thriller?page="  : "Thriller",
+        f"{main_url}/genre/war?page="       : "War",
+        f"{main_url}/genre/western?page="   : "Western",
     }
+
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = await self.httpx.get(f"{url}{page}")

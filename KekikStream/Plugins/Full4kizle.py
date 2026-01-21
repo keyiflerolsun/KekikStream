@@ -11,15 +11,30 @@ class Full4kizle(PluginBase):
     description = "Filmci Baba, film izleme sitesi 4k Full film izle, 1080p ve 4k kalite de sinema filmleri ve dizileri, tek parça hd kalitede türkçe dublajlı filmler seyret."
 
     main_page = {
-        f"{main_url}/Kategori/en-populer-filmler/page"        : "En Popüler Filmler",
-        f"{main_url}/Kategori/vizyondaki-filmler-izle/page"   : "Vizyondaki Filmler",
-        f"{main_url}/Kategori/yerli-filmler-izle/page"        : "Yerli Filmler",
-        f"{main_url}/Kategori/yabanci-diziler/page"           : "Yabancı Diziler",
-        f"{main_url}/Kategori/netflix-filmleri-izle/page"     : "Netflix Filmleri",
-        f"{main_url}/Kategori/netflix-dizileri/page"          : "Netflix Dizileri",
-        f"{main_url}/Kategori/anime-izle/page"                : "Anime İzle",
-        f"{main_url}/Kategori/cizgi-filmler/page"             : "Çizgi Filmler",
+        f"{main_url}/Kategori/en-populer-filmler/page"              : "En Popüler Filmler",
+        f"{main_url}/Kategori/tur/aksiyon-filmleri/page"            : "Aksiyon",
+        f"{main_url}/Kategori/tur/macera-filmleri/page"             : "Macera",
+        f"{main_url}/Kategori/tur/bilim-kurgu-filmleri/page"        : "Bilim Kurgu",
+        f"{main_url}/Kategori/tur/fantastik-filmler/page"           : "Fantastik",
+        f"{main_url}/Kategori/tur/korku-filmleri/page"              : "Korku",
+        f"{main_url}/Kategori/tur/gerilim-filmleri-hd/page"         : "Gerilim",
+        f"{main_url}/Kategori/tur/gizem-filmleri/page"              : "Gizem",
+        f"{main_url}/Kategori/tur/dram-filmleri-hd/page"            : "Dram",
+        f"{main_url}/Kategori/tur/komedi-filmleri-hd/page"          : "Komedi",
+        f"{main_url}/Kategori/tur/romantik-filmler/page"            : "Romantik",
+        f"{main_url}/Kategori/tur/aile-filmleri/page"               : "Aile",
+        f"{main_url}/Kategori/tur/animasyon-filmleri/page"          : "Animasyon",
+        f"{main_url}/Kategori/tur/biyografi-filmleri/page"          : "Biyografi",
+        f"{main_url}/Kategori/tur/polisiye-suc-filmleri/page"       : "Polisiye / Suç",
+        f"{main_url}/Kategori/tur/savas-filmleri/page"              : "Savaş",
+        f"{main_url}/Kategori/tur/western-filmler/page"             : "Western",
+        f"{main_url}/Kategori/tur/hint-filmleri/page"               : "Hint Filmleri",
+        f"{main_url}/Kategori/tur/kore-filmleri/page"               : "Kore Filmleri",
+        f"{main_url}/Kategori/tur/yerli-filmler-izle/page"          : "Yerli Filmler",
+        f"{main_url}/Kategori/tur/yerli-diziler/page"               : "Yerli Diziler",
+        f"{main_url}/Kategori/tur/18-erotik-filmler/page"           : "+18 Erotik Filmler",
     }
+
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         target_url = f"{url}/{page}/"
@@ -92,14 +107,81 @@ class Full4kizle(PluginBase):
         
         description = helper.select_text(".excerpt p")
         
-        year_text = helper.select_text(".release a")
-        year = year_text.strip() if year_text else None
+        # Robust metadata extraction using Regex
         
+        # Initialize year first
+        year = None
+        
+        # Try .release first (legacy) or directly regex
+        rel_text = helper.select_text(".release")
+        if rel_text:
+             m_y = re.search(r"(\d{4})", rel_text)
+             if m_y: year = m_y.group(1)
+             
+        # Year fallbacks
+        if not year:
+            # Try finding year in text like "Yapım: 2024" or just isolated year in release date
+            m_year = helper.regex_first(r"Yapım:\s*(\d{4})") or helper.regex_first(r"Yıl:\s*(\d{4})")
+            if m_year:
+                year = m_year
+
+        # Rating
         rating_text = helper.select_text(".imdb-rating")
-        rating = None
         if rating_text:
-            rating_text = rating_text.replace("IMDB Puanı", "").strip()
-            rating = rating_text
+            rating = rating_text.replace("IMDB Puanı", "").strip()
+        else:
+            rating = helper.regex_first(r"IMDB\s*:\s*([\d\.]+)")
+
+        # Duration
+        duration = None
+        duration_val = helper.regex_first(r"Süre:\s*(\d+)")
+        if duration_val:
+            duration = int(duration_val)
+
+        # Actors - Extract from actor links
+        actors = None
+        actors_list = []
+        
+        # Site uses: <a href=".../oyuncular/...">Actor Name</a>
+        actor_els = helper.select("a[href*='/oyuncular/']")
+        if actor_els:
+            actors_list = [el.text(strip=True) for el in actor_els if el.text(strip=True)]
+        
+        # Fallback: Try .cast-list selector
+        if not actors_list:
+            actor_els = helper.select(".cast-list .actor-name, .cast-list a")
+            if actor_els:
+                actors_list = [el.text(strip=True) for el in actor_els if el.text(strip=True)]
+        
+        if actors_list:
+            actors = ", ".join(actors_list)
+
+
+        # Tags (Genres) - Extract from genre links
+        tags = None
+        tags_list = []
+        
+        # Site uses: <a href=".../tur/...">Genre Name</a> or <a href=".../Kategori/tur/...">
+        tag_els = helper.select("a[href*='/tur/'], a[href*='/Kategori/tur/']")
+        if tag_els:
+            tags_list = [el.text(strip=True) for el in tag_els if el.text(strip=True)]
+        
+        # Fallback: Try .genres selector
+        if not tags_list:
+            tag_els = helper.select(".genres a, .genre a")
+            if tag_els:
+                tags_list = [el.text(strip=True) for el in tag_els if el.text(strip=True)]
+        
+        # Remove duplicates while preserving order
+        if tags_list:
+            seen = set()
+            unique_tags = []
+            for tag in tags_list:
+                if tag not in seen:
+                    seen.add(tag)
+                    unique_tags.append(tag)
+            tags = unique_tags if unique_tags else None
+
             
         # Check for Episodes to decide if Series or Movie
         ep_elements = helper.select(".parts-middle a, .parts-middle .part.active")
@@ -113,8 +195,9 @@ class Full4kizle(PluginBase):
                 poster      = poster,
                 year        = year,
                 rating      = rating,
-                tags        = None, # Tags usually in genres list, implementation skipped for now or add if easy
-                actors      = None  # Actors not extracted in Kotlin reference provided
+                duration    = duration,
+                tags        = tags,
+                actors      = actors
             )
         else:
             # Series
@@ -155,8 +238,9 @@ class Full4kizle(PluginBase):
                 poster      = poster,
                 year        = year,
                 rating      = rating,
-                tags        = None,
-                actors      = None,
+                duration    = duration,
+                tags        = tags,
+                actors      = actors,
                 episodes    = episodes
             )
 

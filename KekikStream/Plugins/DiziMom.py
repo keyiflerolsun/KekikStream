@@ -77,15 +77,16 @@ class DiziMom(PluginBase):
         rating = None
         actors = None
         
-        # Regex approach for specific fields might be safer/easier if structure varies
-        # Matches: Yapım Yılı : </span> 2025
-        year_val = helper.regex_first(r"Yapım Yılı\s*:\s*(?:</span>)?\s*(\d{4})")
-        if year_val:
-            year = int(year_val)
+        # Regex approach based on debug output (multiline support)
+        # Context: <span class="dizimeta"><i class="fas fa-globe"></i> Yapım Yılı : </span>\n 2022
+        year_val_all = helper.regex_all(r"Yapım Yılı\s*:\s*(?:</span>)?\s*(\d{4})", flags=re.DOTALL)
+        if year_val_all:
+             year = int(year_val_all[0])
             
-        rating_val = helper.regex_first(r"IMDB\s*:\s*([\d\.]+)")
-        if rating_val:
-            rating = rating_val
+        # Context: <span class="dizimeta"><i class="fas fa-star"></i> IMDB : </span>\n 4.5
+        rating_val_all = helper.regex_all(r"IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", flags=re.DOTALL)
+        if rating_val_all:
+            rating = rating_val_all[0]
             
         actors_val = helper.regex_first(r"Oyuncular\s*:\s*(.+?)(?:</div>|<br|$)")
         if not actors_val:
@@ -127,8 +128,6 @@ class DiziMom(PluginBase):
              
              # Clean footer text start
              # The footer block usually starts with "Dizimom, dizi ve film..."
-             # If we find "Dizimom," and it's not at the start (meaning it's part of the footer appended), split there.
-             # Note: The description might legitimately start with "Dizimom," strictly speaking, but unlikely for a series description.
              if "Dizimom," in description_raw:
                  description = description_raw.split("Dizimom,")[0].strip()
              elif "dizi izle film izle" in description_raw:

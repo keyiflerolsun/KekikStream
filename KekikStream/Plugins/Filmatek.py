@@ -3,6 +3,7 @@
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import re
 from json import loads
+from urllib.parse import unquote
 
 class Filmatek(PluginBase):
     name        = "Filmatek"
@@ -97,8 +98,15 @@ class Filmatek(PluginBase):
         year_text = helper.select_text("span.date")
         year = year_text.strip()[-4:] if year_text else None
         
-        score_text = helper.select_text("span.dt_rating_vmanual")
-        rating = score_text.strip() if score_text else None
+        # Rating extraction updated
+        rating = helper.select_text("span.dt_rating_vgs") or helper.select_text("span.dt_rating_vmanual")
+        
+        # Duration extraction
+        duration = None
+        duration_text = helper.select_text("span.runtime")
+        if duration_text:
+            # "80 Dak." -> "80"
+            duration = duration_text.split()[0]
 
         tags = helper.select_all_text("div.sgeneros a")
 
@@ -118,6 +126,7 @@ class Filmatek(PluginBase):
             poster      = poster,
             year        = year,
             rating      = rating,
+            duration    = duration,
             tags        = tags,
             actors      = actors
         )
@@ -168,6 +177,14 @@ class Filmatek(PluginBase):
                         iframe_url = self.main_url + iframe_url
                         
                     iframe_url = self.fix_url(iframe_url)
+                    
+                    # Unwrap internal JWPlayer
+                    if "jwplayer/?source=" in iframe_url:
+                        try:
+                            raw_source = iframe_url.split("source=")[1].split("&")[0]
+                            iframe_url = unquote(raw_source)
+                        except:
+                            pass
                     
                     extracted = await self.extract(iframe_url)
                     if extracted:
