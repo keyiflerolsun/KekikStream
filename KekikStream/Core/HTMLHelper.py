@@ -113,8 +113,8 @@ class HTMLHelper:
             return int(m.group(1)), int(m.group(2))
 
         # Ayrı ayrı ara
-        s = re.search(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon", text, re.I)
-        e = re.search(r"(\d+)\.\s*[Bb]ölüm|[Bb]olum[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", text, re.I)
+        s = re.search(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", text, re.I)
+        e = re.search(r"(\d+)\.\s*[Bb][öo]l[üu]m|[Bb][öo]l[üu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", text, re.I)
 
         # İlk bulunan grubu al (None değilse)
         s_val = next((int(g) for g in s.groups() if g), None) if s else None

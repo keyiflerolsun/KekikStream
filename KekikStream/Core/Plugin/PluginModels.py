@@ -51,9 +51,6 @@ class Episode(BaseModel):
         if not self.title:
             self.title = ""
 
-        if any(keyword in self.title.lower() for keyword in ["bölüm", "sezon", "episode"]):
-            self.title = ""
-
         return self
 
 class SeriesInfo(BaseModel):
