@@ -2,6 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, HTMLHelper
 from json             import dumps, loads
+import re
 
 class RecTV(PluginBase):
     name        = "RecTV"
@@ -75,26 +76,38 @@ class RecTV(PluginBase):
 
                 episodes = []
                 for season in dizi_veri:
+                    season_title = season.get("title", "").strip()
                     for episode in season.get("episodes"):
-                        # Bölüm için gerekli bilgileri JSON olarak sakla
-                        ep_data = {
-                            "url"        : self.fix_url(episode.get("sources")[0].get("url")),
-                            "title"      : f"{veri.get('title')} | {season.get('title', '1. Sezon')} {episode.get('title', '1. Bölüm')}",
-                            "is_episode" : True
-                        }
-                        
-                        # Extract season/episode numbers using helper
-                        s1, _ = HTMLHelper.extract_season_episode(season.get("title") or "")
-                        _, e2 = HTMLHelper.extract_season_episode(episode.get("title") or "")
+                        ep_label = episode.get("title", "").strip()
+                        for source in episode.get("sources"):
+                            # Bölüm için gerekli bilgileri JSON olarak sakla
+                            ep_data = {
+                                "url"        : self.fix_url(source.get("url")),
+                                "title"      : f"{veri.get('title')} | {season_title} {ep_label} - {source.get('title')}",
+                                "is_episode" : True
+                            }
 
-                        ep_model = Episode(
-                            season  = s1 or 1,
-                            episode = e2 or 1,
-                            title   = episode.get("title"),
-                            url     = dumps(ep_data),
-                        )
+                            # Extract season/episode numbers using helper
+                            s1, _ = HTMLHelper.extract_season_episode(season_title or "")
+                            _, e2 = HTMLHelper.extract_season_episode(ep_label or "")
 
-                        episodes.append(ep_model)
+                            tag = ""
+                            clean_season = season_title
+                            if "dublaj" in season_title.lower():
+                                tag = " (Dublaj)"
+                                clean_season = re.sub(r"\s*dublaj\s*", "", season_title, flags=re.I).strip()
+                            elif any(x in season_title.lower() for x in ["altyazı", "altyazi"]):
+                                tag = " (Altyazı)"
+                                clean_season = re.sub(r"\s*altyaz[ıi]\s*", "", season_title, flags=re.I).strip()
+
+                            ep_model = Episode(
+                                season  = s1 or 1,
+                                episode = e2 or 1,
+                                title   = f"{clean_season} {ep_label}{tag} - {source.get('title')}",
+                                url     = dumps(ep_data),
+                            )
+
+                            episodes.append(ep_model)
 
                 # Süreyi dakikaya çevir (Örn: "1h 59min")
                 duration_raw = veri.get("duration")

@@ -57,8 +57,9 @@ class PluginValidator:
                 result["status"] = "⚠️"
                 result["message"] = "main_page tanımlı değil"
                 return result
-            
-            url, category = list(plugin.main_page.items())[0]
+
+            main_page_items = list(plugin.main_page.items())
+            url, category = choice(main_page_items)
             items = await plugin.get_main_page(1, url, category)
             
             if not items:
