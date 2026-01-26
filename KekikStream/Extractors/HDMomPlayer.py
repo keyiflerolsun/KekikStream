@@ -1,62 +1,30 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+from KekikStream.Core  import ExtractorBase, ExtractResult, HTMLHelper
 from Kekik.Sifreleme import AESManager
-import re
-import json
+import contextlib, json
 
 class HDMomPlayer(ExtractorBase):
     name     = "HDMomPlayer"
-    main_url = "hdmomplayer.com"
+    main_url = "https://hdmomplayer.com"
 
-    async def extract(self, url: str, referer: str = None) -> ExtractResult | None:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
 
-        try:
-            response = await self.httpx.get(url)
-            page_source = response.text
-            
-            m3u_link = None
-            
-            # Regex for bePlayer matches
-            # Matches: bePlayer('PASS', '{DATA}');
-            helper = HTMLHelper(page_source)
-            be_matches = helper.regex_all(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);")
-            
-            if be_matches:
-                pass_val, data_val = be_matches[0]
-                
-                try:
-                    # Use Kekik.Sifreleme.AESManager as requested
-                    decrypted = AESManager.decrypt(data_val, pass_val).replace("\\", "")
-                    
-                    # Search for video_location in decrypted string
-                    # Kotlin: video_location":"([^"]+)
-                    m_loc = re.search(r'video_location":"([^"]+)"', decrypted)
-                    if m_loc:
-                        m3u_link = m_loc.group(1).replace(r"\/", "/")
-                except Exception:
-                    pass
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-            if not m3u_link:
-                # Fallback regex
-                # file:"..."
-                m_file = re.search(r'file:"([^"]+)"', page_source)
-                if m_file:
-                    m3u_link = m_file.group(1)
-            
-            if not m3u_link:
-                return None
-            
-            # Fix URL if needed
-            if m3u_link.startswith("//"):
-                m3u_link = "https:" + m3u_link
-                
-            return ExtractResult(
-                name    = "HDMomPlayer",
-                url     = m3u_link,
-                referer = url, 
-            )
-        except Exception:
-            return None
+        m3u8_url = None
+        if match := sel.regex_first(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);", group=None):
+            pass_val, data_val = match
+            with contextlib.suppress(Exception):
+                decrypted = AESManager.decrypt(data_val, pass_val)
+                m3u8_url  = HTMLHelper(decrypted).regex_first(r'video_location":"([^"]+)"')
+
+        if not m3u8_url:
+            m3u8_url = sel.regex_first(r'file:"([^"]+)"')
+
+        if not m3u8_url:
+            raise ValueError(f"HDMomPlayer: Video linki bulunamadı. {url}")
+
+        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=url)

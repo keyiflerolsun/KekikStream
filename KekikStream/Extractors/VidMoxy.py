@@ -7,42 +7,31 @@ class VidMoxy(ExtractorBase):
     name     = "VidMoxy"
     main_url = "https://vidmoxy.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        subtitles        = []
-        subtitle_matches = HTMLHelper(istek.text).regex_all(r'captions","file":"([^\"]+)","label":"([^\"]+)"')
-        seen_subtitles   = set()
+        subtitles = []
+        for s_url, s_lang in sel.regex_all(r'captions","file":"([^\"]+)","label":"([^\"]+)"'):
+            decoded_lang = s_lang.encode().decode('unicode_escape')
+            subtitles.append(Subtitle(name=decoded_lang, url=s_url.replace("\\", "")))
 
-        for sub_url, sub_lang in subtitle_matches:
-            if sub_url in seen_subtitles:
-                continue
+        hex_data = sel.regex_first(r'file": "(.*)",')
+        if not hex_data:
+            eval_data = sel.regex_first(r'\};\s*(eval\(function[\s\S]*?)var played = \d+;')
+            if eval_data:
+                unpacked = Packer.unpack(Packer.unpack(eval_data))
+                hex_data = HTMLHelper(unpacked).regex_first(r'file":"(.*)","label')
 
-            seen_subtitles.add(sub_url)
-            decoded_lang = (
-                sub_lang.replace("\\u0131", "ı")
-                        .replace("\\u0130", "İ")
-                        .replace("\\u00fc", "ü")
-                        .replace("\\u00e7", "ç")
-            )
-            subtitles.append(Subtitle(name=decoded_lang, url=sub_url.replace("\\", "")))
-
-        escaped_hex = HTMLHelper(istek.text).regex_first(r'file": "(.*)",')
-        if not escaped_hex:
-            eval_jwsetup = HTMLHelper(istek.text).regex_first(r'\};\s*(eval\(function[\s\S]*?)var played = \d+;')
-            jwsetup      = Packer.unpack(Packer.unpack(eval_jwsetup)) if eval_jwsetup else None
-            if jwsetup:
-                escaped_hex  = HTMLHelper(jwsetup).regex_first(r'file":"(.*)","label')
-
-        m3u_link = HexCodec.decode(escaped_hex)
+        if not hex_data:
+            raise ValueError(f"VidMoxy: Hex data bulunamadı. {url}")
 
         return ExtractResult(
             name      = self.name,
-            url       = m3u_link,
+            url       = HexCodec.decode(hex_data),
             referer   = self.main_url,
             subtitles = subtitles
         )

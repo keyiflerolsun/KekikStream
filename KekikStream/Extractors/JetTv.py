@@ -1,45 +1,32 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
-import json
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+import contextlib
 
 class JetTv(ExtractorBase):
     name     = "JetTv"
     main_url = "https://jetv.xyz"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        istek    = await self.httpx.get(url)
-        document = istek.text
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        # 1. Yöntem: API üzerinden alma
-        master_url = ""
-        final_ref  = f"{self.main_url}/"
+        m3u8_url = None
+        final_ref = self.main_url
 
         if "id=" in url:
-            vid_id = url.split("id=")[-1]
-            api_url = f"https://jetv.xyz/apollo/get_video.php?id={vid_id}"
-            try:
-                # Referer olarak video sayfasının kendisi gönderilmeli
-                api_resp = await self.httpx.get(api_url, headers={"Referer": url})
-                api_json = api_resp.json()
-                
-                if api_json.get("success"):
-                     master_url = api_json.get("masterUrl", "")
-                     final_ref  = api_json.get("referrerUrl") or final_ref
-            except Exception:
-                pass
+            v_id = url.split("id=")[-1]
+            with contextlib.suppress(Exception):
+                api_resp = await self.httpx.get(f"{self.main_url}/apollo/get_video.php?id={v_id}", headers={"Referer": url})
+                data     = api_resp.json()
+                if data.get("success"):
+                    m3u8_url  = data.get("masterUrl")
+                    final_ref = data.get("referrerUrl") or final_ref
 
-        # 2. Yöntem: Regex Fallback
-        if not master_url:
-             hp = HTMLHelper(document)
-             master_url = hp.regex_first(r"(?i)file: '([^']*)'") or master_url
-        
-        if not master_url:
-            raise ValueError(f"JetTv: Video kaynağı bulunamadı. {url}")
+        if not m3u8_url:
+            m3u8_url = sel.regex_first(r"(?i)file: '([^']*)'")
 
-        return ExtractResult(
-            name      = self.name,
-            url       = master_url,
-            referer   = final_ref,
-            subtitles = []
-        )
+        if not m3u8_url:
+            raise ValueError(f"JetTv: Video URL bulunamadı. {url}")
+
+        return ExtractResult(name=self.name, url=m3u8_url, referer=final_ref)

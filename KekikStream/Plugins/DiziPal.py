@@ -5,7 +5,7 @@ from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInf
 class DiziPal(PluginBase):
     name        = "DiziPal"
     language    = "tr"
-    main_url    = "https://dizipal1226.com"
+    main_url    = "https://dizipal.cc"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "dizipal güncel, dizipal yeni ve gerçek adresi. dizipal en yeni dizi ve filmleri güvenli ve hızlı şekilde sunar."
 
@@ -116,94 +116,45 @@ class DiziPal(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         # Reset headers to get HTML response
-        self.httpx.headers.update({
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        })
+        self.httpx.headers.update({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
         self.httpx.headers.pop("X-Requested-With", None)
 
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
-        poster   = self.fix_url(secici.select_attr("meta[property='og:image']", "content")) if secici.select_attr("meta[property='og:image']", "content") else None
-
-        # Sidebar bilgilerini topla
-        info = {}
-        for li in secici.select("li"):
-             key = secici.select_text("div.key", li)
-             val = secici.select_text("div.value", li)
-             if key and val:
-                 info[key.strip(":")] = val.strip()
-
-        year   = info.get("Yapım Yılı")
-        rating = info.get("IMDB Puanı")
-        
-        tags_raw = info.get("Türler", "")
-        tags = [t.strip() for t in tags_raw.split() if t.strip()] if tags_raw else None
-
-        actors_raw = info.get("Oyuncular")
-        actors = [a.strip() for a in actors_raw.split(",") if a.strip()] if actors_raw else None
-
+        poster      = self.fix_url(secici.select_attr("meta[property='og:image']", "content"))
         description = secici.select_text("div.summary p")
-
-        duration_raw = info.get("Ortalama Süre")
-        duration = int(secici.regex_first(r"(\d+)", duration_raw)) if duration_raw else None
+        year        = secici.meta_value("Yapım Yılı", container_selector="div.sidebar")
+        rating      = secici.meta_value("IMDB Puanı", container_selector="div.sidebar")
+        duration    = secici.meta_value("Ortalama Süre", container_selector="div.sidebar")
+        duration    = int(secici.regex_first(r"(\d+)", duration)) if duration else None
+        tags        = secici.meta_list("Türler", sep=" ", container_selector="div.sidebar")
+        actors      = secici.meta_list("Oyuncular", container_selector="div.sidebar")
 
         if "/dizi/" in url:
             title    = secici.select_text("div.cover h5")
-
             episodes = []
             for ep in secici.select("div.episode-item"):
-                ep_name = secici.select_text("div.name", ep)
-                ep_href = secici.select_attr("a", "href", ep)
-                ep_text = secici.select_text("div.episode", ep)
-                ep_parts = ep_text.split(" ")
-
-                ep_season  = None
-                ep_episode = None
-                if len(ep_parts) >= 4:
-                    try:
-                        ep_season  = int(ep_parts[0].replace(".", ""))
-                        ep_episode = int(ep_parts[2].replace(".", ""))
-                    except ValueError:
-                        pass
-
-                if ep_name and ep_href:
-                    episodes.append(Episode(
-                        season  = ep_season,
-                        episode = ep_episode,
-                        title   = ep_name,
-                        url     = self.fix_url(ep_href),
-                    ))
+                name = secici.select_text("div.name", ep)
+                href = secici.select_attr("a", "href", ep)
+                text = secici.select_text("div.episode", ep)
+                if name and href:
+                    s, e = secici.extract_season_episode(text or "")
+                    episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url         = url,
-                poster      = poster,
-                title       = title,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                duration    = duration,
-                episodes    = episodes if episodes else None,
-                actors      = actors,
+                url=url, poster=poster, title=title, description=description, tags=tags,
+                rating=rating, year=year, duration=duration, episodes=episodes or None, actors=actors
             )
-        else:
-            # Film için title - g-title div'lerinin 2. olanı
-            g_titles = secici.select("div.g-title div")
-            title = secici.select_text(element=g_titles[1]) if len(g_titles) >= 2 else None
+        
+        # Film için title - g-title div'lerinin 2. olanı
+        g_titles = secici.select("div.g-title div")
+        title = secici.select_text(element=g_titles[1]) if len(g_titles) >= 2 else None
 
-            return MovieInfo(
-                url         = url,
-                poster      = poster,
-                title       = title,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                duration    = duration,
-                actors      = actors,
-            )
+        return MovieInfo(
+            url=url, poster=poster, title=title, description=description, tags=tags,
+            rating=rating, year=year, duration=duration, actors=actors
+        )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # Reset headers to get HTML response

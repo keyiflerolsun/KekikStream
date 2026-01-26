@@ -78,68 +78,34 @@ class KultFilmler(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_attr("div.film-bilgileri img", "alt") or secici.select_attr("[property='og:title']", "content")
-        poster      = self.fix_url(secici.select_attr("[property='og:image']", "content")) if secici.select_attr("[property='og:image']", "content") else None
-
+        title       = self.clean_title(secici.select_attr("div.film-bilgileri img", "alt") or secici.select_attr("[property='og:title']", "content"))
+        poster      = self.fix_url(secici.select_attr("[property='og:image']", "content"))
         description = secici.select_text("div.description")
+        tags        = secici.select_texts("ul.post-categories a")
+        year        = secici.extract_year("li.release span a")
+        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("li.time span")) or 0)
+        rating      = secici.regex_first(r"(\d+\.\d+|\d+)", secici.select_text("div.imdb-count"))
+        actors      = secici.select_texts("div.actors a")
 
-        tags = [a.text(strip=True) for a in secici.select("ul.post-categories a") if a.text(strip=True)]
-
-        # HTML analizine göre güncellenen alanlar
-        year    = secici.select_text("li.release span a")
-
-        time_text = secici.select_text("li.time span")
-        duration = secici.regex_first(r"(\d+)", time_text) if time_text else None
-
-        rating_text = secici.select_text("div.imdb-count")
-        rating = secici.regex_first(r"(\d+\.\d+|\d+)", rating_text) if rating_text else None
-
-        actors = [a.text(strip=True) for a in secici.select("div.actors a") if a.text(strip=True)]
-
-        # Dizi mi kontrol et
         if "/dizi/" in url:
             episodes = []
             for bolum in secici.select("div.episode-box"):
-                ep_href   = secici.select_attr("div.name a", "href", bolum)
-
+                href       = secici.select_attr("div.name a", "href", bolum)
                 ssn_detail = secici.select_text("span.episodetitle", bolum) or ""
                 ep_detail  = secici.select_text("span.episodetitle b", bolum) or ""
-
-                ep_name = f"{ssn_detail} - {ep_detail}"
-
-                if ep_href:
-                    ep_season  = secici.regex_first(r"(\d+)\.", ssn_detail)
-                    ep_episode = secici.regex_first(r"(\d+)\.", ep_detail)
-
-                    episodes.append(Episode(
-                        season  = int(ep_season) if ep_season else 1,
-                        episode = int(ep_episode) if ep_episode else 1,
-                        title   = ep_name.strip(" -"),
-                        url     = self.fix_url(ep_href),
-                    ))
+                if href:
+                    s, e = secici.extract_season_episode(f"{ssn_detail} {ep_detail}")
+                    name = f"{ssn_detail} - {ep_detail}".strip(" -")
+                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url         = url,
-                poster      = poster,
-                title       = self.clean_title(title) if title else "",
-                description = description,
-                tags        = tags,
-                year        = year,
-                actors      = actors,
-                rating      = rating,
-                episodes    = episodes,
+                url=url, poster=poster, title=title or "Bilinmiyor", description=description,
+                tags=tags, year=str(year) if year else None, actors=actors, rating=rating, episodes=episodes
             )
 
         return MovieInfo(
-            url         = url,
-            poster      = poster,
-            title       = self.clean_title(title) if title else "",
-            description = description,
-            tags        = tags,
-            year        = year,
-            rating      = rating,
-            actors      = actors,
-            duration    = int(duration) if duration else None,
+            url=url, poster=poster, title=title or "Bilinmiyor", description=description,
+            tags=tags, year=str(year) if year else None, rating=rating, actors=actors, duration=duration
         )
 
     def _get_iframe(self, source_code: str) -> str:

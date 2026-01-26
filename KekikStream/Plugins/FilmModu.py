@@ -81,23 +81,15 @@ class FilmModu(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        org_title = secici.select_text("div.titles h1") or ""
-        alt_title = secici.select_text("div.titles h2") or ""
-        title     = f"{org_title} - {alt_title}" if alt_title else org_title
-
-        poster = secici.select_attr("img.img-responsive", "src") if secici.select_attr("img.img-responsive", "src") else None
-
-        description = secici.select_text("p[itemprop='description']") or None
-
-        tags = secici.select_all_text("a[href*='film-tur/']")
-
-        year = secici.select_text("span[itemprop='dateCreated']") or None
-
-        actors = []
-        for a in secici.select("a[itemprop='actor']"):
-            name = secici.select_text("span", a)
-            if name:
-                actors.append(name)
+        org_title   = secici.select_text("div.titles h1")
+        alt_title   = secici.select_text("div.titles h2")
+        title       = f"{org_title} - {alt_title}" if alt_title else (org_title or "")
+        poster      = secici.select_poster("img.img-responsive")
+        description = secici.select_text("p[itemprop='description']")
+        tags        = secici.select_texts("a[href*='film-tur/']")
+        rating      = secici.meta_value("IMDB")
+        year        = secici.extract_year("span[itemprop='dateCreated']")
+        actors      = secici.select_texts("a[itemprop='actor'] span")
 
         return MovieInfo(
             url         = url,
@@ -105,7 +97,8 @@ class FilmModu(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
-            year        = year,
+            rating      = rating,
+            year        = str(year) if year else None,
             actors      = actors,
         )
 

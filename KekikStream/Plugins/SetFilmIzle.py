@@ -125,95 +125,39 @@ class SetFilmIzle(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = self.cloudscraper.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
-        raw_title = secici.select_text("h1") or secici.select_text(".titles h1") or secici.select_attr("meta[property='og:title']", "content") or ""
-        title = HTMLHelper(raw_title).regex_replace(r"(?i)\s*izle.*$", "", flags=0).strip()
-
-        poster = secici.select_attr("div.poster img", "src")
-
+        title       = self.clean_title(secici.select_text("h1") or secici.select_text(".titles h1") or secici.select_attr("meta[property='og:title']", "content"))
+        poster      = secici.select_poster("div.poster img")
         description = secici.select_text("div.wp-content p")
+        rating      = secici.select_text("b#repimdb strong") or secici.regex_first(r"([\d.]+)", secici.select_text("div.imdb"))
+        year        = secici.extract_year("div.extra span.valor")
+        tags        = secici.select_texts("div.sgeneros a")
+        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("span.runtime")) or 0)
+        actors      = secici.select_texts("span.valor a[href*='/oyuncu/']")
 
-        rating = secici.select_text("b#repimdb strong") or secici.regex_first(r'repimdb"><strong>\s*([^<]+)</strong>', html_text)
-        
-        # Yıl için info bölümünden veya regex ile yakala
-        year = secici.regex_first(r'(\d{4})', secici.select_text("div.extra span.valor") or secici.select_text("span.valor") or "")
-        if not year:
-            year = secici.regex_first(r'<span>(\d{4})</span>', html_text) or secici.regex_first(r'(\d{4})', html_text)
+        common_info = {
+            "url"         : url,
+            "poster"      : self.fix_url(poster) if poster else None,
+            "title"       : title or "Bilinmiyor",
+            "description" : description,
+            "tags"        : tags,
+            "rating"      : rating,
+            "year"        : str(year) if year else None,
+            "duration"    : duration,
+            "actors"      : actors
+        }
 
-        tags = [a.text(strip=True) for a in secici.select("div.sgeneros a") if a.text(strip=True)]
-
-        duration_text = secici.select_text("span.runtime")
-        duration = int(secici.regex_first(r"\d+", duration_text)) if duration_text and secici.regex_first(r"\d+", duration_text) else None
-
-        actors = [a.text(strip=True) for a in secici.select("span.valor a") if "/oyuncu/" in (a.attrs.get("href") or "")]
-        if not actors:
-             actors = secici.regex_all(r'href="[^"]*/oyuncu/[^"]*">([^<]+)</a>')
-
-        trailer = None
-        if trailer_id := secici.regex_first(r'embed/([^?]*)\?rel', html_text):
-            trailer = f"https://www.youtube.com/embed/{trailer_id}"
-
-        # Dizi mi film mi kontrol et
-        is_series = "/dizi/" in url
-
-        if is_series:
-            year_elem = secici.select_text("a[href*='/yil/']")
-            if year_elem:
-                year = secici.regex_first(r"\d{4}", year_elem) or year
-
-            # Duration from info section
-            for span in secici.select("div#info span"):
-                span_text = span.text(strip=True) if span.text() else ""
-                if "Dakika" in span_text:
-                    duration = secici.regex_first(r"\d+", span_text) and int(secici.regex_first(r"\d+", span_text))
-                    break
-
+        if "/dizi/" in url:
             episodes = []
             for ep_item in secici.select("div#episodes ul.episodios li"):
-                ep_href = secici.select_attr("h4.episodiotitle a", "href", ep_item)
-                ep_name = secici.select_text("h4.episodiotitle a", ep_item)
+                href = secici.select_attr("h4.episodiotitle a", "href", ep_item)
+                name = secici.select_text("h4.episodiotitle a", ep_item)
+                if href and name:
+                    s, e = secici.extract_season_episode(name)
+                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
+            return SeriesInfo(**common_info, episodes=episodes)
 
-                if not ep_href or not ep_name:
-                    continue
-
-                ep_detail = ep_name
-                ep_season = secici.regex_first(r"(\d+)\.\s*Sezon", ep_detail) or 1
-                ep_episode = secici.regex_first(r"Sezon\s+(\d+)\.\s*Bölüm", ep_detail)
-
-                ep_season = int(ep_season) if isinstance(ep_season, str) and ep_season.isdigit() else 1
-                ep_episode = int(ep_episode) if isinstance(ep_episode, str) and ep_episode.isdigit() else None
-
-                episodes.append(Episode(
-                    season  = ep_season,
-                    episode = ep_episode,
-                    title   = ep_name,
-                    url     = self.fix_url(ep_href)
-                ))
-            return SeriesInfo(
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                title       = title,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                duration    = duration,
-                actors      = actors,
-                episodes    = episodes
-            )
-
-        return MovieInfo(
-            url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title,
-            description = description,
-            tags        = tags,
-            rating      = rating,
-            year        = year,
-            duration    = duration,
-            actors      = actors
-        )
+        return MovieInfo(**common_info)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)

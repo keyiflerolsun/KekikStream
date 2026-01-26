@@ -4,84 +4,54 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 
 
 class VidPapi(ExtractorBase):
-    name     = "VidApi"
+    name     = "VidPapi"
     main_url = "https://vidpapi.xyz"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        ext_ref = referer or ""
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        ref = referer or self.main_url
         
-        # URL parsing
+        # ID tespiti
         if "video/" in url:
             vid_id = url.split("video/")[-1]
         else:
             vid_id = url.split("?data=")[-1]
             
-        # 1. Altyazıları çek
-        sub_url = f"{self.main_url}/player/index.php?data={vid_id}"
-        sub_headers = {
+        headers = {
             "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With" : "XMLHttpRequest",
-            "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0",
-            "Referer"          : ext_ref or "https://kultfilmler.pro/"
+            "Referer"          : ref
         }
         
+        # 1. Altyazıları çek
         subtitles = []
         try:
-            sub_istek = await self.httpx.post(
-                url     = sub_url,
-                headers = sub_headers,
-                data    = {"hash": vid_id, "r": "https://kultfilmler.pro/"}
+            sub_resp = await self.httpx.post(
+                f"{self.main_url}/player/index.php?data={vid_id}",
+                headers = headers,
+                data    = {"hash": vid_id, "r": ref}
             )
-            
-            raw_subs = HTMLHelper(sub_istek.text).regex_first(r'var playerjsSubtitle\s*=\s*"([^"]*)"', flags=0)
-            if raw_subs:
-                found_subs = HTMLHelper(raw_subs).regex_all(r'\[(.*?)\](.*?)(?:,|$)')
-                for lang, sub_link in found_subs:
-                    lang = lang.strip()
-                    if "Türkçe" in lang:
-                        lang_code = "tr"
-                        lang_name = "Turkish"
-                    elif "İngilizce" in lang:
-                        lang_code = "en"
-                        lang_name = "English"
-                    else:
-                        lang_code = lang[:2].lower()
-                        lang_name = lang
-                        
-                    subtitles.append(Subtitle(
-                        name = lang_name,
-                        url  = sub_link.strip()
-                    ))
-                    
-        except Exception as e:
+            sel = HTMLHelper(sub_resp.text)
+            if raw_subs := sel.regex_first(r'var playerjsSubtitle\s*=\s*"([^"]*)"'):
+                for lang, link in HTMLHelper(raw_subs).regex_all(r'\[(.*?)\](https?://[^\s\",]+)'):
+                    subtitles.append(Subtitle(name=lang.strip(), url=link.strip()))
+        except:
             pass
 
         # 2. Videoyu çek
-        video_url = f"{self.main_url}/player/index.php?data={vid_id}&do=getVideo"
-        video_headers = sub_headers.copy()
-        
-        response = await self.httpx.post(
-            url     = video_url,
-            headers = video_headers,
-            data    = {"hash": vid_id, "r": "https://kultfilmler.pro/"}
+        resp = await self.httpx.post(
+            f"{self.main_url}/player/index.php?data={vid_id}&do=getVideo",
+            headers = headers,
+            data    = {"hash": vid_id, "r": ref}
         )
-        response.raise_for_status()
-        
-        try:
-            video_data = response.json()
-        except Exception:
-            return None
+        data = resp.json()
 
-        stream_url = video_data.get("securedLink")
-        if not stream_url or not stream_url.strip():
-            stream_url = video_data.get("videoSource")
-            
+        stream_url = data.get("securedLink") or data.get("videoSource")
         if not stream_url:
-            raise ValueError("No video link found in VidPapi response")
+            raise ValueError(f"VidPapi: Video URL bulunamadı. {url}")
 
         return ExtractResult(
             name      = self.name,
             url       = stream_url,
-            referer   = ext_ref or self.main_url,
+            referer   = ref,
             subtitles = subtitles
         )

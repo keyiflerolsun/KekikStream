@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class BelgeselX(PluginBase):
     name        = "BelgeselX"
@@ -70,7 +70,7 @@ class BelgeselX(PluginBase):
         token_resp = self.cloudscraper.get(f"https://cse.google.com/cse.js?cx={cx}")
         token_text = token_resp.text
 
-        secici = HTMLHelper(token_text)
+        secici  = HTMLHelper(token_text)
         cse_lib = secici.regex_first(r'cselibVersion": "(.*)"')
         cse_tok = secici.regex_first(r'cse_token": "(.*)"')
 
@@ -84,13 +84,13 @@ class BelgeselX(PluginBase):
             f"&callback=google.search.cse.api9969&rurl=https%3A%2F%2Fbelgeselx.com%2F"
         )
 
-        resp = self.cloudscraper.get(search_url)
+        resp      = self.cloudscraper.get(search_url)
         resp_text = resp.text
 
         secici2 = HTMLHelper(resp_text)
-        titles = secici2.regex_all(r'"titleNoFormatting": "(.*?)"')
-        urls   = secici2.regex_all(r'"url": "(.*?)"')
-        images = secici2.regex_all(r'"ogImage": "(.*?)"')
+        titles  = secici2.regex_all(r'"titleNoFormatting": "(.*?)"')
+        urls    = secici2.regex_all(r'"url": "(.*?)"')
+        images  = secici2.regex_all(r'"ogImage": "(.*?)"')
 
         results = []
         for i, title in enumerate(titles):
@@ -101,8 +101,7 @@ class BelgeselX(PluginBase):
                 # URL'den belgesel linkini oluştur
                 if poster and "diziresimleri" in poster:
                     file_name = poster.rsplit("/", 1)[-1]
-                    secici3 = HTMLHelper(file_name)
-                    file_name = secici3.regex_replace(r"\.(jpe?g|png|webp)$", "")
+                    file_name = HTMLHelper(file_name).regex_replace(r"\.(jpe?g|png|webp)$", "")
                     url_val = f"{self.main_url}/belgeseldizi/{file_name}"
                 else:
                     continue
@@ -120,85 +119,80 @@ class BelgeselX(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("h2.gen-title")
-
-        poster = secici.select_attr("div.gen-tv-show-top img", "src")
-
+        title       = self._to_title_case(secici.select_text("h2.gen-title"))
+        poster      = secici.select_poster("div.gen-tv-show-top img")
         description = secici.select_text("div.gen-single-tv-show-info p")
+        tags        = [self._to_title_case(t.rsplit("/", 1)[-1].replace("-", " ")) for t in secici.select_attrs("div.gen-socail-share a[href*='belgeselkanali']", "href")]
 
-        tags = []
-        for tag_link in secici.select("div.gen-socail-share a[href*='belgeselkanali']"):
-            tag_href = secici.select_attr("a", "href", tag_link)
-            if tag_href:
-                tag_name = tag_href.rsplit("/", 1)[-1].replace("-", " ")
-                tags.append(self._to_title_case(tag_name))
+        # Meta bilgilerinden yıl ve puanı çıkar
+        meta_items = secici.select_texts("div.gen-single-meta-holder ul li")
+        year   = None
+        rating = None
+        for item in meta_items:
+            if not year:
+                if y_match := secici.regex_first(r"\b((?:19|20)\d{2})\b", item):
+                    year = int(y_match)
+            if not rating:
+                if r_match := secici.regex_first(r"%\s*(\d+)\s*Puan", item):
+                    rating = float(r_match) / 10
 
         episodes = []
-        counter  = 0
-        for ep_item in secici.select("div.gen-movie-contain"):
-            ep_name = secici.select_text("div.gen-movie-info h3 a", ep_item)
-            ep_href = secici.select_attr("div.gen-movie-info h3 a", "href", ep_item)
-
-            if not ep_name or not ep_href:
-                continue
-
-            season_text = secici.select_text("div.gen-single-meta-holder ul li", ep_item)
-
-            episode_num = secici.regex_first(r"Bölüm (\d+)", season_text)
-            season_num  = secici.regex_first(r"Sezon (\d+)", season_text)
-
-            ep_episode = int(episode_num) if episode_num else counter
-            ep_season  = int(season_num) if season_num else 1
-
-            counter += 1
-
-            episodes.append(Episode(
-                season  = ep_season,
-                episode = ep_episode,
-                title   = ep_name,
-                url     = self.fix_url(ep_href)
-            ))
+        for i, ep in enumerate(secici.select("div.gen-movie-contain")):
+            name    = secici.select_text("div.gen-movie-info h3 a", ep)
+            href    = secici.select_attr("div.gen-movie-info h3 a", "href", ep)
+            item_id = secici.select_attr("div.gen-movie-info h3 a", "id", ep)
+            if name and href:
+                s, e = secici.extract_season_episode(secici.select_text("div.gen-single-meta-holder ul li", ep))
+                # ID'yi URL'ye ekle ki load_links doğru bölümü çekebilsin
+                final_url = self.fix_url(href)
+                if item_id:
+                    final_url = f"{final_url}?id={item_id}"
+                
+                episodes.append(Episode(season=s or 1, episode=e or (i + 1), title=name, url=final_url))
 
         return SeriesInfo(
-            url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = self._to_title_case(title) if title else None,
-            description = description,
-            tags        = tags,
-            episodes    = episodes
+            url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
+            description=description, tags=tags, year=year, rating=rating, episodes=episodes
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek = await self.httpx.get(url)
-        text  = istek.text
+        # URL'den ID'yi ayıkla
+        params     = dict([x.split('=') for x in url.split('?')[-1].split('&')]) if '?' in url else {}
+        episode_id = params.get('id')
+        main_url   = url.split('?')[0]
 
-        secici = HTMLHelper(text)
-        # fnc_addWatch div'inden data-episode ID'sini al
-        episode_id = secici.regex_first(r'<div[^>]*class=["\'][^"\']*fnc_addWatch[^"\']*["\'][^>]*data-episode=["\'](\d+)["\']')
+        istek  = await self.httpx.get(main_url)
+        secici = HTMLHelper(istek.text)
+
+        if not episode_id:
+            episode_id = secici.regex_first(r'data-episode=["\'](\d+)["\']')
+
         if not episode_id:
             return []
 
-        iframe_url  = f"{self.main_url}/video/data/new4.php?id={episode_id}"
+        iframe_resp = await self.httpx.get(f"{self.main_url}/video/data/new4.php?id={episode_id}", headers={"Referer": main_url})
+        secici      = HTMLHelper(iframe_resp.text)
 
-        iframe_resp = await self.httpx.get(iframe_url, headers={"Referer": url})
-        iframe_text = iframe_resp.text
+        links  = []
+        files  = secici.regex_all(r'file:"([^"]+)"')
+        labels = secici.regex_all(r'label: "([^"]+)"')
 
-        secici2 = HTMLHelper(iframe_text)
-        # file:"url", label: "quality" patternlerini al
-        file_matches = secici2.regex_all(r'file:"([^"]+)"')
-        label_matches = secici2.regex_all(r'label: "([^"]+)"')
+        for i, video_url in enumerate(files):
+            quality = labels[i] if i < len(labels) else "HD"
 
-        links = []
-        for i, video_url in enumerate(file_matches):
-            quality = label_matches[i] if i < len(label_matches) else "Unknown"
-
-            source_name = "Google" if quality == "FULL" else self.name
-            quality_str = "1080p" if quality == "FULL" else quality
+            # belgeselx.php redirect'ini çöz
+            if "belgeselx.php" in video_url or "belgeselx2.php" in video_url:
+                try:
+                    # HEAD isteği ile lokasyonu alalım
+                    resp = await self.httpx.head(video_url, headers={"Referer": main_url}, follow_redirects=True)
+                    video_url = str(resp.url)
+                except:
+                    pass
 
             links.append(ExtractResult(
                 url     = video_url,
-                name    = f"{source_name} | {quality_str}",
-                referer = url
+                name    = f"{'Google' if 'google' in video_url.lower() or 'blogspot' in video_url.lower() or quality == 'FULL' else self.name} | {'1080p' if quality == 'FULL' else quality}",
+                referer = main_url
             ))
 
         return links

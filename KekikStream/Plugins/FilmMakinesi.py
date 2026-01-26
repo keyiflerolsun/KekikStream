@@ -76,94 +76,41 @@ class FilmMakinesi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("h1.title") or ""
+        title       = self.clean_title(secici.select_text("h1.title"))
+        poster      = secici.select_poster("img.cover-img")
+        description = secici.select_text("div.info-description p")
+        rating      = secici.regex_first(r"(\d+[\d.]*)", secici.select_text("div.score"))
+        year        = secici.select_text("span.date a")
+        actors      = secici.select_texts("div.cast-name")
+        tags        = secici.select_texts("div.type a[href*='/tur/']")
+        duration    = secici.regex_first(r"(\d+)", secici.select_text("div.time"))
 
-        poster = secici.select_attr("img.cover-img", "src") or ""
-        poster = poster.strip()
-
-        description = secici.select_text("div.info-description p") or ""
-
-        rating_text = secici.select_text("div.score") or ""
-        rating = None
-        if rating_text:
-            rating = rating_text.split()[0]
-
-        year = secici.select_text("span.date a") or ""
-
-        actors = secici.select_all_text("div.cast-name")
-        tags = [a.text(strip=True) for a in secici.select("div.type a") if "/tur/" in (a.attrs.get("href") or "")]
-
-        duration = None
-        duration_text = secici.select_text("div.time") or None
-        if duration_text:
-            parts = duration_text.split()
-            if len(parts) > 1:
-                duration = parts[1].strip()
-
-        # Dizi mi kontrol et - sezon/bölüm linkleri var mı?
         episodes = []
-        all_links = secici.select("a[href]")
-        for link in all_links:
+        for link in secici.select("a[href]"):
             href = link.attrs.get("href", "")
-            pairs = HTMLHelper(href).regex_all(r"/sezon-(\d+)/bolum-(\d+)")
-            if pairs:
-                season_no = int(pairs[0][0])
-                ep_no = int(pairs[0][1])
-
-                # Bölüm başlığını çıkar - text'ten gerçek ismi al
-                # Format: "22 Eylül 2014 / 44 dk /1. Sezon / 1. BölümPilot"
-                full_text = link.text(strip=True)
-                # "Bölüm" kelimesinden sonraki kısmı al
-                ep_title = ""
-                if "Bölüm" in full_text:
-                    parts = full_text.split("Bölüm")
-                    if len(parts) > 1:
-                        ep_title = parts[-1].strip()
-                
-                episodes.append(Episode(
-                    season  = season_no,
-                    episode = ep_no,
-                    title   = ep_title,
-                    url     = self.fix_url(href)
-                ))
+            s, e = secici.extract_season_episode(href)
+            if s and e:
+                name = link.text(strip=True).split("Bölüm")[-1].strip() if "Bölüm" in link.text() else ""
+                episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
         
-        # Bölümler varsa SeriesInfo döndür
+        # Tekrar edenleri temizle ve sırala
         if episodes:
-            # Tekrar eden bölümleri kaldır
             seen = set()
-            unique_episodes = []
+            unique = []
             for ep in episodes:
-                key = (ep.season, ep.episode)
-                if key not in seen:
-                    seen.add(key)
-                    unique_episodes.append(ep)
-            
-            # Sırala
-            unique_episodes.sort(key=lambda x: (x.season or 0, x.episode or 0))
-            
+                if (ep.season, ep.episode) not in seen:
+                    seen.add((ep.season, ep.episode))
+                    unique.append(ep)
+            unique.sort(key=lambda x: (x.season or 0, x.episode or 0))
+
             return SeriesInfo(
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                title       = self.clean_title(title),
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                actors      = actors,
-                duration    = duration,
-                episodes    = unique_episodes
+                url=url, poster=self.fix_url(poster) if poster else None, title=title, description=description,
+                tags=tags, rating=rating, year=year, actors=actors, duration=duration, episodes=unique
             )
 
         return MovieInfo(
-            url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = self.clean_title(title),
-            description = description,
-            tags        = tags,
-            rating      = rating,
-            year        = year,
-            actors      = actors,
-            duration    = duration
+            url=url, poster=self.fix_url(poster) if poster else None, title=title, description=description,
+            tags=tags, rating=rating, year=year, actors=actors, duration=duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

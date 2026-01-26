@@ -11,55 +11,36 @@ class PlayerFilmIzle(ExtractorBase):
         return "filmizle.in" in url or "fireplayer" in url.lower()
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        # Kotlin tarafında referer mainUrl olarak zorlanmış
-        ext_ref = self.main_url
-        self.httpx.headers.update({"Referer": ext_ref})
+        ref = referer or self.main_url
+        self.httpx.headers.update({"Referer": ref})
         
-        istek     = await self.httpx.get(url)
-        video_req = istek.text
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
         subtitles = []
-        hp = HTMLHelper(video_req)
-        sub_yakala = hp.regex_first(r'(?i)playerjsSubtitle = "([^"]*)"')
-        if sub_yakala:
-            # Format örneği: [dil]url
-            if "]" in sub_yakala:
-                sub_lang_raw, sub_url = sub_yakala.split("]", 1)
-                sub_lang = sub_lang_raw.replace("[", "")
-                subtitles.append(Subtitle(name=sub_lang, url=sub_url))
+        if raw_subs := sel.regex_first(r'playerjsSubtitle\s*=\s*"([^"]*)"'):
+            for lang, link in HTMLHelper(raw_subs).regex_all(r'\[(.*?)\](https?://[^\s\",]+)'):
+                subtitles.append(Subtitle(name=lang.strip(), url=link.strip()))
 
-        # Packed script varsa unpack et
-        unpacked = Packer.unpack(video_req) if Packer.detect_packed(video_req) else video_req
-
-        # Data yakalama: FirePlayer("DATA", ...) formatından
-        data_val = HTMLHelper(unpacked).regex_first(r'(?i)FirePlayer\s*\(\s*["\']([a-f0-9]+)["\']')
+        content  = Packer.unpack(resp.text) if Packer.detect_packed(resp.text) else resp.text
+        data_val = HTMLHelper(content).regex_first(r'FirePlayer\s*\(\s*["\']([a-f0-9]+)["\']')
 
         if not data_val:
-             raise ValueError("PlayerFilmIzle: Data bulunamadı")
+             raise ValueError(f"PlayerFilmIzle: Data bulunamadı. {url}")
 
-        url_post = f"{self.main_url}/player/index.php?data={data_val}&do=getVideo"
-
-        post_headers = {
-            "Referer": ext_ref,
-            "X-Requested-With": "XMLHttpRequest"
-        }
-
-        # Kotlin'de post data: "hash" -> data, "r" -> ""
-        post_data = {"hash": data_val, "r": ""}
-
-        response = await self.httpx.post(url_post, data=post_data, headers=post_headers)
-        get_url  = response.text.replace("\\", "")
-
-        m3u8_url = ""
-        m3u8_url = HTMLHelper(get_url).regex_first(r'(?i)"securedLink":"([^\\"]*)"') or m3u8_url
-
+        resp_vid = await self.httpx.post(
+            f"{self.main_url}/player/index.php?data={data_val}&do=getVideo",
+            data    = {"hash": data_val, "r": ""},
+            headers = {"X-Requested-With": "XMLHttpRequest"}
+        )
+        
+        m3u8_url = HTMLHelper(resp_vid.text).regex_first(r'"securedLink":"([^"]+)"')
         if not m3u8_url:
-            raise ValueError("PlayerFilmIzle: M3U8 linki bulunamadı")
+            raise ValueError(f"PlayerFilmIzle: Video URL bulunamadı. {url}")
 
         return ExtractResult(
-            name       = self.name,
-            url        = m3u8_url,
-            referer    = ext_ref,
-            user_agent = self.httpx.headers.get("User-Agent", None),
-            subtitles  = subtitles
+            name      = self.name,
+            url       = m3u8_url.replace("\\", ""),
+            referer   = ref,
+            subtitles = subtitles
         )

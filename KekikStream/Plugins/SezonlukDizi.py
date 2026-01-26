@@ -92,63 +92,31 @@ class SezonlukDizi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title    = secici.select_text("div.header") or ""
+        title       = secici.select_text("div.header") or ""
+        poster      = secici.select_poster("div.image img")
+        year        = secici.extract_year("div.extra span")
+        description = secici.select_text("span#tartismayorum-konu")
+        tags        = secici.select_texts("div.labels a[href*='tur']")
+        rating      = secici.regex_first(r"[\d.,]+", secici.select_text("div.dizipuani a div"))
 
-        poster    = secici.select_attr("div.image img", "data-src") or ""
+        # Actors extraction
+        id_slug = url.split('/')[-1]
+        a_resp  = await self.httpx.get(f"{self.main_url}/oyuncular/{id_slug}")
+        a_sel   = HTMLHelper(a_resp.text)
+        actors  = a_sel.select_texts("div.doubling div.ui div.header")
 
-        # year: re_first yerine re.search
-        year_text = secici.select_text("div.extra span") or ""
-        year = secici.regex_first(r"(\d{4})", year_text)
-
-        # xpath normalized-space yerine doğrudan ID ile element bulup text al
-        description = secici.select_text("span#tartismayorum-konu") or ""
-
-        tags = [a.text(strip=True) for a in secici.select("div.labels a[href*='tur']") if a.text(strip=True)]
-
-        # rating: regex ile çıkar
-        rating_text = secici.select_text("div.dizipuani a div") or ""
-        rating = secici.regex_first(r"[\d.,]+", rating_text)
-
-        actors = []
-
-        actors_istek  = await self.httpx.get(f"{self.main_url}/oyuncular/{url.split('/')[-1]}")
-        actors_secici = HTMLHelper(actors_istek.text)
-        for actor in actors_secici.select("div.doubling div.ui"):
-            header_text = actors_secici.select_text("div.header", actor)
-            if header_text:
-                actors.append(header_text)
-
-        episodes_istek  = await self.httpx.get(f"{self.main_url}/bolumler/{url.split('/')[-1]}")
-        episodes_secici = HTMLHelper(episodes_istek.text)
-        episodes        = []
-
-        for sezon in episodes_secici.select("table.unstackable"):
-            for bolum in episodes_secici.select("tbody tr", sezon):
-                # td:nth-of-type selectolax'ta desteklenmiyor, alternatif yol: tüm td'leri alıp indexle
-                tds = episodes_secici.select("td", bolum)
-                if len(tds) < 4:
-                    continue
-
-                # 4. td'den isim ve href
-                ep_name    = episodes_secici.select_text("a", tds[3])
-                ep_href    = episodes_secici.select_attr("a", "href", tds[3])
-
-                # 3. td'den episode (re_first yerine regex)
-                ep_episode_text = episodes_secici.select_text("a", tds[2]) or ""
-                ep_episode = episodes_secici.regex_first(r"(\d+)", ep_episode_text)
-
-                # 2. td'den season (re_first yerine regex)
-                ep_season_text = tds[1].text(strip=True) if tds[1] else ""
-                ep_season = secici.regex_first(r"(\d+)", ep_season_text)
-
-                if ep_name and ep_href:
-                    episode = Episode(
-                        season  = ep_season,
-                        episode = ep_episode,
-                        title   = ep_name,
-                        url     = self.fix_url(ep_href),
-                    )
-                    episodes.append(episode)
+        # Episodes extraction
+        e_resp   = await self.httpx.get(f"{self.main_url}/bolumler/{id_slug}")
+        e_sel    = HTMLHelper(e_resp.text)
+        episodes = []
+        for row in e_sel.select("table.unstackable tbody tr"):
+            tds = e_sel.select("td", row)
+            if len(tds) >= 4:
+                name = e_sel.select_text("a", tds[3])
+                href = e_sel.select_attr("a", "href", tds[3])
+                if name and href:
+                    s, e = e_sel.extract_season_episode(f"{tds[1].text(strip=True)} {tds[2].text(strip=True)}")
+                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
         return SeriesInfo(
             url         = url,
@@ -157,7 +125,7 @@ class SezonlukDizi(PluginBase):
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = year,
+            year        = str(year) if year else None,
             episodes    = episodes,
             actors      = actors
         )

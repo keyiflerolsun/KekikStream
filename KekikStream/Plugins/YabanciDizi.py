@@ -84,97 +84,43 @@ class YabanciDizi(PluginBase):
         resp = await self.httpx.get(url, follow_redirects=True)
         sel  = HTMLHelper(resp.text)
 
-        og_title = sel.select_attr("meta[property='og:title']", "content")
-        title    = og_title.split("|")[0].strip() if og_title else sel.select_text("h1")
-        
-        poster   = sel.select_attr("meta[property='og:image']", "content")
+        title       = (sel.select_attr("meta[property='og:title']", "content") or "").split("|")[0].strip() or sel.select_text("h1")
+        poster      = sel.select_poster("meta[property='og:image']")
         description = sel.select_text("p#tv-series-desc")
+        year        = sel.extract_year("td div.truncate")
+        tags        = sel.meta_list("Türü", container_selector="div.item")
+        rating      = sel.meta_value("IMDb Puanı", container_selector="div.item")
+        duration    = int(sel.regex_first(r"(\d+)", sel.meta_value("Süre", container_selector="div.item")) or 0)
+        actors      = sel.meta_list("Oyuncular", container_selector="div.item") or sel.select_texts("div#common-cast-list div.item h5")
         
-        # Try to extract year from table first
-        year_cell = sel.select_text("td div.truncate")
-        year = None
-        if year_cell:
-            year_match = sel.regex_first(r"(\d{4})", year_cell)
-            if year_match:
-                year = year_match
-            
-        tags = []
-        rating = None
-        duration = None
-        actors = []
-        for item in sel.select("div.item"):
-            text = item.text(strip=True)
-            if "T\u00fcr\u00fc:" in text:
-                tags = [t.strip() for t in text.replace("T\u00fcr\u00fc:", "").split(",")]
-            elif "IMDb Puan\u0131" in text:
-                rating = text.replace("IMDb Puan\u0131", "").strip()
-            elif "Yap\u0131m Y\u0131l\u0131" in text:
-                year_match = sel.regex_first(r"(\d{4})", text)
-                if year_match:
-                    year = year_match
-            elif "Takip\u00e7iler" in text:
-                continue
-            elif "S\u00fcre" in text:
-                dur_match = sel.regex_first(r"(\d+)", text)
-                if dur_match:
-                    duration = dur_match
-            elif "Oyuncular:" in text:
-                actors = [a.text(strip=True) for a in sel.select("a", item)]
-        
-        if not actors:
-            actors = [a.text(strip=True) for a in sel.select("div#common-cast-list div.item h5")]
-        
-        trailer_match = sel.regex_first(r"embed\/(.*)\?rel", resp.text)
-        trailer = f"https://www.youtube.com/embed/{trailer_match}" if trailer_match else None
+        common_info = {
+            "url"         : url,
+            "poster"      : self.fix_url(poster) if poster else None,
+            "title"       : title or "Bilinmiyor",
+            "description" : description,
+            "tags"        : tags,
+            "rating"      : rating,
+            "year"        : str(year) if year else None,
+            "actors"      : actors,
+            "duration"    : duration
+        }
 
         if "/film/" in url:
-            return MovieInfo(
-                title       = title,
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                description = description,
-                rating      = rating,
-                tags        = tags,
-                actors      = actors,
-                year        = year,
-                duration    = int(duration) if duration and duration.isdigit() else None
-            )
-        else:
-            episodes = []
-            for bolum_item in sel.select("div.episodes-list div.ui td:has(h6)"):
-                link_el = sel.select_first("a", bolum_item)
-                if not link_el: continue
-                
-                bolum_href = link_el.attrs.get("href")
-                bolum_name = sel.select_text("h6", bolum_item) or link_el.text(strip=True)
-                
-                season = sel.regex_first(r"sezon-(\d+)", bolum_href)
-                episode = sel.regex_first(r"bolum-(\d+)", bolum_href)
+            return MovieInfo(**common_info)
+        
+        episodes = []
+        for bolum in sel.select("div.episodes-list div.ui td:has(h6)"):
+            link = sel.select_first("a", bolum)
+            if link:
+                href = link.attrs.get("href")
+                name = sel.select_text("h6", bolum) or link.text(strip=True)
+                s, e = sel.extract_season_episode(href)
+                episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
-                ep_season = int(season) if season and season.isdigit() else None
-                ep_episode = int(episode) if episode and episode.isdigit() else None
+        if episodes and (episodes[0].episode or 0) > (episodes[-1].episode or 0):
+            episodes.reverse()
 
-                episodes.append(Episode(
-                    season  = ep_season,
-                    episode = ep_episode,
-                    title   = bolum_name,
-                    url     = self.fix_url(bolum_href)
-                ))
-
-            if episodes and (episodes[0].episode or 0) > (episodes[-1].episode or 0):
-                episodes.reverse()
-
-            return SeriesInfo(
-                title       = title,
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                description = description,
-                rating      = rating,
-                tags        = tags,
-                actors      = actors,
-                year        = year,
-                episodes    = episodes
-            )
+        return SeriesInfo(**common_info, episodes=episodes)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # Use cloudscraper to bypass Cloudflare

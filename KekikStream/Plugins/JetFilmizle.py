@@ -99,35 +99,34 @@ class JetFilmizle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title    = self.clean_title(secici.select_text("div.movie-exp-title")) if secici.select_text("div.movie-exp-title") else None
-
-        poster = secici.select_poster("section.movie-exp img")
-        poster = poster.strip() if poster else None
-        
+        title       = self.clean_title(secici.select_text("div.movie-exp-title"))
+        poster      = secici.select_poster("section.movie-exp img")
         description = secici.select_text("section.movie-exp p.aciklama")
-        
-        tags = secici.select_all_text("section.movie-exp div.catss a")
-        
-        rating = secici.select_text("section.movie-exp div.imdb_puan span")
-        
-        year = secici.extract_year("div.yap")
-        
-        actors = secici.select_all_text("div[itemprop='actor'] a span")
-        if not actors: # Fallback to img alt
-            actors = [img.attrs.get("alt") for img in secici.select("div.oyuncular div.oyuncu img") if img.attrs.get("alt")]
+        tags        = secici.select_texts("section.movie-exp div.catss a")
+        rating      = secici.select_text("section.movie-exp div.imdb_puan span")
+        year        = secici.meta_value("Yayın Yılı")
+        actors      = secici.select_texts("div[itemprop='actor'] a span") or [img.attrs.get("alt") for img in secici.select("div.oyuncular div.oyuncu img") if img.attrs.get("alt")]
+        duration    = secici.meta_value("Süre")
+        duration    = duration.split() if duration else None
 
-        duration = secici.regex_first(r"(\d+)\s*dk", istek.text)
+        total_minutes = 0
+        if duration:
+            for i, p in enumerate(duration):
+                if p == "saat":
+                    total_minutes += int(duration[i-1]) * 60
+                elif p == "dakika":
+                    total_minutes += int(duration[i-1])
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = year,
+            year        = str(year) if year else None,
             actors      = actors,
-            duration    = int(duration) if duration else None
+            duration    = int(total_minutes) if duration else None
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

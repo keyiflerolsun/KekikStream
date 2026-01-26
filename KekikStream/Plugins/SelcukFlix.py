@@ -187,53 +187,54 @@ class SelcukFlix(PluginBase):
         
         next_data_text = sel.select_text("script#__NEXT_DATA__")
         if not next_data_text:
-            return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
+            return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")
 
         try:
             next_data = json.loads(next_data_text)
             secure_data_raw = next_data["props"]["pageProps"].get("secureData")
             if not secure_data_raw:
-                 return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
+                  return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")
             
             # Clean possible quotes from string before decoding
             if isinstance(secure_data_raw, str):
                 secure_data_raw = secure_data_raw.strip('"')
 
-            decoded_str = base64.b64decode(secure_data_raw).decode('utf-8')
-            content_details = json.loads(decoded_str)
-            
-            # Sometimes content_details might be a string (double encoded)
-            if isinstance(content_details, str):
-                content_details = json.loads(content_details)
+            content_details = json.loads(base64.b64decode(secure_data_raw).decode('utf-8'))
+            if isinstance(content_details, str): content_details = json.loads(content_details)
 
-            print(f"DEBUG: type(content_details)={type(content_details)}")
             item            = content_details.get("contentItem", {})
-            print(f"DEBUG: type(item)={type(item)}")
             related_results = content_details.get("RelatedResults", {})
 
-            title           = item.get("original_title") or item.get("culture_title") or item.get("originalTitle") or ""
-            poster          = self.clean_image_url(item.get("poster_url") or item.get("posterUrl") or item.get("face_url"))
-            description     = item.get("description") or item.get("used_description")
-            rating          = str(item.get("imdb_point") or item.get("imdbPoint") or "")
-            year            = str(item.get("release_year") or item.get("releaseYear") or "")
-            duration        = item.get("total_minutes") or item.get("totalMinutes")
+            title       = self.clean_title(item.get("original_title") or item.get("culture_title") or item.get("originalTitle") or "")
+            poster      = self.clean_image_url(item.get("poster_url") or item.get("posterUrl") or item.get("face_url"))
+            description = item.get("description") or item.get("used_description")
+            rating      = str(item.get("imdb_point") or item.get("imdbPoint") or "")
+            year        = str(item.get("release_year") or item.get("releaseYear") or "")
+            duration    = item.get("total_minutes") or item.get("totalMinutes")
 
             tags = []
             tags_raw = item.get("category_names") or item.get("categoryNames") or item.get("categories")
             if isinstance(tags_raw, str):
-                tags = [t.strip() for t in tags_raw.split(",")]
+                tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
             elif isinstance(tags_raw, list):
                 tags = [c.get("title") if isinstance(c, dict) else str(c) for c in tags_raw]
 
             actors = []
-            actors_raw = item.get("actor_names") or item.get("actorNames")
-            if isinstance(actors_raw, str):
-                actors = [a.strip() for a in actors_raw.split(",")]
-            
-            # Casts from RelatedResults
             casts_data = related_results.get("getSerieCastsById") or related_results.get("getMovieCastsById")
             if casts_data and isinstance(casts_data, dict) and casts_data.get("result"):
                 actors = [cast.get("name") for cast in casts_data["result"] if cast.get("name")]
+
+            common_info = {
+                "url"         : url,
+                "poster"      : poster,
+                "title"       : title or "Bilinmiyor",
+                "description" : description,
+                "tags"        : tags,
+                "rating"      : rating,
+                "year"        : year,
+                "actors"      : actors,
+                "duration"    : duration
+            }
 
             series_data = related_results.get("getSerieSeasonAndEpisodes")
             if series_data and isinstance(series_data, dict) and series_data.get("result"):
@@ -249,31 +250,12 @@ class SelcukFlix(PluginBase):
                                 title   = ep.get("ep_text") or ep.get("epText") or "",
                                 url     = self.fix_url(ep_slug)
                             ))
-                
-                return SeriesInfo(
-                    url         = url,
-                    poster      = poster,
-                    title       = self.clean_title(title),
-                    description = description,
-                    tags        = tags,
-                    rating      = rating,
-                    year        = year,
-                    actors      = actors,
-                    duration    = duration,
-                    episodes    = episodes
-                )
-            else:
-                return MovieInfo(
-                    url         = url,
-                    poster      = poster,
-                    title       = self.clean_title(title),
-                    description = description,
-                    tags        = tags,
-                    rating      = rating,
-                    year        = year,
-                    actors      = actors,
-                    duration    = duration
-                )
+                return SeriesInfo(**common_info, episodes=episodes)
+
+            return MovieInfo(**common_info)
+
+        except Exception:
+            return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")
 
         except Exception:
             return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")

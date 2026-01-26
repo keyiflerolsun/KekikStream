@@ -62,7 +62,7 @@ class Dizilla(PluginBase):
                 # Detay sayfasından poster vb. bilgileri al
                 ep_req = await self.httpx.get(self.fix_url(href))
                 ep_secici = HTMLHelper(ep_req.text)
-                poster = ep_secici.select_attr('img.imgt', 'src') or ep_secici.select_attr('img', 'src')
+                poster = ep_secici.select_poster('img.imgt') or ep_secici.select_poster('img')
 
                 ana_sayfa.append(MainPageResult(
                     category = category,
@@ -138,65 +138,39 @@ class Dizilla(PluginBase):
         secici = HTMLHelper(istek.text)
 
         next_data_text = secici.select_text("script#__NEXT_DATA__")
-        if not next_data_text:
-            return None
+        if not next_data_text: return None
 
         next_data   = loads(next_data_text)
         secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData")
-        if not secure_data:
-            return None
+        if not secure_data: return None
 
         decrypted = await self.decrypt_response(secure_data)
         content   = decrypted.get("contentItem", {})
-        if not content:
-            return None
+        if not content: return None
 
         title       = content.get("original_title") or content.get("used_title")
         description = content.get("description") or content.get("used_description")
         rating      = content.get("imdb_point") or content.get("local_vote_avg")
         year        = content.get("release_year")
-        
-        # Poster and Backdrop - prefer backdrop if available for SeriesInfo
-        poster = self.fix_poster_url(self.fix_url(content.get("back_url") or content.get("poster_url")))
+        poster      = self.fix_poster_url(self.fix_url(content.get("back_url") or content.get("poster_url")))
 
-        # Tags
-        tags = []
-        categories = decrypted.get("RelatedResults", {}).get("getSerieCategoriesById", {}).get("result", [])
-        for cat in categories:
-            tags.append(cat.get("name"))
+        tags   = [cat.get("name") for cat in decrypted.get("RelatedResults", {}).get("getSerieCategoriesById", {}).get("result", [])]
+        actors = [cast.get("name") for cast in decrypted.get("RelatedResults", {}).get("getSerieCastsById", {}).get("result", [])]
 
-        # Actors
-        actors = []
-        casts = decrypted.get("RelatedResults", {}).get("getSerieCastsById", {}).get("result", [])
-        for cast in casts:
-            actors.append(cast.get("name"))
-
-        # Episodes
         episodes = []
-        seasons_data = decrypted.get("RelatedResults", {}).get("getSerieSeasonAndEpisodes", {}).get("result", [])
-        for season_item in seasons_data:
-            season_num = season_item.get("season_no")
-            for ep_item in season_item.get("episodes", []):
-                ep_num = ep_item.get("episode_no")
-                ep_slug = ep_item.get("used_slug")
-                ep_name = ep_item.get("episode_text") or ""
-                
-                # Filter out duplicate language entries if any (we just need one link per episode)
-                # Usually they share the same slug for the episode page
-                if any(e.season == season_num and e.episode == ep_num for e in episodes):
-                    continue
-
-                episodes.append(Episode(
-                    season  = season_num,
-                    episode = ep_num,
-                    title   = ep_name,
-                    url     = self.fix_url(f"{self.main_url}/{ep_slug}")
-                ))
+        for season in decrypted.get("RelatedResults", {}).get("getSerieSeasonAndEpisodes", {}).get("result", []):
+            s_no = season.get("season_no")
+            for ep in season.get("episodes", []):
+                e_no = ep.get("episode_no")
+                slug = ep.get("used_slug")
+                name = ep.get("episode_text") or ""
+                if not any(e.season == s_no and e.episode == e_no for e in episodes):
+                    episodes.append(Episode(season=s_no, episode=e_no, title=name, url=self.fix_url(f"{self.main_url}/{slug}")))
 
         return SeriesInfo(
             url         = url,
             poster      = poster,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
             rating      = str(rating) if rating else None,

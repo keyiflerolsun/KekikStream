@@ -7,60 +7,35 @@ class SetPlay(ExtractorBase):
     name     = "SetPlay"
     main_url = "https://setplay.shop"
 
-    # Birden fazla domain destekle
     supported_domains = ["setplay.cfd", "setplay.shop", "setplay.site"]
 
     def can_handle_url(self, url: str) -> bool:
         return any(domain in url for domain in self.supported_domains)
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        ext_ref = referer or ""
-
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
-
-        # Dinamik base URL kullan
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
         base_url = self.get_base_url(url)
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        hp = HTMLHelper(istek.text)
+        v_url = sel.regex_first(r'videoUrl":"([^",]+)"')
+        v_srv = sel.regex_first(r'videoServer":"([^",]+)"')
+        if not v_url or not v_srv:
+            raise ValueError(f"SetPlay: Video url/server bulunamadı. {url}")
 
-        # videoUrl çıkar
-        video_url = hp.regex_first(r'videoUrl":"([^",]+)"')
-        if not video_url:
-            raise ValueError("videoUrl not found")
-        video_url = video_url.replace("\\", "")
-
-        # videoServer çıkar
-        video_server = hp.regex_first(r'videoServer":"([^",]+)"')
-        if not video_server:
-            raise ValueError("videoServer not found")
-
-        # title çıkar (opsiyonel)
-        title_base = hp.regex_first(r'title":"([^",]+)"')
-        title_base = title_base.split(".")[-1] if title_base else "Unknown"
+        params   = parse_qs(urlparse(url).query)
+        part_key = params.get("partKey", [""])[0].lower()
         
-        # partKey logic
-        parsed = urlparse(url)
-        params = parse_qs(parsed.query)
-        part_key = params.get("partKey", [""])[0]
-        
-        name_suffix = ""
-        if "turkcedublaj" in part_key.lower():
-            name_suffix = "Dublaj"
-        elif "turkcealtyazi" in part_key.lower():
-            name_suffix = "Altyazı"
+        suffix = "Bilinmiyor"
+        if "turkcedublaj" in part_key: suffix = "Dublaj"
+        elif "turkcealtyazi" in part_key: suffix = "Altyazı"
         else:
-            name_suffix = title_base
-
-        # M3U8 link oluştur - base_url kullan (main_url yerine)
-        m3u_link = f"{base_url}{video_url}?s={video_server}"
+            title = sel.regex_first(r'title":"([^",]+)"')
+            if title: suffix = title.split(".")[-1]
 
         return ExtractResult(
-            name      = f"{self.name} - {name_suffix}",
-            url       = m3u_link,
-            referer   = url,
-            subtitles = []
+            name      = f"{self.name} - {suffix}",
+            url       = f"{base_url}{v_url.replace('\\', '')}?s={v_srv}",
+            referer   = url
         )

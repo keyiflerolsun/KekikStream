@@ -25,46 +25,26 @@ class VidHide(ExtractorBase):
             return url.replace("/f/", "/v/")
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        # Dinamik base URL kullan
         base_url = self.get_base_url(url)
-
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
-
         self.httpx.headers.update({
-            "Sec-Fetch-Dest" : "empty",
-            "Sec-Fetch-Mode" : "cors",
-            "Sec-Fetch-Site" : "cross-site",
-            "Origin"         : base_url,
+            "Referer" : referer or base_url,
+            "Origin"  : base_url,
         })
         
         embed_url = self.get_embed_url(url)
         istek     = await self.httpx.get(embed_url)
-        response  = istek.text
+        sel       = HTMLHelper(istek.text)
 
-        script = None
-        if "eval(function" in response:
+        unpacked = ""
+        if "eval(function" in istek.text:
             try:
-                unpacked = Packer.unpack(response)
-                if "var links" in unpacked:
-                    script = unpacked.split("var links")[1]
-                else:
-                    script = unpacked
-            except Exception:
+                unpacked = Packer.unpack(istek.text)
+            except:
                 pass
         
-        if not script:
-             script = HTMLHelper(response).regex_first(r'(?s)sources:\s*(\[.*?\])')
+        content  = unpacked or istek.text
+        m3u8_url = HTMLHelper(content).regex_first(r'[:"]\s*["\']([^"\']+\.m3u8[^"\']*)["\']')
 
-        m3u8_url = None
-        if script:
-            # m3u8 urls could be prefixed by 'file:', 'hls2:' or 'hls4:', so we just match ':'
-            m3u8_url = HTMLHelper(script).regex_first(r':\s*"([^\"]*?m3u8[^\"]*?)"')
-
-        if not m3u8_url:
-            # Fallback direct search in response if unpacking failed or structure changed
-            m3u8_url = HTMLHelper(response).regex_first(r'file:"(.*?\.m3u8.*?)"')
-        
         if not m3u8_url:
             raise ValueError(f"VidHide: Video URL bulunamadı. {url}")
 
@@ -72,6 +52,5 @@ class VidHide(ExtractorBase):
             name       = self.name,
             url        = self.fix_url(m3u8_url),
             referer    = f"{base_url}/",
-            user_agent = self.httpx.headers.get("User-Agent", ""),
-            subtitles  = []
+            user_agent = self.httpx.headers.get("User-Agent", "")
         )

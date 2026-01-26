@@ -98,151 +98,51 @@ class Full4kizle(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
-        
-        title_raw = helper.select_text("h1") or "Bilinmiyor"
-        title = re.sub(r"(?i)izle", "", title_raw).strip()
-        
-        poster_el = helper.select_first(".poster img")
-        poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
-        
+
+        title       = self.clean_title(helper.select_text("h1"))
+        poster      = helper.select_poster(".poster img")
         description = helper.select_text(".excerpt p")
-        
-        # Robust metadata extraction using Regex
-        
-        # Initialize year first
-        year = None
-        
-        # Try .release first (legacy) or directly regex
-        rel_text = helper.select_text(".release")
-        if rel_text:
-             m_y = re.search(r"(\d{4})", rel_text)
-             if m_y: year = m_y.group(1)
-             
-        # Year fallbacks
-        if not year:
-            # Try finding year in text like "Yapım: 2024" or just isolated year in release date
-            m_year = helper.regex_first(r"Yapım:\s*(\d{4})") or helper.regex_first(r"Yıl:\s*(\d{4})")
-            if m_year:
-                year = m_year
+        year        = helper.extract_year(".release", ".movie-info")
+        rating      = helper.regex_first(r"([\d\.]+)", helper.select_text(".imdb-rating"))
+        duration    = int(helper.regex_first(r"(\d+)", helper.select_text(".movie-info")) or 0)
+        tags        = helper.select_texts("a[href*='/tur/'], a[href*='/Kategori/tur/']")
+        actors      = helper.select_texts("a[href*='/oyuncular/']") or helper.select_texts(".cast-list .actor-name, .cast-list a")
 
-        # Rating
-        rating_text = helper.select_text(".imdb-rating")
-        if rating_text:
-            rating = rating_text.replace("IMDB Puanı", "").strip()
-        else:
-            rating = helper.regex_first(r"IMDB\s*:\s*([\d\.]+)")
-
-        # Duration
-        duration = None
-        duration_val = helper.regex_first(r"Süre:\s*(\d+)")
-        if duration_val:
-            duration = int(duration_val)
-
-        # Actors - Extract from actor links
-        actors = None
-        actors_list = []
-        
-        # Site uses: <a href=".../oyuncular/...">Actor Name</a>
-        actor_els = helper.select("a[href*='/oyuncular/']")
-        if actor_els:
-            actors_list = [el.text(strip=True) for el in actor_els if el.text(strip=True)]
-        
-        # Fallback: Try .cast-list selector
-        if not actors_list:
-            actor_els = helper.select(".cast-list .actor-name, .cast-list a")
-            if actor_els:
-                actors_list = [el.text(strip=True) for el in actor_els if el.text(strip=True)]
-        
-        if actors_list:
-            actors = ", ".join(actors_list)
-
-
-        # Tags (Genres) - Extract from genre links
-        tags = None
-        tags_list = []
-        
-        # Site uses: <a href=".../tur/...">Genre Name</a> or <a href=".../Kategori/tur/...">
-        tag_els = helper.select("a[href*='/tur/'], a[href*='/Kategori/tur/']")
-        if tag_els:
-            tags_list = [el.text(strip=True) for el in tag_els if el.text(strip=True)]
-        
-        # Fallback: Try .genres selector
-        if not tags_list:
-            tag_els = helper.select(".genres a, .genre a")
-            if tag_els:
-                tags_list = [el.text(strip=True) for el in tag_els if el.text(strip=True)]
-        
-        # Remove duplicates while preserving order
-        if tags_list:
-            seen = set()
-            unique_tags = []
-            for tag in tags_list:
-                if tag not in seen:
-                    seen.add(tag)
-                    unique_tags.append(tag)
-            tags = unique_tags if unique_tags else None
-
-            
-        # Check for Episodes to decide if Series or Movie
+        # Bölüm linklerini kontrol et
         ep_elements = helper.select(".parts-middle a, .parts-middle .part.active")
-        
+
         if not ep_elements:
-            # Movie
             return MovieInfo(
                 url         = url,
-                title       = title,
+                title       = title or "Bilinmiyor",
                 description = description,
-                poster      = poster,
-                year        = year,
+                poster      = self.fix_url(poster) if poster else None,
+                year        = str(year) if year else None,
                 rating      = rating,
                 duration    = duration,
                 tags        = tags,
                 actors      = actors
             )
-        else:
-            # Series
-            episodes = []
-            for i, el in enumerate(ep_elements):
-                ep_name = helper.select_text(".part-name", el) or f"Bölüm {i+1}"
-                ep_href = el.attrs.get("href")
-                if not ep_href:
-                    ep_href = url # Current page if href is empty/active?
-                ep_href = self.fix_url(ep_href)
-                
-                # Parse season/episode from name if possible
-                # Kotlin: find digit for season, substringAfter("Sezon") digit for episode
-                season = 1
-                episode = i + 1
-                
-                # Simple heuristic similar to Kotlin
-                # "1. Sezon 5. Bölüm"
-                s_match = re.search(r"(\d+)\.\s*Sezon", ep_name)
-                e_match = re.search(r"(\d+)\.\s*Bölüm", ep_name)
-                
-                if s_match:
-                    season = int(s_match.group(1))
-                if e_match:
-                    episode = int(e_match.group(1))
-                    
-                episodes.append(Episode(
-                    season  = season,
-                    episode = episode,
-                    title   = ep_name,
-                    url     = ep_href
-                ))
-                
-            return SeriesInfo(
-                url         = url,
-                title       = title,
-                description = description,
-                poster      = poster,
-                year        = year,
-                rating      = rating,
-                duration    = duration,
-                tags        = tags,
-                actors      = actors,
-                episodes    = episodes
-            )
+        
+        episodes = []
+        for i, el in enumerate(ep_elements):
+            name = helper.select_text(".part-name", el) or f"Bölüm {i+1}"
+            href = el.attrs.get("href") or url
+            s, e = helper.extract_season_episode(name)
+            episodes.append(Episode(season=s or 1, episode=e or (i + 1), title=name, url=self.fix_url(href)))
+
+        return SeriesInfo(
+            url         = url,
+            title       = title or "Bilinmiyor",
+            description = description,
+            poster      = self.fix_url(poster) if poster else None,
+            year        = str(year) if year else None,
+            rating      = rating,
+            duration    = duration,
+            tags        = tags,
+            actors      = actors,
+            episodes    = episodes
+        )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek = await self.httpx.get(url)

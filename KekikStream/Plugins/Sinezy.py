@@ -83,29 +83,26 @@ class Sinezy(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        resp = await self.httpx.get(url)
+        resp   = await self.httpx.get(url)
         secici = HTMLHelper(resp.text)
 
-        title = secici.select_attr("div.detail", "title")
-        poster = secici.select_attr("div.move_k img", "data-src")
+        title       = secici.select_attr("div.detail", "title")
+        poster      = secici.select_poster("div.move_k img")
         description = secici.select_text("div.desc.yeniscroll p")
-        rating = secici.select_text("span.info span.imdb")
+        rating      = secici.select_text("span.info span.imdb")
+        tags        = secici.select_texts("div.detail span a")
+        actors      = secici.select_texts("span.oyn p")
+        year        = secici.extract_year()
 
-        tags = secici.select_all_text("div.detail span a")
-        actors = secici.select_all_text("span.oyn p")
-
-        year = secici.regex_first(r"\b(19\d{2}|20\d{2})\b")
-        if not year:
-            year = secici.regex_first(r"\b(19\d{2}|20\d{2})\b", secici.html)
         return MovieInfo(
-            title       = title,
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
             rating      = rating,
-            actors      = actors,
-            year        = year
+            year        = str(year) if year else None,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

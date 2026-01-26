@@ -7,53 +7,31 @@ class Sobreatsesuyp(ExtractorBase):
     name     = "Sobreatsesuyp"
     main_url = "https://sobreatsesuyp.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> list[ExtractResult] | ExtractResult:
+        ref = referer or self.main_url
+        self.httpx.headers.update({"Referer": ref})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        path = HTMLHelper(resp.text).regex_first(r'file":"([^\"]+)')
+        if not path:
+            raise ValueError(f"Sobreatsesuyp: File path bulunamadı. {url}")
 
-        file_path = HTMLHelper(istek.text).regex_first(r'file":"([^\"]+)')
-        if not file_path:
-            raise ValueError("File not found in response.")
+        post_resp = await self.httpx.post(f"{self.main_url}/{path.replace('\\', '')}")
+        data_list = post_resp.json()[1:] if isinstance(post_resp.json(), list) else []
 
-        file_path = file_path.replace("\\", "")
-        post_link = f"{self.main_url}/{file_path}"
-
-        post_istek = await self.httpx.post(post_link)
-        post_istek.raise_for_status()
-
-        try:
-            post_json = json.loads(post_istek.text)
-        except json.JSONDecodeError as hata:
-            raise ValueError("Failed to parse JSON response.") from hata
-
-        video_data_list = post_json[1:] if isinstance(post_json, list) else []
-
-        all_results = []
-
-        for item in video_data_list:
+        results = []
+        for item in data_list:
             title = item.get("title")
             file  = item.get("file")
+            if title and file:
+                playlist_resp = await self.httpx.post(f"{self.main_url}/playlist/{file.lstrip('/')}.txt")
+                results.append(ExtractResult(
+                    name    = f"{self.name} - {title}",
+                    url     = playlist_resp.text,
+                    referer = self.main_url
+                ))
 
-            if not title or not file:
-                continue
+        if not results:
+            raise ValueError(f"Sobreatsesuyp: Video bulunamadı. {url}")
 
-            playlist_url     = f"{self.main_url}/playlist/{file.lstrip('/')}.txt"
-            playlist_request = await self.httpx.post(playlist_url, headers={"Referer": referer or self.main_url})
-            playlist_request.raise_for_status()
-
-            all_results.append(
-                ExtractResult(
-                    name      = f"{self.name} - {title}",
-                    url       = playlist_request.text,
-                    referer   = self.main_url,
-                    subtitles = []
-                )
-            )
-
-        if not all_results:
-            raise ValueError("No videos found in response.")
-
-        return all_results[0] if len(all_results) == 1 else all_results
+        return results[0] if len(results) == 1 else results

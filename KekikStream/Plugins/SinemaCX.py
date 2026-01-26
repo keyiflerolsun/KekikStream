@@ -83,29 +83,23 @@ class SinemaCX(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        duration_match = secici.regex_first(r"Süre:.*?(\d+)\s*Dakika")
-
+        title       = secici.select_text("div.f-bilgi h1")
+        poster      = secici.select_poster("link[rel='image_src']")
         description = secici.select_text("div.ackl div.scroll-liste")
-
-        poster = secici.select_attr("link[rel='image_src']", "href")
-
-        title = secici.select_text("div.f-bilgi h1")
-
-        tags = secici.select_all_text("div.f-bilgi div.tur a")
-
-        year = secici.select_text("div.f-bilgi ul.detay a[href*='yapim']")
-
-        actors = secici.select_all_text("li.oync li.oyuncu-k span.isim")
+        tags        = secici.select_texts("div.f-bilgi div.tur a")
+        year        = secici.extract_year("div.f-bilgi ul.detay a[href*='yapim']")
+        actors      = secici.select_texts("li.oync li.oyuncu-k span.isim")
+        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.f-bilgi")) or 0)
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
-            year        = year,
+            year        = str(year) if year else None,
             actors      = actors,
-            duration    = int(duration_match) if duration_match else None,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

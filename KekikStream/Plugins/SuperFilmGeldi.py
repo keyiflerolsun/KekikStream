@@ -79,26 +79,21 @@ class SuperFilmGeldi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("div.title h1") or ""
-        title = self.clean_title(title.split(" izle")[0]) if title else ""
-
-        poster = secici.select_attr("div.poster img", "src")
-
-        year = secici.extract_year("div.release a")
-
+        title       = self.clean_title(secici.select_text("div.title h1").split(" izle")[0]) if secici.select_text("div.title h1") else ""
+        poster      = secici.select_poster("div.poster img")
+        year        = secici.extract_year("div.release a")
         description = secici.select_text("div.excerpt p")
-
-        tags = secici.select_all_text("div.categories a")
-        actors = secici.select_all_text("div.actor a")
+        tags        = secici.select_texts("div.categories a")
+        actors      = secici.select_texts("div.actor a")
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
-            year        = year,
-            actors      = actors,
+            year        = str(year) if year else None,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

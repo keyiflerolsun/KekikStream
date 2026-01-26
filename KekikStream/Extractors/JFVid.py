@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult
-import re
 
 class JFVid(ExtractorBase):
     name     = "JFVid"
@@ -14,27 +13,7 @@ class JFVid(ExtractorBase):
         return any(domain in url for domain in self.supported_domains)
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        # Dinamik base URL kullan
         base_url = self.get_base_url(url)
-
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
-
-        # /play/ endpoint'inden encodedId'yi al
-        # URL format: https://xxx.jfvid.com/play/{encodedId}
-        if "/play/" in url:
-            encoded_id = url.split("/play/")[-1]
-            stream_url = f"{base_url}/stream/{encoded_id}"
-        elif "/stream/" in url:
-            # Zaten stream URL ise doğrudan kullan
-            stream_url = url
-        else:
-            raise ValueError(f"JFVid: Desteklenmeyen URL formatı. {url}")
-
-        # Stream endpoint'i direkt m3u8 master playlist döndürür
-        return ExtractResult(
-            name      = self.name,
-            url       = stream_url,
-            referer   = referer,
-            subtitles = []
-        )
+        v_id     = url.split("/play/")[-1] if "/play/" in url else url.split("/stream/")[-1]
+        
+        return ExtractResult(name=self.name, url=f"{base_url}/stream/{v_id}", referer=referer or base_url)

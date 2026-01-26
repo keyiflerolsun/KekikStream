@@ -6,36 +6,18 @@ class HDPlayerSystem(ExtractorBase):
     name     = "HDPlayerSystem"
     main_url = "https://hdplayersystem.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        ext_ref = referer or ""
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        ref = referer or self.main_url
+        v_id = url.split("video/")[-1] if "video/" in url else url.split("?data=")[-1]
 
-        if "video/" in url:
-            vid_id = url.split("video/")[-1]
-        else:
-            vid_id = url.split("?data=")[-1]
-
-        post_url = f"{self.main_url}/player/index.php?data={vid_id}&do=getVideo"
-
-        response = await self.httpx.post(
-            url     = post_url,
-            data    = {"hash": vid_id, "r": ext_ref},
-            headers = {
-                "Referer"          : ext_ref,
-                "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
-                "X-Requested-With" : "XMLHttpRequest"
-            }
+        resp = await self.httpx.post(
+            f"{self.main_url}/player/index.php?data={v_id}&do=getVideo",
+            data    = {"hash": v_id, "r": ref},
+            headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
         )
-        response.raise_for_status()
+        
+        m3u8_url = resp.json().get("securedLink")
+        if not m3u8_url:
+            raise ValueError(f"HDPlayerSystem: Video URL bulunamadı. {url}")
 
-        video_data = response.json()
-        m3u_link   = video_data.get("securedLink")
-
-        if not m3u_link:
-            raise ValueError("securedLink not found in response")
-
-        return ExtractResult(
-            name      = self.name,
-            url       = m3u_link,
-            referer   = url,
-            subtitles = []
-        )
+        return ExtractResult(name=self.name, url=m3u8_url, referer=url)

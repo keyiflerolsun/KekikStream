@@ -81,43 +81,24 @@ class FullHDFilmizlesene(PluginBase):
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
-        # Title: normalize-space yerine doğrudan class ile
-        title = secici.select_text("div.izle-titles") or ""
-
-        poster = secici.select_attr("div img[data-src]", "data-src") or ""
-        poster = poster.strip()
-
-        description = secici.select_text("div.ozet-ic p") or ""
-
-        tags = secici.select_all_text("a[rel='category tag']")
-
-        # Rating: regex ile sayısal değeri yakala
-        rating_text = secici.select_text("div.puanx-puan") or ""
-        rating = secici.regex_first(r"(\d+\.\d+|\d+)", rating_text)
-
-        # Year: ilk yıl formatında değer
-        year_text = secici.select_text("div.dd a.category") or ""
-        year = secici.regex_first(r"(\d{4})", year_text)
-
-        # Actors: nth-child yerine tüm li'leri alıp 2. index
-        lis = secici.select("div.film-info ul li")
-        actors = []
-        if len(lis) >= 2:
-            actors = secici.select_all_text("a > span", lis[1])
-
-        # Duration: regex ile yakala (örn: 201 dk)
-        duration = secici.regex_first(r"(\d+)\s*(?:dk|dakika)", html_text)
+        title       = self.clean_title(secici.select_text("div.izle-titles"))
+        poster      = secici.select_poster("div img[data-src]")
+        description = secici.select_text("div.ozet-ic p")
+        tags        = secici.select_texts("a[rel='category tag']")
+        rating      = secici.regex_first(r"(\d+\.\d+|\d+)", secici.select_text("div.puanx-puan"))
+        year        = secici.extract_year("div.dd a.category")
+        actors      = secici.select_texts("a > span", secici.select_first("div.film-info ul li:nth-child(2)"))
+        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.film-info ul li:nth-child(4)")) or 0)
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = year,
+            year        = str(year) if year else None,
             actors      = actors,
             duration    = duration
         )

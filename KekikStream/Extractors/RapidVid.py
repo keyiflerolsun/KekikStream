@@ -14,57 +14,43 @@ class RapidVid(ExtractorBase):
     def can_handle_url(self, url: str) -> bool:
         return any(domain in url for domain in self.supported_domains)
 
-    async def extract(self, url, referer=None) -> ExtractResult:
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        subtitles        = []
-        hp = HTMLHelper(istek.text)
-        subtitle_matches = hp.regex_all(r'captions\",\"file\":\"([^\"]+)\",\"label\":\"([^\"]+)\"')
-        seen_subtitles   = set()
-
-        for sub_url, sub_lang in subtitle_matches:
-            if sub_url in seen_subtitles:
-                continue
-
-            seen_subtitles.add(sub_url)
-            decoded_lang = (
-                sub_lang.replace("\\u0131", "ı")
-                        .replace("\\u0130", "İ")
-                        .replace("\\u00fc", "ü")
-                        .replace("\\u00e7", "ç")
-            )
-            subtitles.append(Subtitle(name=decoded_lang, url=sub_url.replace("\\", "")))
+        subtitles = []
+        for s_url, s_lang in sel.regex_all(r'captions","file":"([^\"]+)","label":"([^\"]+)"'):
+            decoded_lang = s_lang.encode().decode('unicode_escape')
+            subtitles.append(Subtitle(name=decoded_lang, url=s_url.replace("\\", "")))
 
         try:
-            decoded_url = None
+            video_url = None
 
-            # Method 1: file": "..." pattern (HexCodec)
-            if extracted_value := hp.regex_first(r'file": "(.*)",'):
-                escaped_hex = extracted_value
-                decoded_url = HexCodec.decode(escaped_hex)
+            # Method 1: HexCodec pattern
+            if hex_data := sel.regex_first(r'file": "(.*)",'):
+                video_url = HexCodec.decode(hex_data)
 
             # Method 2: av('...') pattern
-            elif av_encoded := hp.regex_first(r"av\('([^']+)'\)"):
-                decoded_url = self.decode_secret(av_encoded)
+            elif av_data := sel.regex_first(r"av\('([^']+)'\)"):
+                video_url = self.decode_secret(av_data)
 
-            # Method 3: Packed script with dc_* function (StreamDecoder)
-            elif Packer.detect_packed(istek.text):
-                unpacked    = Packer.unpack(istek.text)
-                decoded_url = StreamDecoder.extract_stream_url(unpacked)
+            # Method 3: Packed dc_*
+            elif Packer.detect_packed(resp.text):
+                unpacked  = Packer.unpack(resp.text)
+                video_url = StreamDecoder.extract_stream_url(unpacked)
 
-            if not decoded_url:
-                raise ValueError("No valid video URL pattern found.")
+            if not video_url:
+                raise ValueError(f"RapidVid: Video URL bulunamadı. {url}")
 
         except Exception as hata:
-            raise RuntimeError(f"Extraction failed: {hata}") from hata
+            raise RuntimeError(f"RapidVid: Extraction failed: {hata}") from hata
 
         return ExtractResult(
             name      = self.name,
-            url       = decoded_url,
+            url       = video_url,
             referer   = self.main_url,
             subtitles = subtitles
         )

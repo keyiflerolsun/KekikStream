@@ -2,85 +2,41 @@
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 from Kekik.Sifreleme   import AESManager
-import json
+import json, contextlib
 
 class DonilasPlay(ExtractorBase):
     name     = "DonilasPlay"
     main_url = "https://donilasplay.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
-        i_source = istek.text
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        m3u_link   = None
-        subtitles  = []
+        m3u8_url  = None
+        subtitles = []
 
-        # bePlayer pattern
-        hp = HTMLHelper(i_source)
-        be_player_matches = hp.regex_all(r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\);")
-        if be_player_matches:
-            be_player_pass, be_player_data = be_player_matches[0]
+        # 1. bePlayer (AES)
+        if be_match := sel.regex_first(r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\);", group=None):
+            pass_val, data_val = be_match
+            with contextlib.suppress(Exception):
+                data = json.loads(AESManager.decrypt(data_val, pass_val))
+                m3u8_url = data.get("video_location")
+                for sub in data.get("strSubtitles", []):
+                    if "Forced" not in sub.get("label", ""):
+                        subtitles.append(Subtitle(name=sub.get("label"), url=self.fix_url(sub.get("file"))))
 
-            try:
-                # AES decrypt
-                decrypted = AESManager.decrypt(be_player_data, be_player_pass)
-                data      = json.loads(decrypted)
+        # 2. Fallback
+        if not m3u8_url:
+            m3u8_url = sel.regex_first(r'file:"([^"]+)"')
+            if tracks_match := sel.regex_first(r'tracks:\[([^\]]+)'):
+                with contextlib.suppress(Exception):
+                    for track in json.loads(f"[{tracks_match}]"):
+                        if "Forced" not in track.get("label", ""):
+                            subtitles.append(Subtitle(name=track.get("label"), url=self.fix_url(track.get("file"))))
 
-                m3u_link = data.get("video_location")
+        if not m3u8_url:
+            raise ValueError(f"DonilasPlay: Video linki bulunamadı. {url}")
 
-                # Altyazıları işle
-                str_subtitles = data.get("strSubtitles", [])
-                if str_subtitles:
-                    for sub in str_subtitles:
-                        label = sub.get("label", "")
-                        file  = sub.get("file", "")
-                        # Forced altyazıları hariç tut
-                        if "Forced" in label:
-                            continue
-                        if file:
-                            # Türkçe kontrolü
-                            keywords = ["tur", "tr", "türkçe", "turkce"]
-                            language = "Turkish" if any(k in label.lower() for k in keywords) else label
-                            subtitles.append(Subtitle(
-                                name = language,
-                                url  = self.fix_url(file)
-                            ))
-            except Exception:
-                pass
-
-        # Fallback: file pattern
-        if not m3u_link:
-            file_match = hp.regex_first(r'file:"([^"]+)"')
-            if file_match:
-                m3u_link = file_match
-
-            # tracks pattern for subtitles
-            tracks_match = hp.regex_first(r'tracks:\[([^\]]+)')
-            if tracks_match:
-                try:
-                    tracks_str = f"[{tracks_match}]"
-                    tracks = json.loads(tracks_str)
-                    for track in tracks:
-                        file_url = track.get("file")
-                        label    = track.get("label", "")
-                        if file_url and "Forced" not in label:
-                            subtitles.append(Subtitle(
-                                name = label,
-                                url  = self.fix_url(file_url)
-                            ))
-                except Exception:
-                    pass
-
-        if not m3u_link:
-            raise ValueError("m3u link not found")
-
-        return ExtractResult(
-            name      = self.name,
-            url       = m3u_link,
-            referer   = url,
-            subtitles = subtitles
-        )
+        return ExtractResult(name=self.name, url=m3u8_url, referer=url, subtitles=subtitles)

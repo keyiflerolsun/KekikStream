@@ -81,52 +81,26 @@ class Filmatek(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek = await self.httpx.get(url)
+        istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
 
-        title = helper.select_text("div.data h1, h1") or "Bilinmiyor"
-        
-        poster_el = helper.select_first("div.poster img")
-        poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
-        if not poster:
-            poster = helper.select_attr("meta[property='og:image']", "content")
-
-        description = helper.select_text("div.wp-content p")
-        if not description:
-            description = helper.select_attr("meta[property='og:description']", "content")
-        
-        year_text = helper.select_text("span.date")
-        year = year_text.strip()[-4:] if year_text else None
-        
-        # Rating extraction updated
-        rating = helper.select_text("span.dt_rating_vgs") or helper.select_text("span.dt_rating_vmanual")
-        
-        # Duration extraction
-        duration = None
-        duration_text = helper.select_text("span.runtime")
-        if duration_text:
-            # "80 Dak." -> "80"
-            duration = duration_text.split()[0]
-
-        tags = helper.select_all_text("div.sgeneros a")
-
-        # Actors
-        actors_list = []
-        actor_els = helper.select("div.person")
-        for el in actor_els:
-            name = helper.select_text("div.name a", el)
-            if name:
-                actors_list.append(name.strip())
-        actors = ", ".join(actors_list) if actors_list else None
+        title       = self.clean_title(helper.select_text("div.data h1, h1"))
+        poster      = helper.select_poster("div.poster img") or helper.select_attr("meta[property='og:image']", "content")
+        description = helper.select_text("div.wp-content p") or helper.select_attr("meta[property='og:description']", "content")
+        year        = helper.extract_year("span.date")
+        rating      = helper.select_text("span.dt_rating_vgs") or helper.select_text("span.dt_rating_vmanual")
+        duration    = helper.regex_first(r"(\d+)", helper.select_text("span.runtime"))
+        tags        = helper.select_texts("div.sgeneros a")
+        actors      = helper.select_texts("div.person div.name a")
 
         return MovieInfo(
             url         = url,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
-            poster      = poster,
-            year        = year,
+            poster      = self.fix_url(poster) if poster else None,
+            year        = str(year) if year else None,
             rating      = rating,
-            duration    = duration,
+            duration    = int(duration) if duration else None,
             tags        = tags,
             actors      = actors
         )

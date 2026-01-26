@@ -135,114 +135,42 @@ class Sinefy(PluginBase):
             pass
         return []
 
-    async def load_item(self, url: str) -> SeriesInfo:
+    async def load_item(self, url: str) -> SeriesInfo | MovieInfo:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
         
-        title    = sel.select_text("h1")
-
-        poster_info = sel.select_attr("div.ui.items img", "data-srcset")
-        poster = None
-        if poster_info:
-            parts = str(poster_info).split(",")
-            for p in parts:
-                if "1x" in p:
-                    poster = p.strip().split(" ")[0]
-                    break
-
+        title       = sel.select_text("h1")
+        poster      = sel.select_poster("div.ui.items img")
         description = sel.select_text("p#tv-series-desc")
-
-        tags    = [a.text(strip=True) for a in sel.select("div.item.categories a") if a.text(strip=True)]
-
-        rating    = sel.select_text("span.color-imdb")
-
-        actors = [h5.text(strip=True) for h5 in sel.select("div.content h5") if h5.text(strip=True)]
-
-        year    = sel.select_text("span.item.year")
-        if not year and title:
-            # Try to extract year from title like "Movie Name(2024)"
-            year_match = sel.regex_first(r"\((\d{4})\)", title)
-            if year_match:
-                year = year_match
+        tags        = sel.select_texts("div.item.categories a")
+        rating      = sel.select_text("span.color-imdb")
+        actors      = sel.select_texts("div.content h5")
+        year        = sel.extract_year("span.item.year") or sel.regex_first(r"\((\d{4})\)", title)
         
+        common_info = {
+            "url"         : url,
+            "poster"      : self.fix_url(poster) if poster else None,
+            "title"       : title or "Bilinmiyor",
+            "description" : description,
+            "tags"        : tags,
+            "rating"      : rating,
+            "year"        : str(year) if year else None,
+            "actors"      : actors
+        }
+
         episodes = []
-        episodes_box_list = sel.select("section.episodes-box")
-        
-        if episodes_box_list:
-            episodes_box = episodes_box_list[0]
-            # Sezon menüsünden sezon linklerini al
-            season_menu = sel.select("div.ui.vertical.fluid.tabular.menu a.item", episodes_box)
-            
-            # Sezon tab içeriklerini al
-            season_tabs = sel.select("div.ui.tab", episodes_box)
-            
-            # Eğer birden fazla sezon varsa, her sezon tab'ından bölümleri çek
-            if season_tabs:
-                for idx, season_tab in enumerate(season_tabs):
-                    # Sezon numarasını belirle
-                    current_season_no = idx + 1
-                    
-                    # Menüden sezon numarasını almaya çalış
-                    if idx < len(season_menu):
-                        menu_href = season_menu[idx].attrs.get("href", "")
-                        match = sel.regex_first(r"sezon-(\d+)", menu_href)
-                        if match:
-                            current_season_no = int(match)
-                    
-                    # Bu sezon tab'ından bölüm linklerini çek
-                    ep_links = sel.select("a[href*='bolum']", season_tab)
-                    
-                    seen_urls = set()
-                    for ep_link in ep_links:
-                        href = ep_link.attrs.get("href")
-                        if not href or href in seen_urls:
-                            continue
-                        seen_urls.add(href)
-                        
-                        # Bölüm numarasını URL'den çıkar
-                        ep_no = 0
-                        match_ep = sel.regex_first(r"bolum-(\d+)", href)
-                        if match_ep:
-                            ep_no = int(match_ep)
-                        
-                        # Bölüm başlığını çıkar (önce title attribute, sonra text)
-                        name = ep_link.attrs.get("title", "")
-                        if not name:
-                            name = sel.select_text("div.content div.header", ep_link)
-                            if not name:
-                                name = ep_link.text(strip=True)
-                        
-                        if href and ep_no > 0:
-                            episodes.append(Episode(
-                                season  = current_season_no,
-                                episode = ep_no,
-                                title   = name.strip() if name else f"{ep_no}. Bölüm",
-                                url     = self.fix_url(href)
-                            ))
+        for tab in sel.select("div.ui.tab"):
+            for link in sel.select("a[href*='bolum']", tab):
+                href = link.attrs.get("href")
+                if href:
+                    s, e = sel.extract_season_episode(href)
+                    name = sel.select_text("div.content div.header", link) or link.text(strip=True)
+                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
         
         if episodes:
-            return SeriesInfo(
-                title    = title,
-                url      = url,
-                poster   = self.fix_url(poster) if poster else None,
-                description = description,
-                rating   = rating,
-                tags     = tags,
-                actors   = actors,
-                year     = year,
-                episodes = episodes
-            )
-        else:
-            return MovieInfo(
-                title       = title,
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                description = description,
-                rating      = rating,
-                tags        = tags,
-                actors      = actors,
-                year        = year
-            )
+            return SeriesInfo(**common_info, episodes=episodes)
+
+        return MovieInfo(**common_info)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)

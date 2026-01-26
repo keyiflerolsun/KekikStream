@@ -87,107 +87,37 @@ class FullHDFilm(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
-        title = secici.select_text("h1") or ""
+        title       = self.clean_title(secici.select_text("h1"))
+        poster      = secici.select_poster("div.poster img")
+        description = secici.select_text("div.film") or secici.select_attr("meta[property='og:description']", "content")
+        year        = secici.extract_year("div.yayin-tarihi.info") or secici.regex_first(r"\((\d{4})\)")
+        tags        = secici.select_texts("div.tur.info a")
+        rating      = secici.regex_first(r"IMDb\s*([\d\.]+)", secici.select_text("div.imdb"))
+        actors      = secici.select_direct_text("div.oyuncular")
 
-        poster = secici.select_attr("div.poster img", "src") or ""
-        poster = self.fix_url(poster)
-        
-        actors = []
-        actors_text = secici.select_text("div.oyuncular.info")
-        if actors_text:
-            actors_text = actors_text.replace("Oyuncular:", "").strip()
-            actors = [a.strip() for a in actors_text.split(",")]
-
-        # Year: önce div.yayin-tarihi.info dene
-        year = secici.extract_year("div.yayin-tarihi.info")
-
-        # Fallback: h1'in parent'ından (2019) formatında ara
-        if not year:
-            # Parent'ın tüm text içeriğinden yıl çıkar
-            title_text = secici.select_text("h1")
-            if title_text:
-                # h1 parent'ındaki (2019) gibi text'i bul
-                year = secici.regex_first(r"\((\d{4})\)")
-
-        tags = secici.select_all_text("div.tur.info a")
-
-        # Rating: regex
-        rating_text = secici.select_text("div.imdb") or ""
-        rating = HTMLHelper(rating_text).regex_first(r"IMDb\s*([\d\.]+)")
-        
-        # Description: önce div.film dene, yoksa og:description meta tag'ını kullan
-        description = secici.select_text("div.film")
-        
-        # Fallback: og:description meta tag'ı
-        if not description:
-            og_desc = secici.select_attr("meta[property='og:description']", "content")
-            if og_desc:
-                description = og_desc
-
-        # Kotlin referansı: URL'de -dizi kontrolü veya tags içinde "dizi" kontrolü
+        # Kotlin referansı: URL'de -dizi veya tags içinde dizi kontrolü
         is_series = "-dizi" in url.lower() or any("dizi" in tag.lower() for tag in tags)
 
         if is_series:
             episodes = []
-            part_elements = secici.select("li.psec")
-            
-            # pdata değerlerini çıkar
-            pdata_matches = HTMLHelper(html_text).regex_all(r"pdata\['([^']+)'\]\s*=\s*'([^']+)'")
-            
-            for idx, el in enumerate(part_elements):
-                part_id = el.attrs.get("id")
-                part_name = secici.select_text("a", el)
-
-                if not part_name:
-                    continue
+            for idx, el in enumerate(secici.select("li.psec")):
+                part_id   = el.attrs.get("id")
+                part_name = secici.select_text("a", el) or ""
+                if not part_name or "fragman" in part_name.lower(): continue
                 
-                # Fragman'ları atla
-                if "fragman" in part_name.lower() or (part_id and "fragman" in part_id.lower()):
-                    continue
-                
-                # Sezon ve bölüm numarası çıkar
-                sz_val = HTMLHelper(part_id.lower() if part_id else "").regex_first(r'(\d+)\s*sezon')
-                ep_val = HTMLHelper(part_name).regex_first(r'^(\d+)\.')
-
-                sz_num = int(sz_val) if sz_val and sz_val.isdigit() else 1
-                ep_num = int(ep_val) if ep_val and ep_val.isdigit() else idx + 1
-                
-                # pdata'dan video URL'si çık (varsa)
-                video_url = url  # Varsayılan olarak ana URL kullan
-                if idx < len(pdata_matches):
-                    video_url = pdata_matches[idx][1] if pdata_matches[idx][1] else url
-                
-                episodes.append(Episode(
-                    season  = sz_num,
-                    episode = ep_num,
-                    title   = f"{sz_num}. Sezon {ep_num}. Bölüm",
-                    url     = url  # Bölüm URL'leri load_links'te işlenecek
-                ))
+                s, e = secici.extract_season_episode(f"{part_id} {part_name}")
+                episodes.append(Episode(season=s or 1, episode=e or (idx+1), title=f"{s or 1}. Sezon {e or idx+1}. Bölüm", url=url))
 
             return SeriesInfo(
-                url         = url,
-                poster      = poster,
-                title       = self.clean_title(title) if title else "",
-                description = description,
-                tags        = tags,
-                year        = year,
-                actors      = actors,
-                rating      = rating,
-                episodes    = episodes
+                url=url, poster=self.fix_url(poster) if poster else None, title=title or "", description=description,
+                tags=tags, year=str(year) if year else None, actors=actors, rating=rating, episodes=episodes
             )
-        else:
-            return MovieInfo(
-                url         = url,
-                poster      = poster,
-                title       = self.clean_title(title) if title else "",
-                description = description,
-                tags        = tags,
-                year        = year,
-                actors      = actors,
-                rating      = rating,
-            )
+
+        return MovieInfo(
+            url=url, poster=self.fix_url(poster) if poster else None, title=title or "", description=description,
+            tags=tags, year=str(year) if year else None, actors=actors, rating=rating
+        )
 
     def _get_iframe(self, source_code: str) -> str:
         """Base64 kodlu iframe'i çözümle"""

@@ -70,45 +70,25 @@ class FilmEkseni(PluginBase):
         istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
 
-        raw_title = helper.select_text("div.page-title h1")
-        title = raw_title.replace(" izle", "").strip() if raw_title else "Bilinmiyor"
-        
-        poster = helper.select_attr("picture.poster-auto > source:nth-child(2)", "data-srcset")
-        description = helper.select_text("article.text-white")
-        year = helper.select_text("strong a")
-        
-        tags_raw = helper.select_all_text("div.pb-2")
-        tags = []
-        for tag_str in tags_raw:
-            if tag_str.startswith("Tür:"):
-                tags.extend([t.strip() for t in tag_str.replace("Tür:", "").split(",")])
+        title       = self.clean_title(helper.select_text("div.page-title h1"))
+        poster      = helper.select_poster("picture.poster-auto img")
+        description = helper.select_direct_text("article.text-white p")
+        year        = helper.extract_year("div.page-title", "strong a")
+        tags        = helper.select_texts("div.pb-2 a[href*='/tur/']")
+        rating      = helper.select_text("div.rate")
+        duration    = helper.regex_first(r"(\d+)", helper.select_text("div.d-flex.flex-column.text-nowrap"))
+        actors      = helper.select_texts("div.card-body.p-0.pt-2 .story-item .story-item-title")
 
-        rating = helper.select_text("div.rate")
-        
-        duration = None
-        duration_text = helper.select_text("div.d-flex.flex-column.text-nowrap")
-        if duration_text:
-            m = re.search(r"(\d+)", duration_text)
-            if m:
-                duration = int(m.group(1))
-
-        actors_raw = helper.select("div.card-body.p-0.pt-2 .story-item")
-        actors = []
-        for actor in actors_raw:
-            name = helper.select_text(".story-item-title", actor)
-            if name:
-                actors.append(name)
-        
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster),
-            title       = title,
+            poster      = self.fix_url(poster) if poster else None,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = year,
+            year        = str(year) if year else None,
             actors      = actors if actors else None,
-            duration    = duration
+            duration    = int(duration) if duration else None
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

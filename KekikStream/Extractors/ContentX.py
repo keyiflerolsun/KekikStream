@@ -19,81 +19,36 @@ class ContentX(ExtractorBase):
     def can_handle_url(self, url: str) -> bool:
         return any(domain in url for domain in self.supported_domains)
 
-    async def extract(self, url, referer=None) -> list[ExtractResult]:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> list[ExtractResult] | ExtractResult:
+        ref = referer or self.get_base_url(url)
+        self.httpx.headers.update({"Referer": ref})
 
-        # Dinamik base URL kullan
-        base_url = self.get_base_url(url)
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
-        i_source = istek.text
-
-        i_extract_value = HTMLHelper(i_source).regex_first(r"window\.openPlayer\('([^']+)'")
-        if not i_extract_value:
-            raise ValueError("i_extract is null")
+        v_id = sel.regex_first(r"window\.openPlayer\('([^']+)'")
+        if not v_id:
+            raise ValueError(f"ContentX: ID bulunamadı. {url}")
 
         subtitles = []
-        sub_urls  = set()
-        for sub_url, sub_lang in HTMLHelper(i_source).regex_all(r'"file":"([^\"]+)","label":"([^\"]+)"'):
+        for s_url, s_lang in sel.regex_all(r'"file":"([^\"]+)","label":"([^\"]+)"'):
+            decoded_lang = s_lang.encode().decode('unicode_escape')
+            subtitles.append(Subtitle(name=decoded_lang, url=self.fix_url(s_url.replace("\\", ""))))
 
-            if sub_url in sub_urls:
-                continue
+        results = []
+        # Base m3u8
+        vid_resp = await self.httpx.get(f"{self.get_base_url(url)}/source2.php?v={v_id}", headers={"Referer": url})
+        if m3u8_link := HTMLHelper(vid_resp.text).regex_first(r'file":"([^\"]+)"'):
+            m3u8_link = m3u8_link.replace("\\", "").replace("/m.php", "/master.m3u8")
+            results.append(ExtractResult(name=self.name, url=m3u8_link, referer=url, subtitles=subtitles))
 
-            sub_urls.add(sub_url)
-            subtitles.append(
-                Subtitle(
-                    name = sub_lang.replace("\\u0131", "ı")
-                                 .replace("\\u0130", "İ")
-                                 .replace("\\u00fc", "ü")
-                                 .replace("\\u00e7", "ç")
-                                 .replace("\\u011f", "ğ")
-                                 .replace("\\u015f", "ş")
-                                 .replace("\\u011e", "Ğ")
-                                 .replace("\\u015e", "Ş"),
-                    url  = self.fix_url(sub_url.replace("\\/", "/").replace("\\", ""))
-                )
-            )
+        # Dublaj Kontrolü
+        if dub_id := sel.regex_first(r'["\']([^"\']+)["\'],["\']Türkçe["\']'):
+            dub_resp = await self.httpx.get(f"{self.get_base_url(url)}/source2.php?v={dub_id}", headers={"Referer": url})
+            if dub_link := HTMLHelper(dub_resp.text).regex_first(r'file":"([^\"]+)"'):
+                results.append(ExtractResult(name=f"{self.name} Türkçe Dublaj", url=dub_link.replace("\\", ""), referer=url))
 
-        # base_url kullan (contentx.me yerine)
-        vid_source_request = await self.httpx.get(f"{base_url}/source2.php?v={i_extract_value}", headers={"Referer": referer or base_url})
-        vid_source_request.raise_for_status()
-
-        vid_source  = vid_source_request.text
-        m3u_link = HTMLHelper(vid_source).regex_first(r'file":"([^\"]+)"')
-        if not m3u_link:
-            raise ValueError("vidExtract is null")
-
-        m3u_link = m3u_link.replace("\\", "").replace("/m.php", "/master.m3u8")
-        results  = [
-            ExtractResult(
-                name      = self.name,
-                url       = m3u_link,
-                referer   = url,
-                subtitles = subtitles
-            )
-        ]
-
-        dublaj_value = HTMLHelper(i_source).regex_first(r'["\']([^"\']+)["\'],["\']Türkçe["\']')
-        if dublaj_value:
-            try:
-                dublaj_source_request = await self.httpx.get(f"{base_url}/source2.php?v={dublaj_value}", headers={"Referer": referer or base_url})
-                dublaj_source_request.raise_for_status()
-
-                dublaj_source  = dublaj_source_request.text
-                dublaj_link = HTMLHelper(dublaj_source).regex_first(r'file":"([^\"]+)"')
-                if dublaj_link:
-                    dublaj_link = dublaj_link.replace("\\", "")
-                    results.append(
-                        ExtractResult(
-                            name      = f"{self.name} Türkçe Dublaj",
-                            url       = dublaj_link,
-                            referer   = url,
-                            subtitles = []
-                        )
-                    )
-            except Exception:
-                pass
+        if not results:
+            raise ValueError(f"ContentX: Video linki bulunamadı. {url}")
 
         return results[0] if len(results) == 1 else results

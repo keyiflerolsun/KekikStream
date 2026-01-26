@@ -95,38 +95,24 @@ class FilmBip(PluginBase):
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
-        title = secici.select_text("div.page-title h1") or ""
-
-        poster = secici.select_attr("meta[property='og:image']", "content")
-
-        trailer = secici.select_attr("div.series-profile-trailer", "data-yt")
-
+        title       = self.clean_title(secici.select_direct_text("div.page-title h1"))
+        poster      = secici.select_poster("div.series-profile-image a img")
         description = secici.select_text("div.series-profile-infos-in.article p") or secici.select_text("div.series-profile-summary p")
-        
-        tags = secici.select_all_text("div.series-profile-type.tv-show-profile-type a")
-
-        # XPath yerine regex kullanarak yıl, süre vs. çıkarma
-        year = secici.regex_first(r"(?is)Yap\u0131m y\u0131l\u0131.*?<p[^>]*>(.*?)<\/p>")
-        if not year:
-            # Fallback: Başlığın sonundaki parantezli yılı yakala
-            year = secici.regex_first(r"\((\d{4})\)", title)
-
-        duration_raw = secici.regex_first(r"(?is)S\u00fcre.*?<p[^>]*>(.*?)<\/p>")
-        duration = secici.regex_first(r"(\d+)", duration_raw) if duration_raw else None
-
-        rating = secici.regex_first(r"(?is)IMDB Puan\u0131.*?<span[^>]*>(.*?)<\/span>")
-
-        actors = [img.attrs.get("alt") for img in secici.select("div.series-profile-cast ul li a img") if img.attrs.get("alt")]
+        tags        = secici.select_texts("div.series-profile-type.tv-show-profile-type a")
+        year        = secici.extract_year("div.series-profile-infos-in") or secici.regex_first(r"\((\d{4})\)", title)
+        duration    = secici.regex_first(r"(\d+)", secici.meta_value("Süre", container_selector="div.series-profile-infos"))
+        rating      = secici.meta_value("IMDB Puanı", container_selector="div.series-profile-infos")
+        rating      = rating.split("(")[0] if rating else None
+        actors      = secici.select_attrs("div.series-profile-cast ul li a img", "alt")
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = HTMLHelper(title).regex_replace(r"\(\d{4}\)", "").strip() if title else "",
+            title       = title or "",
             description = description,
             tags        = tags,
-            year        = year,
+            year        = str(year) if year else None,
             rating      = rating,
             duration    = int(duration) if duration else None,
             actors      = actors,

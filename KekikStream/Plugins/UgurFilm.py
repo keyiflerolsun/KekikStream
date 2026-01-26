@@ -68,25 +68,21 @@ class UgurFilm(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("div.bilgi h2") or ""
-        poster = secici.select_attr("div.resim img", "src") or ""
-        description = secici.select_text("div.slayt-aciklama") or ""
-
-        tags = secici.select_all_text("p.tur a[href*='/category/']")
-
-        year_val = secici.extract_year("a[href*='/yil/']")
-        year = str(year_val) if year_val else None
-
-        actors = secici.select_all_text("li.oyuncu-k span")
+        title       = secici.select_text("div.bilgi h2")
+        poster      = secici.select_poster("div.resim img")
+        description = secici.select_text("div.slayt-aciklama")
+        tags        = secici.select_texts("p.tur a[href*='/category/']")
+        year        = secici.extract_year("a[href*='/yil/']")
+        actors      = secici.select_texts("li.oyuncu-k span")
 
         return MovieInfo(
-            url         = self.fix_url(url),
+            url         = url,
             poster      = self.fix_url(poster) if poster else None,
-            title       = title,
+            title       = title or "Bilinmiyor",
             description = description,
             tags        = tags,
-            year        = year,
-            actors      = actors,
+            year        = str(year) if year else None,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

@@ -78,76 +78,37 @@ class HDFilmCehennemi(PluginBase):
         istek  = await self.httpx.get(url, headers = {"Referer": f"{self.main_url}/"})
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("h1.section-title") or ""
+        title       = self.clean_title(secici.select_text("h1.section-title"))
+        poster      = secici.select_poster("aside.post-info-poster img.lazyload")
+        description = secici.select_text("article.post-info-content > p")
+        tags        = secici.select_texts("div.post-info-genres a")
+        rating      = secici.select_text("div.post-info-imdb-rating span")
+        rating      = rating.split("(")[0] if rating else None
+        year        = secici.select_text("div.post-info-year-country a")
+        actors      = secici.select_texts("div.post-info-cast a > strong")
+        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.post-info-duration")) or 0)
 
-        poster = secici.select_attr("aside.post-info-poster img.lazyload", "data-src") or ""
-        poster = poster.strip()
+        # Dizi mi film mi kontrol et
+        ep_links = secici.select("div.seasons-tab-content a")
 
-        description = secici.select_text("article.post-info-content > p") or ""
-
-        tags = secici.select_all_text("div.post-info-genres a")
-
-        rating = secici.select_text("div.post-info-imdb-rating span") or ""
-
-        year = secici.select_text("div.post-info-year-country a") or ""
-
-        actors = secici.select_all_text("div.post-info-cast a > strong")
-
-        duration_str = secici.select_text("div.post-info-duration") or "0"
-        duration_str = duration_str.replace("dakika", "").strip()
-
-        try:
-            duration_val = HTMLHelper(duration_str).regex_first(r'\d+')
-            duration_minutes = int(duration_val) if duration_val else 0
-        except Exception:
-            duration_minutes = 0
-
-        # Dizi mi film mi kontrol et (Kotlin referansı: div.seasons kontrolü)
-        is_series = len(secici.select("div.seasons")) > 0
-
-        if is_series:
+        if ep_links:
             episodes = []
-            for ep in secici.select("div.seasons-tab-content a"):
-                ep_name = secici.select_text("h4", ep)
-                ep_href = ep.attrs.get("href")
-
-                if ep_name and ep_href:
-                    # Regex ile sezon ve bölüm numarası çıkar
-                    ep_val = HTMLHelper(ep_name).regex_first(r'(\d+)\.\s*Bölüm')
-                    sz_val = HTMLHelper(ep_name).regex_first(r'(\d+)\.\s*Sezon')
-                    ep_num = int(ep_val) if ep_val and ep_val.isdigit() else 1
-                    sz_num = int(sz_val) if sz_val and sz_val.isdigit() else 1
-                    
-                    episodes.append(Episode(
-                        season  = sz_num,
-                        episode = ep_num,
-                        title   = ep_name,
-                        url     = self.fix_url(ep_href)
-                    ))
+            for ep in ep_links:
+                name = secici.select_text("h4", ep)
+                href = ep.attrs.get("href")
+                if name and href:
+                    s, e = secici.extract_season_episode(name)
+                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                title       = self.clean_title(title),
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                actors      = actors,
-                episodes    = episodes
+                url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
+                description=description, tags=tags, rating=rating, year=year, actors=actors, episodes=episodes
             )
-        else:
-            return MovieInfo(
-                url         = url,
-                poster      = self.fix_url(poster) if poster else None,
-                title       = self.clean_title(title),
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                actors      = actors,
-                duration    = duration_minutes
-            )
+
+        return MovieInfo(
+            url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
+            description=description, tags=tags, rating=rating, year=year, actors=actors, duration=duration
+        )
 
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))

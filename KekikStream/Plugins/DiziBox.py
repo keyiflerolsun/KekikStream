@@ -93,44 +93,24 @@ class DiziBox(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title = secici.select_text("div.tv-overview h1 a")
-
-        poster = secici.select_attr("div.tv-overview figure img", "src")
-
+        title       = secici.select_text("div.tv-overview h1 a")
+        poster      = secici.select_poster("div.tv-overview figure img")
         description = secici.select_text("div.tv-story p")
-
-        # year
-        year_text = secici.select_text("a[href*='/yil/']")
-        year = secici.regex_first(r"(\d{4})", year_text)
-
-        tags = secici.select_all_text("a[href*='/tur/']")
-
-        # rating
-        rating_text = secici.select_text("span.label-imdb b")
-        rating = secici.regex_first(r"[\d.,]+", rating_text)
-
-        actors = secici.select_all_text("a[href*='/oyuncu/']")
+        year        = secici.extract_year("a[href*='/yil/']")
+        tags        = secici.select_texts("a[href*='/tur/']")
+        rating      = secici.regex_first(r"[\d.,]+", secici.select_text("span.label-imdb b"))
+        actors      = secici.select_texts("a[href*='/oyuncu/']")
 
         episodes = []
-        for sezon_link in secici.select_all_attr("div#seasons-list a", "href"):
-            sezon_url    = self.fix_url(sezon_link)
-            sezon_istek  = await self.httpx.get(sezon_url)
-            sezon_secici = HTMLHelper(sezon_istek.text)
-
-            for bolum in sezon_secici.select("article.grid-box"):
-                ep_title = sezon_secici.select_text("div.post-title a", bolum)
-                ep_href  = sezon_secici.select_attr("div.post-title a", "href", bolum)
-
-                ep_season  = sezon_secici.regex_first(r"(\d+)\. ?Sezon", ep_title)
-                ep_episode = sezon_secici.regex_first(r"(\d+)\. ?Bölüm", ep_title)
-
-                if ep_title and ep_href:
-                    episodes.append(Episode(
-                        season  = ep_season,
-                        episode = ep_episode,
-                        title   = ep_title,
-                        url     = self.fix_url(ep_href),
-                    ))
+        for link in secici.select_attrs("div#seasons-list a", "href"):
+            r = await self.httpx.get(self.fix_url(link))
+            s_secici = HTMLHelper(r.text)
+            for bolum in s_secici.select("article.grid-box"):
+                name = s_secici.select_text("div.post-title a", bolum)
+                href = s_secici.select_attr("div.post-title a", "href", bolum)
+                if name and href:
+                    s, e = s_secici.extract_season_episode(name)
+                    episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
 
         return SeriesInfo(
             url         = url,
@@ -139,7 +119,7 @@ class DiziBox(PluginBase):
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = year,
+            year        = str(year) if year else None,
             episodes    = episodes,
             actors      = actors,
         )

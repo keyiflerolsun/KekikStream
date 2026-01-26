@@ -6,19 +6,12 @@ class TurboImgz(ExtractorBase):
     name     = "TurboImgz"
     main_url = "https://turbo.imgz.me"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        v_url = HTMLHelper(resp.text).regex_first(r'file: "(.*)",')
+        if not v_url:
+            raise ValueError(f"TurboImgz: Video bulunamadı. {url}")
 
-        if video := HTMLHelper(istek.text).regex_first(r'file: "(.*)",'):
-            return ExtractResult(
-                name      = self.name,
-                url       = video,
-                referer   = referer or self.main_url,
-                subtitles = []
-            )
-        else:
-            raise ValueError("File not found in response.")
+        return ExtractResult(name=self.name, url=v_url, referer=referer or self.main_url)

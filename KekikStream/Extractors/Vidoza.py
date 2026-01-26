@@ -6,20 +6,13 @@ class Vidoza(ExtractorBase):
     name     = "Vidoza"
     main_url = "https://vidoza.net"
 
-    async def extract(self, url: str, referer: str = None) -> ExtractResult | None:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
 
-        istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        resp = await self.httpx.get(url)
+        v_url = HTMLHelper(resp.text).select_attr("source", "src")
         
-        video_url = helper.select_attr("source", "src")
-        
-        if video_url:
-            return ExtractResult(
-                name    = self.name,
-                url     = video_url,
-                referer = url
-            )
-            
-        return None
+        if not v_url:
+            raise ValueError(f"Vidoza: Video bulunamadı. {url}")
+
+        return ExtractResult(name=self.name, url=v_url, referer=url)

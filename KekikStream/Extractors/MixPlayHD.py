@@ -8,34 +8,21 @@ class MixPlayHD(ExtractorBase):
     name     = "MixPlayHD"
     main_url = "https://mixplayhd.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or self.main_url})
 
-        istek = await self.httpx.get(url)
-        istek.raise_for_status()
+        resp = await self.httpx.get(url)
+        match = HTMLHelper(resp.text).regex_first(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);", group=None)
+        if not match:
+            raise ValueError(f"MixPlayHD: bePlayer bulunamadı. {url}")
 
-        hp = HTMLHelper(istek.text)
-        be_player_matches = hp.regex_all(r"bePlayer\('([^']+)',\s*'(\{[^\}]+\})'\);")
-        if not be_player_matches:
-            raise ValueError("bePlayer not found in the response.")
-
-        be_player_pass, be_player_data = be_player_matches[0]
-
+        pass_val, data_val = match
         try:
-            decrypted_data = AESManager.decrypt(be_player_data, be_player_pass).replace("\\", "")
-            decrypted_json = json.loads(decrypted_data)
-        except Exception as hata:
-            raise RuntimeError(f"Decryption failed: {hata}") from hata
+            data = json.loads(AESManager.decrypt(data_val, pass_val))
+            v_url = HTMLHelper(data.get("schedule", {}).get("client", "")).regex_first(r'"video_location":"([^"]+)"')
+            if v_url:
+                return ExtractResult(name=self.name, url=v_url, referer=self.main_url)
+        except Exception as e:
+            raise ValueError(f"MixPlayHD: Decryption failed. {e}")
 
-        client_str = decrypted_json.get("schedule", {}).get("client", "")
-        video_url = HTMLHelper(client_str).regex_first(r'"video_location":"([^"]+)"')
-        if video_url:
-            return ExtractResult(
-                name      = self.name,
-                url       = video_url,
-                referer   = self.main_url,
-                subtitles = []
-            )
-        else:
-            raise ValueError("M3U8 video URL not found in the decrypted data.")
+        raise ValueError(f"MixPlayHD: Video URL bulunamadı. {url}")

@@ -65,94 +65,56 @@ class RecTV(PluginBase):
                 for veri in tum_veri
         ]
 
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         veri = loads(url)
 
-        match veri.get("type"):
-            case "serie":
-                dizi_istek = await self.httpx.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
-                dizi_veri  = dizi_istek.json()
+        # Süreyi dakikaya çevir (Örn: "1h 59min")
+        duration_raw = veri.get("duration")
+        duration = None
+        if duration_raw:
+            try:
+                h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
+                m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
+                duration = h * 60 + m
+            except: pass
 
-                episodes = []
-                for season in dizi_veri:
-                    season_title = season.get("title", "").strip()
-                    for episode in season.get("episodes"):
-                        ep_label = episode.get("title", "").strip()
-                        for source in episode.get("sources"):
-                            # Bölüm için gerekli bilgileri JSON olarak sakla
-                            ep_data = {
-                                "url"        : self.fix_url(source.get("url")),
-                                "title"      : f"{veri.get('title')} | {season_title} {ep_label} - {source.get('title')}",
-                                "is_episode" : True
-                            }
+        common_info = {
+            "url"         : url,
+            "poster"      : self.fix_url(veri.get("image")),
+            "title"       : veri.get("title"),
+            "description" : veri.get("description"),
+            "tags"        : [genre.get("title") for genre in veri.get("genres")] if veri.get("genres") else [],
+            "rating"      : str(veri.get("imdb") or veri.get("rating") or ""),
+            "year"        : str(veri.get("year") or ""),
+            "duration"    : duration
+        }
 
-                            # Extract season/episode numbers using helper
-                            s1, _ = HTMLHelper.extract_season_episode(season_title or "")
-                            _, e2 = HTMLHelper.extract_season_episode(ep_label or "")
+        if veri.get("type") == "serie":
+            dizi_istek = await self.httpx.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
+            dizi_veri  = dizi_istek.json()
 
-                            tag = ""
-                            clean_season = season_title
-                            if "dublaj" in season_title.lower():
-                                tag = " (Dublaj)"
-                                clean_season = re.sub(r"\s*dublaj\s*", "", season_title, flags=re.I).strip()
-                            elif any(x in season_title.lower() for x in ["altyazı", "altyazi"]):
-                                tag = " (Altyazı)"
-                                clean_season = re.sub(r"\s*altyaz[ıi]\s*", "", season_title, flags=re.I).strip()
+            episodes = []
+            for season in dizi_veri:
+                s_title = season.get("title", "").strip()
+                s, _    = HTMLHelper.extract_season_episode(s_title)
+                for ep in season.get("episodes"):
+                    e_title = ep.get("title", "").strip()
+                    _, e    = HTMLHelper.extract_season_episode(e_title)
+                    for source in ep.get("sources"):
+                        tag = ""
+                        clean_s = s_title
+                        if "dublaj" in s_title.lower():
+                            tag = " (Dublaj)"; clean_s = re.sub(r"\s*dublaj\s*", "", s_title, flags=re.I).strip()
+                        elif "altyaz" in s_title.lower():
+                            tag = " (Altyazı)"; clean_s = re.sub(r"\s*altyaz[ıi]\s*", "", s_title, flags=re.I).strip()
 
-                            ep_model = Episode(
-                                season  = s1 or 1,
-                                episode = e2 or 1,
-                                title   = f"{clean_season} {ep_label}{tag} - {source.get('title')}",
-                                url     = dumps(ep_data),
-                            )
+                        ep_data = {"url": self.fix_url(source.get("url")), "title": f"{veri.get('title')} | {s_title} {e_title} - {source.get('title')}", "is_episode": True}
+                        episodes.append(Episode(season=s or 1, episode=e or 1, title=f"{clean_s} {e_title}{tag} - {source.get('title')}", url=dumps(ep_data)))
 
-                            episodes.append(ep_model)
-
-                # Süreyi dakikaya çevir (Örn: "1h 59min")
-                duration_raw = veri.get("duration")
-                duration = None
-                if duration_raw:
-                    try:
-                        h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
-                        m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
-                        duration = h * 60 + m
-                    except: pass
-
-                return SeriesInfo(
-                    url         = url,
-                    poster      = self.fix_url(veri.get("image")),
-                    title       = veri.get("title"),
-                    description = veri.get("description"),
-                    tags        = [genre.get("title") for genre in veri.get("genres")] if veri.get("genres") else [],
-                    rating      = str(veri.get("imdb") or veri.get("rating") or ""),
-                    year        = str(veri.get("year") or ""),
-                    actors      = [],
-                    duration    = duration,
-                    episodes    = episodes
-                )
-            case _:
-                # Süreyi dakikaya çevir
-                duration_raw = veri.get("duration")
-                duration = None
-                if duration_raw:
-                    try:
-                        h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
-                        m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
-                        duration = h * 60 + m
-                    except: pass
-
-                return MovieInfo(
-                    url         = url,
-                    poster      = self.fix_url(veri.get("image")),
-                    title       = veri.get("title"),
-                    description = veri.get("description"),
-                    tags        = [genre.get("title") for genre in veri.get("genres")] if veri.get("genres") else [],
-                    rating      = str(veri.get("imdb") or veri.get("rating") or ""),
-                    year        = str(veri.get("year") or ""),
-                    actors      = [],
-                    duration    = duration
-                )
+            return SeriesInfo(**common_info, episodes=episodes, actors=[])
+        
+        return MovieInfo(**common_info, actors=[])
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         try:

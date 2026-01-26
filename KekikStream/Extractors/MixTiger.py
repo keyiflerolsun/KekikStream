@@ -6,52 +6,29 @@ class MixTiger(ExtractorBase):
     name     = "MixTiger"
     main_url = "https://www.mixtiger.com"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        ext_ref  = referer or ""
-        post_url = f"{url}?do=getVideo"
-        vid_id   = url.split("video/")[-1] if "video/" in url else ""
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        ref = referer or self.main_url
+        v_id = url.split("video/")[-1] if "video/" in url else ""
 
-        response = await self.httpx.post(
-            url     = post_url,
-            data    = {"hash": vid_id, "r": ext_ref, "s": ""},
+        resp = await self.httpx.post(
+            f"{url}?do=getVideo",
+            data    = {"hash": v_id, "r": ref, "s": ""},
             headers = {
-                "Referer"          : ext_ref,
-                "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
-                "X-Requested-With" : "XMLHttpRequest"
+                "Referer": ref,
+                "X-Requested-With": "XMLHttpRequest"
             }
         )
-        response.raise_for_status()
+        data = resp.json()
 
-        video_data = response.json()
+        m3u8_url = data.get("videoSrc")
+        if not m3u8_url and data.get("videoSources"):
+            m3u8_url = data["videoSources"][-1].get("file")
 
-        # videoSrc varsa doğrudan kullan
-        if video_data.get("videoSrc"):
-            m3u_link = video_data["videoSrc"]
-        # videoSources listesi varsa son elemanı al
-        elif video_data.get("videoSources"):
-            sources  = video_data["videoSources"]
-            m3u_link = sources[-1].get("file") if sources else None
-        else:
-            m3u_link = None
-
-        if not m3u_link:
-            raise ValueError("Video URL not found in response")
-
-        # Recursive extraction check - başka extractor kullanılabilir mi?
-        try:
-            from KekikStream.Core.Extractor.ExtractorManager import ExtractorManager
-            manager = ExtractorManager()
-            if nested_extractor := manager.find_extractor(m3u_link):
-                # Nested extractor ile çıkar
-                return await nested_extractor.extract(m3u_link, referer=ext_ref)
-        except Exception:
-            # Recursive extraction başarısız olursa standart sonucu döndür
-            pass
+        if not m3u8_url:
+            raise ValueError(f"MixTiger: Video linki bulunamadı. {url}")
 
         return ExtractResult(
-            name      = self.name,
-            url       = m3u_link,
-            referer   = None if "disk.yandex" in m3u_link else ext_ref,
-            subtitles = []
+            name    = self.name,
+            url     = m3u8_url,
+            referer = None if "disk.yandex" in m3u8_url else ref
         )
-

@@ -76,86 +76,54 @@ class Watch32(PluginBase):
         istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
         
-        content_id = helper.select_attr("div.detail_page-watch", "data-id")
-        details    = helper.select_first("div.detail_page-infor")
-        name       = helper.select_text("h2.heading-name > a", details)
-        
-        poster      = helper.select_attr("div.film-poster > img", "src", details)
+        content_id  = helper.select_attr("div.detail_page-watch", "data-id")
+        details     = helper.select_first("div.detail_page-infor")
+        name        = helper.select_text("h2.heading-name > a", details)
+        poster      = helper.select_poster("div.film-poster > img", details)
         description = helper.select_text("div.description", details)
-        
-        # Release year extraction
-        year_text = helper.regex_first(r"Released:\s*(\d{4})")
-        if not year_text:
-             # Fallback for series
-             year_text = helper.regex_first(r"Released:.+?(\d{4})")
-        
-        # Tags/Genres
-        tags = helper.select_all_text("div.row-line:has(> span.type > strong:contains(Genre)) a")
-        
-        # Rating
-        rating = helper.select_text("button.btn-imdb")
-        if rating:
-            rating = rating.replace("N/A", "").split(":")[-1].strip()
+        year        = str(helper.extract_year())
+        tags        = helper.meta_list("Genre", container_selector="div.row-line")
+        rating      = helper.select_text("button.btn-imdb").replace("N/A", "").split(":")[-1].strip() if helper.select_text("button.btn-imdb") else None
+        actors      = helper.meta_list("Casts", container_selector="div.row-line")
 
-        # Actors
-        actors = helper.select_all_text("div.row-line:has(> span.type > strong:contains(Casts)) a")
+        common_info = {
+            "url"         : url,
+            "poster"      : self.fix_url(poster),
+            "title"       : name or "Bilinmiyor",
+            "description" : description,
+            "tags"        : tags,
+            "rating"      : rating,
+            "year"        : year,
+            "actors"      : actors
+        }
 
         if "movie" in url:
-            return MovieInfo(
-                url         = url,
-                poster      = self.fix_url(poster),
-                title       = name,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year_text,
-                actors      = actors
-            )
-        else:
-            episodes = []
-            seasons_resp = await self.httpx.get(f"{self.main_url}/ajax/season/list/{content_id}")
-            sh = HTMLHelper(seasons_resp.text)
-            seasons = sh.select("a.dropdown-item") # Relaxed selector from a.ss-item
+            return MovieInfo(**common_info)
+        
+        episodes = []
+        seasons_resp = await self.httpx.get(f"{self.main_url}/ajax/season/list/{content_id}")
+        sh = HTMLHelper(seasons_resp.text)
+        
+        for season in sh.select("a.dropdown-item"):
+            season_id = season.attrs.get("data-id")
+            s_val, _  = sh.extract_season_episode(season.text())
             
-            for season in seasons:
-                season_id = season.attrs.get("data-id")
-                season_num_text = season.text().replace("Season ", "").replace("Series", "").strip()
-                season_num = int(season_num_text) if season_num_text.isdigit() else 1
-                
-                episodes_resp = await self.httpx.get(f"{self.main_url}/ajax/season/episodes/{season_id}")
-                eh = HTMLHelper(episodes_resp.text)
-                eps = eh.select("a.eps-item")
-                
-                for ep in eps:
-                    ep_id = ep.attrs.get("data-id")
-                    ep_title_raw = ep.attrs.get("title", "")
-                    # Eps 1: Name
-                    m = re.search(r"Eps (\d+): (.+)", ep_title_raw)
-                    if m:
-                        ep_num  = int(m.group(1))
-                        ep_name = m.group(2)
-                    else:
-                        ep_num  = 1
-                        ep_name = ep_title_raw
-                        
-                    episodes.append(Episode(
-                        season  = season_num,
-                        episode = ep_num,
-                        title   = ep_name,
-                        url     = f"servers/{ep_id}"
-                    ))
+            e_resp = await self.httpx.get(f"{self.main_url}/ajax/season/episodes/{season_id}")
+            eh     = HTMLHelper(e_resp.text)
             
-            return SeriesInfo(
-                url         = url,
-                poster      = self.fix_url(poster),
-                title       = name,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year_text,
-                actors      = actors,
-                episodes    = episodes
-            )
+            for ep in eh.select("a.eps-item"):
+                ep_id    = ep.attrs.get("data-id")
+                ep_title = ep.attrs.get("title", "")
+                _, e_val = eh.extract_season_episode(ep_title)
+                    
+                episodes.append(Episode(
+                    season  = s_val or 1,
+                    episode = e_val or 1,
+                    title   = ep_title,
+                    url     = f"servers/{ep_id}"
+                ))
+        
+        return SeriesInfo(**common_info, episodes=episodes)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # url in load_links might be the full page URL for movies or "servers/epId" for episodes

@@ -9,7 +9,7 @@ class VidMoly(ExtractorBase):
     main_url = "https://vidmoly.to"
 
     # Birden fazla domain destekle
-    supported_domains = ["vidmoly.to", "vidmoly.me", "vidmoly.net"]
+    supported_domains = ["vidmoly.to", "vidmoly.me", "vidmoly.net", "vidmoly.biz"]
 
     def can_handle_url(self, url: str) -> bool:
         return any(domain in url for domain in self.supported_domains)
@@ -18,112 +18,78 @@ class VidMoly(ExtractorBase):
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
-        self.httpx.headers.update({
-            "Sec-Fetch-Dest" : "iframe",
-        })
+        self.httpx.headers.update({"Sec-Fetch-Dest" : "iframe"})
 
-        if ".me" in url:
-            url = url.replace(".me", ".net")
-        if ".to" in url:
-            url = url.replace(".to", ".net")
+        # Domain normalleştirme
+        url = url.replace(".me", ".net").replace(".to", ".net")
 
-        # VidMoly bazen redirect ediyor, takip et
-        response = await self.httpx.get(url, follow_redirects=True)
-        if "Select number" in response.text:
-            secici = HTMLHelper(response.text)
+        resp = await self.httpx.get(url, follow_redirects=True)
+        sel  = HTMLHelper(resp.text)
 
-            op_val        = secici.select_attr("input[name='op']", "value")
-            file_code_val = secici.select_attr("input[name='file_code']", "value")
-            answer_val    = secici.select_text("div.vhint b")
-            ts_val        = secici.select_attr("input[name='ts']", "value")
-            nonce_val     = secici.select_attr("input[name='nonce']", "value")
-            ctok_val      = secici.select_attr("input[name='ctok']", "value")
+        # "Select number" kontrolü (Bot koruması)
+        if "Select number" in resp.text:
+            op_val        = sel.select_attr("input[name='op']", "value")
+            file_code_val = sel.select_attr("input[name='file_code']", "value")
+            answer_val    = sel.select_text("div.vhint b")
+            ts_val        = sel.select_attr("input[name='ts']", "value")
+            nonce_val     = sel.select_attr("input[name='nonce']", "value")
+            ctok_val      = sel.select_attr("input[name='ctok']", "value")
 
-            response = await self.httpx.post(
-                url  = url,
-                data = {
-                    "op"        : op_val,
-                    "file_code" : file_code_val,
-                    "answer"    : answer_val,
-                    "ts"        : ts_val,
-                    "nonce"     : nonce_val,
-                    "ctok"      : ctok_val
-                },
-                follow_redirects=True
-            )
-
+            resp = await self.httpx.post(url, data={
+                "op"        : op_val,
+                "file_code" : file_code_val,
+                "answer"    : answer_val,
+                "ts"        : ts_val,
+                "nonce"     : nonce_val,
+                "ctok"      : ctok_val
+            }, follow_redirects=True)
+            sel = HTMLHelper(resp.text)
 
         # Altyazı kaynaklarını ayrıştır
         subtitles = []
-        resp_sec = HTMLHelper(response.text)
-        if subtitle_str := resp_sec.regex_first(r"tracks:\s*\[(.*?)\]", flags= re.DOTALL):
-            subtitle_data = self._add_marks(subtitle_str, "file")
-            subtitle_data = self._add_marks(subtitle_data, "label")
-            subtitle_data = self._add_marks(subtitle_data, "kind")
+        if sub_str := sel.regex_first(r"tracks:\s*\[(.*?)\]", flags=re.DOTALL):
+            sub_data = self._add_marks(sub_str, "file")
+            sub_data = self._add_marks(sub_data, "label")
+            sub_data = self._add_marks(sub_data, "kind")
 
             with contextlib.suppress(json.JSONDecodeError):
-                subtitle_sources = json.loads(f"[{subtitle_data}]")
+                sub_sources = json.loads(f"[{sub_data}]")
                 subtitles = [
-                    Subtitle(
-                        name = sub.get("label"),
-                        url  = self.fix_url(sub.get("file")),
-                    )
-                        for sub in subtitle_sources
-                            if sub.get("kind") == "captions"
+                    Subtitle(name=sub.get("label"), url=self.fix_url(sub.get("file")))
+                    for sub in sub_sources if sub.get("kind") == "captions"
                 ]
 
-        if "#EXTM3U" in response.text:
-            for line in response.text.splitlines():
-                line = line.strip().replace('"', '').replace("'", "")
-                if line.startswith("http"):
-                    return ExtractResult(
-                        name      = self.name,
-                        url       = line,
-                        referer   = self.main_url,
-                        subtitles = subtitles
-                    )
+        # Video URL Bulma
+        video_url = None
+        if "#EXTM3U" in resp.text:
+            for line in resp.text.splitlines():
+                if line.strip().startswith("http"):
+                    video_url = line.strip().replace('"', '').replace("'", "")
+                    break
 
-        if script_str := resp_sec.regex_first(r"sources:\s*\[(.*?)\],", flags= re.DOTALL):
-            script_content = script_str
-            # Video kaynaklarını ayrıştır
-            video_data = self._add_marks(script_content, "file")
-            try:
-                video_sources = json.loads(f"[{video_data}]")
-                # İlk video kaynağını al
-                for source in video_sources:
-                    if file_url := source.get("file"):
-                        return ExtractResult(
-                            name      = self.name,
-                            url       = file_url,
-                            referer   = self.main_url,
-                            subtitles = subtitles
-                        )
-            except json.JSONDecodeError:
-                pass
+        if not video_url:
+            if src_str := sel.regex_first(r"sources:\s*\[(.*?)\],", flags=re.DOTALL):
+                vid_data = self._add_marks(src_str, "file")
+                with contextlib.suppress(json.JSONDecodeError):
+                    vid_sources = json.loads(f"[{vid_data}]")
+                    for source in vid_sources:
+                        if source.get("file"):
+                            video_url = source.get("file")
+                            break
 
-        # Fallback: Doğrudan file regex ile ara (Kotlin mantığı)
-        # file:"..." veya file: "..."
-        if file_match := resp_sec.regex_first(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']'):
-            return ExtractResult(
-                name      = self.name,
-                url       = file_match,
-                referer   = self.main_url,
-                subtitles = subtitles
-            )
-            
-        # Fallback 2: Herhangi bir file (m3u8 olma şartı olmadan ama tercihen)
-        if file_match := resp_sec.regex_first(r'file\s*:\s*["\']([^"\']+)["\']'):
-            url_candidate = file_match
-            # Resim dosyalarını hariç tut
-            if not url_candidate.endswith(('.jpg', '.png', '.jpeg')):
-                return ExtractResult(
-                    name      = self.name,
-                    url       = url_candidate,
-                    referer   = self.main_url,
-                    subtitles = subtitles
-                )
+        if not video_url:
+            video_url = sel.regex_first(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']') or \
+                        sel.regex_first(r'file\s*:\s*["\']([^"\']+\.mp4[^"\']*)["\']')
 
-        raise ValueError("Video URL bulunamadı.")
+        if not video_url:
+            raise ValueError(f"VidMoly: Video URL bulunamadı. {url}")
+
+        return ExtractResult(
+            name      = self.name,
+            url       = video_url,
+            referer   = f"{self.get_base_url(url)}/",
+            subtitles = subtitles
+        )
 
     def _add_marks(self, text: str, field: str) -> str:
         """

@@ -2,44 +2,26 @@
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 from Kekik.Sifreleme import AESManager
-import re
-import json
+import contextlib
 
 class HotStream(ExtractorBase):
     name     = "HotStream"
     main_url = "https://hotstream.club"
 
-    async def extract(self, url: str, referer: str = None) -> ExtractResult | None:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        self.httpx.headers.update({"Referer": referer or url})
 
-        istek = await self.httpx.get(url)
-        html = istek.text
-        helper = HTMLHelper(html)
+        resp = await self.httpx.get(url)
+        sel  = HTMLHelper(resp.text)
 
-        m = re.search(r"bePlayer\('([^']+)',\s*'(\{[^']+\})'\)", html)
-        if not m:
-             # Try double quotes just in case
-             m = re.search(r'bePlayer\("([^"]+)",\s*"(\{[^"]+\})"\)', html)
-             
-        if m:
-            pass_val = m.group(1)
-            data_val = m.group(2)
-            
-            try:
+        m3u8_url = None
+        if match := sel.regex_first(r"bePlayer\('([^']+)',\s*'(\{[^']+\})'\)", group=None):
+            pass_val, data_val = match
+            with contextlib.suppress(Exception):
                 decrypted = AESManager.decrypt(data_val, pass_val)
-                if decrypted:
-                    decrypted = decrypted.replace("\\", "")
-                    # Search for video_location in decrypted string
-                    m_loc = re.search(r'"video_location":"([^"]+)"', decrypted)
-                    if m_loc:
-                        video_url = m_loc.group(1).replace(r"\/", "/")
-                        return ExtractResult(
-                            name    = self.name,
-                            url     = video_url,
-                            referer = url
-                        )
-            except Exception:
-                pass
+                m3u8_url  = HTMLHelper(decrypted).regex_first(r'"video_location":"([^"]+)"')
 
-        return None
+        if not m3u8_url:
+            raise ValueError(f"HotStream: Video linki bulunamadı. {url}")
+
+        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=url)

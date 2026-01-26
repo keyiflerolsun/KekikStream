@@ -1,4 +1,4 @@
-# ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 import json
@@ -7,47 +7,26 @@ class VideoSeyred(ExtractorBase):
     name     = "VideoSeyred"
     main_url = "https://videoseyred.in"
 
-    async def extract(self, url, referer=None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str = None) -> list[ExtractResult] | ExtractResult:
+        v_id = url.split("embed/")[1].split("?")[0]
+        if len(v_id) > 10:
+            resp = await self.httpx.get(url)
+            v_id = HTMLHelper(resp.text).regex_first(r"playlist\/(.*)\.json")
 
-        video_id  = url.split("embed/")[1].split("?")[0]
-        if len(video_id) > 10:
-            kontrol = await self.httpx.get(url)
-            kontrol.raise_for_status()
-
-            video_id = HTMLHelper(kontrol.text).regex_first(r"playlist\/(.*)\.json")
-
-        video_url = f"{self.main_url}/playlist/{video_id}.json"
-
-        response = await self.httpx.get(video_url)
-        response.raise_for_status()
-
-        try:
-            if response_list := json.loads(response.text):
-                response_data = response_list[0]
-            else:
-                raise ValueError("Empty response from VideoSeyred.")
-
-        except (json.JSONDecodeError, IndexError) as hata:
-            raise RuntimeError(f"Failed to parse response: {hata}") from hata
+        json_resp = await self.httpx.get(f"{self.main_url}/playlist/{v_id}.json")
+        data = json_resp.json()[0]
 
         subtitles = [
-            Subtitle(name=track["label"], url=self.fix_url(track["file"]))
-                for track in response_data.get("tracks", [])
-                    if track.get("kind") == "captions" and track.get("label")
+            Subtitle(name=t["label"], url=self.fix_url(t["file"]))
+            for t in data.get("tracks", []) if t.get("kind") == "captions"
         ]
 
-        if video_links := [
-            ExtractResult(
-                name      = self.name,
-                url       = self.fix_url(source["file"]),
-                referer   = self.main_url,
-                subtitles = subtitles,
-            )
-                for source in response_data.get("sources", [])
-        ]:
-            # En yüksek kaliteli videoyu döndür (varsayılan olarak ilk video)
-            return video_links[0] if len(video_links) == 1 else video_links
-        else:
-            raise ValueError("No video links found in the response.")
+        results = [
+            ExtractResult(name=self.name, url=self.fix_url(s["file"]), referer=self.main_url, subtitles=subtitles)
+            for s in data.get("sources", [])
+        ]
+
+        if not results:
+            raise ValueError(f"VideoSeyred: Video bulunamadı. {url}")
+
+        return results[0] if len(results) == 1 else results
