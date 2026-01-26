@@ -1,7 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from selectolax.parser import HTMLParser, Node
+from __future__ import annotations
+
 import re
+from selectolax.parser import HTMLParser, Node
 
 
 class HTMLHelper:
@@ -10,96 +12,192 @@ class HTMLHelper:
     """
 
     def __init__(self, html: str):
-        self.parser = HTMLParser(html)
         self.html   = html
+        self.parser = HTMLParser(html)
 
     # ========================
-    # TEMEL SELECTOR İŞLEMLERİ
+    # SELECTOR (CSS) İŞLEMLERİ
     # ========================
 
-    def _target(self, element: Node | None) -> Node | HTMLParser:
+    def _root(self, element: Node | None) -> Node | HTMLParser:
         """İşlem yapılacak temel elementi döndürür."""
         return element if element is not None else self.parser
 
     def select(self, selector: str, element: Node | None = None) -> list[Node]:
         """CSS selector ile tüm eşleşen elementleri döndür."""
-        return self._target(element).css(selector)
+        return self._root(element).css(selector)
 
     def select_first(self, selector: str | None, element: Node | None = None) -> Node | None:
         """CSS selector ile ilk eşleşen elementi döndür."""
         if not selector:
             return element
-
-        return self._target(element).css_first(selector)
+        return self._root(element).css_first(selector)
 
     def select_text(self, selector: str | None = None, element: Node | None = None, strip: bool = True) -> str | None:
         """CSS selector ile element bul ve text içeriğini döndür."""
         el = self.select_first(selector, element)
         if not el:
             return None
-
         val = el.text(strip=strip)
-        return val if val else None
+        return val or None
+
+    def select_texts(self, selector: str, element: Node | None = None, strip: bool = True) -> list[str]:
+        """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
+        out: list[str] = []
+        for el in self.select(selector, element):
+            txt = el.text(strip=strip)
+            if txt:
+                out.append(txt)
+        return out
 
     def select_attr(self, selector: str | None, attr: str, element: Node | None = None) -> str | None:
         """CSS selector ile element bul ve attribute değerini döndür."""
         el = self.select_first(selector, element)
         return el.attrs.get(attr) if el else None
 
-    def select_all_text(self, selector: str, element: Node | None = None, strip: bool = True) -> list[str]:
-        """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
-        return [
-            txt for el in self.select(selector, element)
-                if (txt := el.text(strip=strip))
-        ]
-
-    def select_all_attr(self, selector: str, attr: str, element: Node | None = None) -> list[str]:
+    def select_attrs(self, selector: str, attr: str, element: Node | None = None) -> list[str]:
         """CSS selector ile tüm eşleşen elementlerin attribute değerlerini döndür."""
-        return [
-            val for el in self.select(selector, element)
-                if (val := el.attrs.get(attr))
-        ]
-
-    # ----------------------------------------------
+        out: list[str] = []
+        for el in self.select(selector, element):
+            val = el.attrs.get(attr)
+            if val:
+                out.append(val)
+        return out
 
     def select_poster(self, selector: str = "img", element: Node | None = None) -> str | None:
         """Poster URL'sini çıkar. Önce data-src, sonra src dener."""
         el = self.select_first(selector, element)
         if not el:
             return None
-
         return el.attrs.get("data-src") or el.attrs.get("src")
+
+    def select_direct_text(self, selector: str, element: Node | None = None, strip: bool = True) -> str | None:
+        """
+        Elementin yalnızca "kendi" düz metnini döndürür (child elementlerin text'ini katmadan).
+        Selectolax sürüm farklarına göre deep=False dene, yoksa node sibling-walk ile fallback yapar.
+        """
+        el = self.select_first(selector, element)
+        if not el:
+            return None
+
+        # 1) Bazı sürümlerde var: sadece direct text
+        try:
+            val = el.text(strip=strip, deep=False)  # type: ignore[call-arg]
+            return val or None
+        except TypeError:
+            pass  # deep parametresi yok, fallback'e geç
+
+        # 2) Fallback: direct children'ı el.child + next ile dolaş
+        parts: list[str] = []
+        ch = el.child
+        while ch is not None:
+            if ch.tag == "-text":
+                t = ch.text(strip=strip)
+                if t:
+                    parts.append(t)
+            elif ch.tag == "br":
+                parts.append("\n")
+            ch = ch.next
+
+        out = "".join(parts).strip()
+        return out or None
+
+    # ========================
+    # META (LABEL -> VALUE) İŞLEMLERİ
+    # ========================
+
+    def meta_value(self, label: str, container_selector: str | None = None, strip: bool = True) -> str | None:
+        """
+        Herhangi bir container içinde: LABEL metnini içeren bir elementten SONRA gelen metni döndürür.
+        label örn: "Oyuncular", "Yapım Yılı", "IMDB"
+        """
+        needle = label.casefold()
+
+        # Belirli bir container varsa içinde ara, yoksa tüm dökümanda
+        targets = self.select(container_selector) if container_selector else [self.parser.body]
+
+        for root in targets:
+            if not root: continue
+
+            # Kalın/vurgulu elementlerde (span, strong, b, label, dt) label'ı ara
+            for label_el in self.select("span, strong, b, label, dt", root):
+                txt = (label_el.text(strip=True) or "").casefold()
+                if needle not in txt:
+                    continue
+
+                # 1) Elementin kendi içindeki text'te LABEL: VALUE formatı olabilir
+                # "Oyuncular: Brad Pitt" gibi. LABEL: sonrasını al.
+                full_txt = label_el.text(strip=strip)
+                if ":" in full_txt and needle in full_txt.split(":")[0].casefold():
+                    val = full_txt.split(":", 1)[1].strip()
+                    if val: return val
+
+                # 2) Label sonrası gelen ilk text node'u veya element'i al
+                curr = label_el.next
+                while curr:
+                    if curr.tag == "-text":
+                        val = curr.text(strip=strip).strip(" :")
+                        if val: return val
+                    elif curr.tag != "br":
+                        val = curr.text(strip=strip).strip(" :")
+                        if val: return val
+                    else: # <br> gördüysek satır bitmiştir
+                        break
+                    curr = curr.next
+
+        return None
+
+    def meta_list(self, label: str, container_selector: str | None = None, sep: str = ",") -> list[str]:
+        """meta_value(...) çıktısını veya label'ın ebeveynindeki linkleri listeye döndürür."""
+        needle = label.casefold()
+        targets = self.select(container_selector) if container_selector else [self.parser.body]
+
+        for root in targets:
+            if not root: continue
+            for label_el in self.select("span, strong, b, label, dt", root):
+                if needle in (label_el.text(strip=True) or "").casefold():
+                    # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
+                    links = self.select_texts("a", label_el.parent)
+                    if links: return links
+
+                    # Yoksa düz metin olarak meta_value mantığıyla al
+                    raw = self.meta_value(label, container_selector=container_selector)
+                    if not raw: return []
+                    return [x.strip() for x in raw.split(sep) if x.strip()]
+
+        return []
 
     # ========================
     # REGEX İŞLEMLERİ
     # ========================
 
-    def _source(self, target: str | int | None) -> str:
+    def _regex_source(self, target: str | int | None) -> str:
         """Regex için kaynak metni döndürür."""
         return target if isinstance(target, str) else self.html
 
-    def _flags(self, target: str | int | None, flags: int) -> int:
+    def _regex_flags(self, target: str | int | None, flags: int) -> int:
         """Regex flags değerini döndürür."""
         return target if isinstance(target, int) else flags
 
-    def regex_first(self, pattern: str, target: str | int | None = None, flags: int = 0) -> str | None:
-        """Regex ile arama yap, ilk grubu döndür (grup yoksa tamamını)."""
-        match = re.search(pattern, self._source(target), self._flags(target, flags))
+    def regex_first(self, pattern: str, target: str | int | None = None, flags: int = 0, group: int | None = 1) -> str | tuple | None:
+        """Regex ile arama yap, istenen grubu döndür (group=None ise tüm grupları tuple olarak döndür)."""
+        match = re.search(pattern, self._regex_source(target), self._regex_flags(target, flags))
         if not match:
             return None
-
-        try:
-            return match.group(1)
-        except IndexError:
-            return match.group(0)
+        
+        if group is None:
+            return match.groups()
+            
+        last_idx = match.lastindex or 0
+        return match.group(group) if last_idx >= group else match.group(0)
 
     def regex_all(self, pattern: str, target: str | int | None = None, flags: int = 0) -> list[str]:
         """Regex ile tüm eşleşmeleri döndür."""
-        return re.findall(pattern, self._source(target), self._flags(target, flags))
+        return re.findall(pattern, self._regex_source(target), self._regex_flags(target, flags))
 
     def regex_replace(self, pattern: str, repl: str, target: str | int | None = None, flags: int = 0) -> str:
         """Regex ile replace yap."""
-        return re.sub(pattern, repl, self._source(target), flags)
+        return re.sub(pattern, repl, self._regex_source(target), flags)
 
     # ========================
     # ÖZEL AYIKLAYICILAR
@@ -108,15 +206,12 @@ class HTMLHelper:
     @staticmethod
     def extract_season_episode(text: str) -> tuple[int | None, int | None]:
         """Metin içinden sezon ve bölüm numarasını çıkar."""
-        # S01E05 formatı
         if m := re.search(r"[Ss](\d+)[Ee](\d+)", text):
             return int(m.group(1)), int(m.group(2))
 
-        # Ayrı ayrı ara
         s = re.search(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", text, re.I)
         e = re.search(r"(\d+)\.\s*[Bb][öo]l[üu]m|[Bb][öo]l[üu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", text, re.I)
 
-        # İlk bulunan grubu al (None değilse)
         s_val = next((int(g) for g in s.groups() if g), None) if s else None
         e_val = next((int(g) for g in e.groups() if g), None) if e else None
 
@@ -131,4 +226,3 @@ class HTMLHelper:
 
         val = self.regex_first(pattern)
         return int(val) if val and val.isdigit() else None
-

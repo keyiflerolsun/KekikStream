@@ -101,9 +101,10 @@ class PluginBase(ABC):
             return ""
 
         if url.startswith("http") or url.startswith("{\""):
-            return url
+            return url.replace("\\", "")
 
-        return f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
+        url = f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
+        return url.replace("\\", "")
 
     async def extract(self, url: str, referer: str = None, prefix: str | None = None) -> ExtractResult | None:
         """
