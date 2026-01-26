@@ -78,13 +78,26 @@ class DiziPal(PluginBase):
         description = secici.select_attr("meta[property='og:description']", "content")
         title       = secici.select_text("h1")
         
-        year        = secici.meta_value("Yapım Yılı")
-        rating      = secici.meta_value("IMDB Puanı")
-        duration    = secici.meta_value("Süre")
-        duration    = int(secici.regex_first(r"(\d+)", duration)) if duration else None
-        tags        = secici.meta_list("Tür")
-        
-        actors      = secici.meta_list("Oyuncular")
+        year         = secici.meta_value("Yapım Yılı")
+        rating       = secici.meta_value("IMDB Puanı")
+        duration_raw = secici.meta_value("Süre")
+        if duration_raw:
+            parts = duration_raw.split()
+            saat = 0
+            dakika = 0
+
+            for p in parts:
+                if "s" in p:
+                    saat = int(p.replace("s", ""))
+                elif "dk" in p:
+                    dakika = int(p.replace("dk", ""))
+
+            duration = saat * 60 + dakika
+        else:
+            duration = None
+    
+        tags   = secici.meta_list("Tür")
+        actors = secici.meta_list("Oyuncular")
         if not actors:
             actors = secici.select_attrs("div.swiper-slide a", "title")
 
@@ -105,12 +118,12 @@ class DiziPal(PluginBase):
                     episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url=url, poster=poster, title=title, description=description, tags=tags,
+                url=url, poster=poster.replace("https://test4test.online", self.main_url), title=title, description=description, tags=tags,
                 rating=rating, year=year, duration=duration, episodes=episodes or None, actors=actors
             )
         
         return MovieInfo(
-            url=url, poster=poster, title=title, description=description, tags=tags,
+            url=url, poster=poster.replace("https://test4test.online", self.main_url), title=title, description=description, tags=tags,
             rating=rating, year=year, duration=duration, actors=actors
         )
 
