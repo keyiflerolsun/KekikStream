@@ -84,29 +84,29 @@ class SinemaCX(PluginBase):
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div.f-bilgi h1")
-        poster      = secici.select_poster("link[rel='image_src']")
+        poster      = secici.select_poster("div.resim img")
         description = secici.select_text("div.ackl div.scroll-liste")
+        rating      = secici.select_text("b.puandegistir")
         tags        = secici.select_texts("div.f-bilgi div.tur a")
-        year        = secici.extract_year("div.f-bilgi ul.detay a[href*='yapim']")
+        year        = secici.extract_year("ul.detay a[href*='yapim']")
         actors      = secici.select_texts("li.oync li.oyuncu-k span.isim")
-        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.f-bilgi")) or 0)
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
             title       = title or "Bilinmiyor",
             description = description,
+            rating      = rating,
             tags        = tags,
             year        = str(year) if year else None,
-            actors      = actors,
-            duration    = duration
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        iframe_list = secici.select_all_attr("iframe", "data-vsrc")
+        iframe_list = secici.select_attrs("iframe", "data-vsrc")
 
         # Sadece fragman varsa /2/ sayfasından dene
         has_only_trailer = all(
@@ -119,7 +119,7 @@ class SinemaCX(PluginBase):
             alt_istek = await self.httpx.get(alt_url)
             alt_istek = await self.httpx.get(alt_url)
             alt_sec   = HTMLHelper(alt_istek.text)
-            iframe_list = alt_sec.select_all_attr("iframe", "data-vsrc")
+            iframe_list = alt_sec.select_attrs("iframe", "data-vsrc")
 
         if not iframe_list:
             return []

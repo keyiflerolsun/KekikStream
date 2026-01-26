@@ -93,6 +93,7 @@ class Sinezy(PluginBase):
         tags        = secici.select_texts("div.detail span a")
         actors      = secici.select_texts("span.oyn p")
         year        = secici.extract_year()
+        duration    = secici.regex_first(r"(\d+) Dakika", secici.select_text("div.detail p"))
 
         return MovieInfo(
             url         = url,
@@ -102,7 +103,8 @@ class Sinezy(PluginBase):
             tags        = tags,
             rating      = rating,
             year        = str(year) if year else None,
-            actors      = actors
+            actors      = actors,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

@@ -139,14 +139,22 @@ class Sinefy(PluginBase):
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
         
-        title       = sel.select_text("h1")
-        poster      = sel.select_poster("div.ui.items img")
+        title       = sel.select_direct_text("h1")
+        poster_attr = sel.select_attr("img.series-profile-thumb", "data-srcset") or sel.select_attr("img.series-profile-thumb", "srcset")
+        if poster_attr:
+            # "url 1x, url 2x" -> en sondakini (en yüksek kalite) al
+            poster = poster_attr.split(",")[-1].strip().split(" ")[0]
+        else:
+            poster = sel.select_poster("img.series-profile-thumb")
         description = sel.select_text("p#tv-series-desc")
         tags        = sel.select_texts("div.item.categories a")
         rating      = sel.select_text("span.color-imdb")
         actors      = sel.select_texts("div.content h5")
-        year        = sel.extract_year("span.item.year") or sel.regex_first(r"\((\d{4})\)", title)
-        
+        year        = sel.extract_year("div.truncate")
+        duration    = sel.regex_first(r"(\d+)", sel.select_text(".media-meta td:last-child"))
+        if duration == year or int(duration) < 40:
+            duration = None
+
         common_info = {
             "url"         : url,
             "poster"      : self.fix_url(poster) if poster else None,
@@ -155,7 +163,8 @@ class Sinefy(PluginBase):
             "tags"        : tags,
             "rating"      : rating,
             "year"        : str(year) if year else None,
-            "actors"      : actors
+            "actors"      : actors,
+            "duration"    : duration
         }
 
         episodes = []

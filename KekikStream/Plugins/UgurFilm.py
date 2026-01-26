@@ -71,18 +71,22 @@ class UgurFilm(PluginBase):
         title       = secici.select_text("div.bilgi h2")
         poster      = secici.select_poster("div.resim img")
         description = secici.select_text("div.slayt-aciklama")
+        rating      = secici.select_text("b#puandegistir")
         tags        = secici.select_texts("p.tur a[href*='/category/']")
         year        = secici.extract_year("a[href*='/yil/']")
         actors      = secici.select_texts("li.oyuncu-k span")
+        duration    = secici.regex_first(r"(\d+) Dakika", secici.select_text("div.bilgi b"))
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster) if poster else None,
             title       = title or "Bilinmiyor",
             description = description,
+            rating      = rating,
             tags        = tags,
             year        = str(year) if year else None,
-            actors      = actors
+            actors      = actors,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
@@ -90,7 +94,7 @@ class UgurFilm(PluginBase):
         secici  = HTMLHelper(istek.text)
         results = []
 
-        part_links = secici.select_all_attr("li.parttab a", "href")
+        part_links = secici.select_attrs("li.parttab a", "href")
 
         for part_link in part_links:
             sub_response = await self.httpx.get(part_link)

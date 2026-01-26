@@ -151,7 +151,7 @@ class SetFilmIzle(PluginBase):
             episodes = []
             for ep_item in secici.select("div#episodes ul.episodios li"):
                 href = secici.select_attr("h4.episodiotitle a", "href", ep_item)
-                name = secici.select_text("h4.episodiotitle a", ep_item)
+                name = secici.select_direct_text("h4.episodiotitle a", ep_item)
                 if href and name:
                     s, e = secici.extract_season_episode(name)
                     episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))

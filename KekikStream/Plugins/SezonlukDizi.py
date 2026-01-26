@@ -70,7 +70,7 @@ class SezonlukDizi(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?adi={query}")
+        istek  = await self.httpx.get(f"{self.main_url}/diziler.asp?q={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
