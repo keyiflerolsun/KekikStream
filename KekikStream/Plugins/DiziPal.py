@@ -5,7 +5,7 @@ from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInf
 class DiziPal(PluginBase):
     name        = "DiziPal"
     language    = "tr"
-    main_url    = "https://dizipal1225.com"
+    main_url    = "https://dizipal1226.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "dizipal güncel, dizipal yeni ve gerçek adresi. dizipal en yeni dizi ve filmleri güvenli ve hızlı şekilde sunar."
 

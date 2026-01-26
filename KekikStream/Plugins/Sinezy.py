@@ -6,7 +6,7 @@ import base64
 class Sinezy(PluginBase):
     name        = "Sinezy"
     language    = "tr"
-    main_url    = "https://sinezy.fit"
+    main_url    = "https://sinezy.ink"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Yerli ve yabancı film izle! Türkçe Dublaj ve Alt Yazılı Seçenekleriyle full hd film izlemek için En çok tercih edilen adres!"
 

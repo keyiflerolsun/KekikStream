@@ -65,7 +65,7 @@ class MainUrlGuncelleyici:
 
         for dosya_yolu in self.eklentiler:
             eklenti_adi = dosya_yolu.split("/")[-1].replace(".py", "")
-    
+
             konsol.print()
             konsol.log(f"[~] Kontrol ediliyor : {eklenti_adi}")
             main_url_gruplari = self._main_url_bul(dosya_yolu)
