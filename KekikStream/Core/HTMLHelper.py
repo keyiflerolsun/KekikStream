@@ -197,7 +197,7 @@ class HTMLHelper:
 
     def regex_replace(self, pattern: str, repl: str, target: str | int | None = None, flags: int = 0) -> str:
         """Regex ile replace yap."""
-        return re.sub(pattern, repl, self._regex_source(target), flags)
+        return re.sub(pattern, repl, self._regex_source(target), flags=self._regex_flags(target, flags))
 
     # ========================
     # ÖZEL AYIKLAYICILAR
