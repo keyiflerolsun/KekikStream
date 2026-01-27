@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import asyncio
 
 class FilmEkseni(PluginBase):
     name        = "FilmEkseni"
@@ -30,17 +31,17 @@ class FilmEkseni(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek   = await self.httpx.get(f"{url}/{page}/")
-        helper  = HTMLHelper(istek.text)
-        posters = helper.select("div.poster")
+        secici  = HTMLHelper(istek.text)
+        posters = secici.select("div.poster")
 
         return [
             MainPageResult(
                 category = category,
-                title    = self.clean_title(helper.select_text("h2", veri)),
-                url      = helper.select_attr("a", "href", veri),
-                poster   = helper.select_attr("img", "data-src", veri)
+                title    = self.clean_title(secici.select_text("h2", veri)),
+                url      = secici.select_attr("a", "href", veri),
+                poster   = secici.select_attr("img", "data-src", veri)
             )
-            for veri in posters
+                for veri in posters
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
@@ -62,21 +63,21 @@ class FilmEkseni(PluginBase):
                 url    = f"{self.main_url}/{veri.get('slug')}",
                 poster = f"{self.main_url}/uploads/poster/{veri.get('cover')}" if veri.get('cover') else None,
             )
-            for veri in veriler
+                for veri in veriler
         ]
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(helper.select_text("div.page-title h1"))
-        poster      = helper.select_poster("picture.poster-auto img")
-        description = helper.select_direct_text("article.text-white p")
-        year        = helper.extract_year("div.page-title", "strong a")
-        tags        = helper.select_texts("div.pb-2 a[href*='/tur/']")
-        rating      = helper.select_text("div.rate")
-        duration    = helper.regex_first(r"(\d+)", helper.select_text("div.d-flex.flex-column.text-nowrap"))
-        actors      = helper.select_texts("div.card-body.p-0.pt-2 .story-item .story-item-title")
+        title       = self.clean_title(secici.select_text("div.page-title h1"))
+        poster      = secici.select_poster("picture.poster-auto img")
+        description = secici.select_direct_text("article.text-white p")
+        year        = secici.extract_year("div.page-title", "strong a")
+        tags        = secici.select_texts("div.pb-2 a[href*='/tur/']")
+        rating      = secici.select_text("div.rate")
+        duration    = secici.regex_first(r"(\d+)", secici.select_text("div.d-flex.flex-column.text-nowrap"))
+        actors      = secici.select_texts("div.card-body.p-0.pt-2 .story-item .story-item-title")
 
         return MovieInfo(
             url         = url,
@@ -90,51 +91,24 @@ class FilmEkseni(PluginBase):
             duration    = duration
         )
 
-    async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+    async def _get_source_links(self, name: str, url: str, is_active: bool, initial_helper: HTMLHelper | None = None) -> list[ExtractResult]:
+        try:
+            if is_active and initial_helper:
+                secici = initial_helper
+            else:
+                resp   = await self.httpx.get(url)
+                secici = HTMLHelper(resp.text)
 
-        results = []
-        sources = [] # (name, url, is_active)
-
-        nav_links = helper.select("nav.card-nav a.nav-link")
-        if nav_links:
-            seen_urls = set()
-            for link in nav_links:
-                if link.attrs.get("href") == "#":
-                    continue # Sinema Modu vb.
-
-                name      = link.text(strip=True)
-                href      = link.attrs.get("href")
-                is_active = "active" in link.attrs.get("class", "")
-
-                if href and href not in seen_urls:
-                    seen_urls.add(href)
-                    sources.append((name, href, is_active))
-        else:
-            # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
-            sources.append(("VIP", url, True))
-
-        for name, link_url, is_active in sources:
-            current_helper = helper
-
-            # Eğer aktif değilse sayfaya git
-            if not is_active:
-                try:
-                    resp = await self.httpx.get(link_url)
-                    current_helper = HTMLHelper(resp.text)
-                except:
-                    continue
-
-            iframe = current_helper.select_first("div.card-video iframe")
+            iframe = secici.select_first("div.card-video iframe")
             if not iframe:
-                continue
+                return []
 
             iframe_url = iframe.attrs.get("data-src") or iframe.attrs.get("src")
             if not iframe_url:
-                continue
+                return []
 
             iframe_url = self.fix_url(iframe_url)
+            results    = []
 
             # VIP / EksenLoad mantığı
             if "eksenload" in iframe_url or name == "VIP":
@@ -155,4 +129,34 @@ class FilmEkseni(PluginBase):
                     else:
                         results.append(extracted)
 
-        return results
+            return results
+        except Exception:
+            return []
+
+    async def load_links(self, url: str) -> list[ExtractResult]:
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
+
+        sources = [] # (name, url, is_active)
+        if nav_links := secici.select("nav.card-nav a.nav-link"):
+            seen_urls = set()
+            for link in nav_links:
+                if link.attrs.get("href") == "#":
+                    continue # Sinema Modu vb.
+
+                name      = link.text(strip=True)
+                href      = link.attrs.get("href")
+                is_active = "active" in link.attrs.get("class", "")
+
+                if href and href not in seen_urls:
+                    seen_urls.add(href)
+                    sources.append((name, href, is_active))
+        else:
+            # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
+            sources.append(("VIP", url, True))
+
+        tasks = []
+        for name, link_url, is_active in sources:
+            tasks.append(self._get_source_links(name, link_url, is_active, secici if is_active else None))
+
+        return [item for sublist in await asyncio.gather(*tasks) for item in sublist]

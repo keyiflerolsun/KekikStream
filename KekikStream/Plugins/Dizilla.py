@@ -54,7 +54,7 @@ class Dizilla(PluginBase):
 
             # Genel olarak dizi sayfalarına giden linkleri al
             for veri in secici.select('a[href*="/dizi/"]'):
-                href = secici.select_attr('a', 'href', veri)
+                href  = secici.select_attr('a', 'href', veri)
                 title = secici.select_text(None, veri)
                 if not href or not title:
                     continue
@@ -118,7 +118,7 @@ class Dizilla(PluginBase):
             SearchResult(
                 title  = veri.get("object_name"),
                 url    = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
-                poster = self.fix_poster_url(self.fix_url(veri.get("poster_url"))),
+                poster = self.fix_poster_url(self.fix_url(veri.get("object_poster_url"))),
             )
                 for veri in arama_veri
         ]

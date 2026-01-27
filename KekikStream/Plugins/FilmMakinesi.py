@@ -79,7 +79,7 @@ class FilmMakinesi(PluginBase):
         title       = self.clean_title(secici.select_text("h1.title"))
         poster      = secici.select_poster("img.cover-img")
         description = secici.select_text("div.info-description p")
-        rating      = secici.regex_first(r"(\d+[\d.]*)", secici.select_text("div.score"))
+        rating      = secici.select_text("div.info div.imdb b")
         year        = secici.select_text("span.date a")
         actors      = secici.select_texts("div.cast-name")
         tags        = secici.select_texts("div.type a[href*='/tur/']")
@@ -91,7 +91,12 @@ class FilmMakinesi(PluginBase):
             s, e = secici.extract_season_episode(href)
             if s and e:
                 name = link.text(strip=True).split("Bölüm")[-1].strip() if "Bölüm" in link.text() else ""
-                episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
+                episodes.append(Episode(
+                    season  = s,
+                    episode = e,
+                    title   = name,
+                    url     = self.fix_url(href)
+                ))
 
         # Tekrar edenleri temizle ve sırala
         if episodes:
@@ -132,7 +137,8 @@ class FilmMakinesi(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        response = []
+        response    = []
+        shared_subs = []
 
         # Video parts linklerini ve etiketlerini al
         for link in secici.select("div.video-parts a[data-video_url]"):
@@ -142,7 +148,15 @@ class FilmMakinesi(PluginBase):
             if video_url:
                 data = await self.extract(video_url, prefix=label.split()[0] if label else None)
                 if data:
-                    response.append(data)
+                    if isinstance(data, list):
+                        for d in data:
+                            response.append(d)
+                            if d.subtitles:
+                                shared_subs.extend(d.subtitles)
+                    else:
+                        response.append(data)
+                        if data.subtitles:
+                            shared_subs.extend(data.subtitles)
 
         # Eğer video-parts yoksa iframe kullan
         if not response:
@@ -150,6 +164,29 @@ class FilmMakinesi(PluginBase):
             if iframe_src:
                 data = await self.extract(iframe_src)
                 if data:
-                    response.append(data)
+                    if isinstance(data, list):
+                        for d in data:
+                            response.append(d)
+                            if d.subtitles:
+                                shared_subs.extend(d.subtitles)
+                    else:
+                        response.append(data)
+                        if data.subtitles:
+                            shared_subs.extend(data.subtitles)
+
+        # Altyazıları Dağıt
+        if shared_subs:
+            unique_subs = []
+            seen_urls   = set()
+            for sub in shared_subs:
+                if sub.url not in seen_urls:
+                    seen_urls.add(sub.url)
+                    unique_subs.append(sub)
+
+            for res in response:
+                current_urls = {s.url for s in res.subtitles}
+                for sub in unique_subs:
+                    if sub.url not in current_urls:
+                        res.subtitles.append(sub)
 
         return response

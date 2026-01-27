@@ -10,24 +10,32 @@ class DiziMom(PluginBase):
     description = "Binlerce yerli yabancı dizi arşivi, tüm sezonlar, kesintisiz bölümler. Sadece dizi izle, Dizimom heryerde seninle!"
 
     main_page = {
-        f"{main_url}/tum-bolumler/page"        : "Son Bölümler",
-        f"{main_url}/yerli-dizi-izle/page"     : "Yerli Diziler",
-        f"{main_url}/yabanci-dizi-izle/page"   : "Yabancı Diziler",
-        f"{main_url}/tv-programlari-izle/page" : "TV Programları",
+        f"{main_url}/tum-bolumler/page"               : "Son Bölümler",
+        f"{main_url}/yerli-dizi-izle/page"            : "Yerli Diziler",
+        f"{main_url}/yabanci-dizi-izle/page"          : "Yabancı Diziler",
+        f"{main_url}/tv-programlari-izle/page"        : "TV Programları",
+        f"{main_url}/netflix-dizileri-izle/page"      : "Netflix Dizileri",
+        f"{main_url}/turkce-dublaj-diziler-hd/page"   : "Dublajlı Diziler",
+        f"{main_url}/yerli-dizi-izle/page"            : "Yerli Diziler",
+        f"{main_url}/anime-izle/page"                 : "Animeler",
+        f"{main_url}/yabanci-dizi-izle/page"          : "Yabancı Diziler",
+        f"{main_url}/kore-dizileri-izle-hd/page"      : "Kore Dizileri",
+        f"{main_url}/full-hd-hint-dizileri-izle/page" : "Hint Dizileri",
+        f"{main_url}/pakistan-dizileri-izle/page"     : "Pakistan Dizileri",
+        f"{main_url}/tv-programlari-izle/page"        : "Tv Programları",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        full_url = f"{url}/{page}/"
-        istek    = await self.httpx.get(full_url)
-        helper   = HTMLHelper(istek.text)
+        istek  = await self.httpx.get(f"{url}/{page}/")
+        secici = HTMLHelper(istek.text)
 
         results = []
         # Eğer "tum-bolumler" ise Episode kutularını, değilse Dizi kutularını tara
         if "/tum-bolumler/" in url:
-            for item in helper.select("div.episode-box"):
-                title = helper.select_text("div.episode-name a", item)
-                href  = helper.select_attr("div.episode-name a", "href", item)
-                img   = helper.select_poster("div.cat-img img", item)
+            for item in secici.select("div.episode-box"):
+                title = secici.select_text("div.episode-name a", item)
+                href  = secici.select_attr("div.episode-name a", "href", item)
+                img   = secici.select_poster("div.cat-img img", item)
                 if title and href:
                     results.append(MainPageResult(
                         category = category,
@@ -36,10 +44,10 @@ class DiziMom(PluginBase):
                         poster   = self.fix_url(img)
                     ))
         else:
-            for item in helper.select("div.single-item"):
-                title = helper.select_text("div.categorytitle a", item)
-                href  = helper.select_attr("div.categorytitle a", "href", item)
-                img   = helper.select_poster("div.cat-img img", item)
+            for item in secici.select("div.single-item"):
+                title = secici.select_text("div.categorytitle a", item)
+                href  = secici.select_attr("div.categorytitle a", "href", item)
+                img   = secici.select_poster("div.cat-img img", item)
                 if title and href:
                     results.append(MainPageResult(
                         category = category,
@@ -51,38 +59,37 @@ class DiziMom(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        url    = f"{self.main_url}/?s={query}"
-        istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
-        items  = helper.select("div.single-item")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        secici = HTMLHelper(istek.text)
+        items  = secici.select("div.single-item")
 
         return [
             SearchResult(
-                title  = helper.select_text("div.categorytitle a", item).split(" izle")[0],
-                url    = self.fix_url(helper.select_attr("div.categorytitle a", "href", item)),
-                poster = self.fix_url(helper.select_attr("div.cat-img img", "src", item))
+                title  = secici.select_text("div.categorytitle a", item).split(" izle")[0],
+                url    = self.fix_url(secici.select_attr("div.categorytitle a", "href", item)),
+                poster = self.fix_url(secici.select_attr("div.cat-img img", "src", item))
             )
             for item in items
         ]
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(helper.select_text("div.title h1"))
-        poster      = helper.select_poster("div.category_image img")
-        description = helper.select_direct_text("div.category_desc")
-        tags        = helper.select_texts("div.genres a")
-        rating      = helper.regex_first(r"(?s)IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", helper.html)
-        year        = helper.extract_year("div.category_text")
-        actors      = helper.meta_list("Oyuncular", container_selector="div#icerikcat2")
+        title       = self.clean_title(secici.select_text("div.title h1"))
+        poster      = secici.select_poster("div.category_image img")
+        description = secici.select_direct_text("div.category_desc")
+        tags        = secici.select_texts("div.genres a")
+        rating      = secici.regex_first(r"(?s)IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", secici.html)
+        year        = secici.extract_year("div.category_text")
+        actors      = secici.meta_list("Oyuncular", container_selector="div#icerikcat2")
 
         episodes = []
-        for item in helper.select("div.bolumust"):
-            name = helper.select_text("div.baslik", item)
-            href = helper.select_attr("a", "href", item)
+        for item in secici.select("div.bolumust"):
+            name = secici.select_text("div.baslik", item)
+            href = secici.select_attr("a", "href", item)
             if name and href:
-                s, e = helper.extract_season_episode(name)
+                s, e = secici.extract_season_episode(name)
                 episodes.append(Episode(
                     season  = s or 1,
                     episode = e or 1,
@@ -120,27 +127,26 @@ class DiziMom(PluginBase):
         )
 
         istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        secici = HTMLHelper(istek.text)
 
         iframe_data = []
 
         # Aktif kaynağın (main iframe) adını bul
-        current_name = helper.select_text("div.sources span.current_dil") or ""
-        main_iframe = helper.select_attr("iframe[src]", "src")
+        current_name = secici.select_text("div.sources span.current_dil") or ""
+        main_iframe  = secici.select_attr("iframe[src]", "src")
 
         # Bazen iframe doğrudan video p içinde olabilir
         if not main_iframe:
-            main_iframe = helper.select_attr("div.video p iframe", "src")
+            main_iframe = secici.select_attr("div.video p iframe", "src")
 
         if main_iframe:
             iframe_data.append((main_iframe, current_name))
 
         # Diğer kaynakları (Partlar) gez
-        sources = helper.select("div.sources a.post-page-numbers")
+        sources = secici.select("div.sources a.post-page-numbers")
         for source in sources:
-            href = helper.select_attr(None, "href", source)
-            name = helper.select_text("span.dil", source)
-
+            href = secici.select_attr(None, "href", source)
+            name = secici.select_text("span.dil", source)
             if href:
                 # Part sayfasına git
                 sub_istek  = await self.httpx.get(href)

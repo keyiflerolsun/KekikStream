@@ -52,8 +52,8 @@ class DiziBox(PluginBase):
 
         results = []
         for veri in secici.select("article.detailed-article"):
-            title = secici.select_text("h3 a", veri)
-            href  = secici.select_attr("h3 a", "href", veri)
+            title  = secici.select_text("h3 a", veri)
+            href   = secici.select_attr("h3 a", "href", veri)
             poster = secici.select_attr("img", "src", veri)
 
             if title and href:
@@ -185,7 +185,7 @@ class DiziBox(PluginBase):
         # Aktif kaynağın adını bul (DBX Pro vs.)
         current_source_name = secici.select_text("div.video-toolbar option[selected]") or self.name
 
-        results = []
+        results     = []
         main_iframe = secici.select_attr("div#video-area iframe", "src")
 
         if main_iframe:

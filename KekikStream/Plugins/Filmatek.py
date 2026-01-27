@@ -2,7 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 from urllib.parse     import unquote
-
+from contextlib       import suppress
 
 class Filmatek(PluginBase):
     name        = "Filmatek"
@@ -29,10 +29,8 @@ class Filmatek(PluginBase):
         istek  = await self.httpx.get(f"{url}/{page}/")
         secici = HTMLHelper(istek.text)
 
-        items   = secici.select("div.items article, #archive-content article")
         results = []
-
-        for item in items:
+        for item in secici.select("div.items article, #archive-content article"):
             title_el = secici.select_first("div.data h3 a, h3 a", item)
             if not title_el:
                 continue
@@ -54,10 +52,8 @@ class Filmatek(PluginBase):
         istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
-        items   = secici.select("div.result-item")
         results = []
-
-        for item in items:
+        for item in secici.select("div.result-item"):
             title_el = secici.select_first("div.title a", item)
             if not title_el:
                 continue
@@ -114,7 +110,6 @@ class Filmatek(PluginBase):
                  options = []
 
         results = []
-
         for opt in options:
             if isinstance(opt, dict):
                 post_id = opt.get("data-post")
@@ -158,11 +153,9 @@ class Filmatek(PluginBase):
 
                     # Unwrap internal JWPlayer
                     if "jwplayer/?source=" in iframe_url:
-                        try:
+                        with suppress(Exception):
                             raw_source = iframe_url.split("source=")[1].split("&")[0]
                             iframe_url = unquote(raw_source)
-                        except:
-                            pass
 
                     # Direct media files
                     if ".m3u8" in iframe_url or ".mp4" in iframe_url:

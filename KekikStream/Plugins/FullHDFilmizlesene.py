@@ -65,8 +65,8 @@ class FullHDFilmizlesene(PluginBase):
 
         results = []
         for film in secici.select("li.film"):
-            title = secici.select_text("span.film-title", film)
-            href = secici.select_attr("a", "href", film)
+            title  = secici.select_text("span.film-title", film)
+            href   = secici.select_attr("a", "href", film)
             poster = secici.select_attr("img", "data-src", film)
 
             if title and href:
@@ -84,12 +84,12 @@ class FullHDFilmizlesene(PluginBase):
 
         title       = self.clean_title(secici.select_text("div.izle-titles"))
         poster      = secici.select_poster("div img[data-src]")
-        description = secici.select_text("div.ozet-ic p")
+        description = secici.select_text("div.ozet-ic")
         tags        = secici.select_texts("a[rel='category tag']")
         rating      = secici.regex_first(r"(\d+\.\d+|\d+)", secici.select_text("div.puanx-puan"))
         year        = secici.extract_year("div.dd a.category")
         actors      = secici.select_texts("a > span", secici.select_first("div.film-info ul li:nth-child(2)"))
-        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.film-info ul li:nth-child(4)")) or 0)
+        duration    = secici.regex_first(r"Süre: (\d+)\s*dk", secici.select_text("div.ozet-ic"))
 
         return MovieInfo(
             url         = url,
@@ -106,10 +106,9 @@ class FullHDFilmizlesene(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        html_text = istek.text
 
         # İlk script'i al (xpath (//script)[1] yerine)
-        scripts = secici.select("script")
+        scripts        = secici.select("script")
         script_content = scripts[0].text() if scripts else ""
 
         scx_json = HTMLHelper(script_content).regex_first(r"scx = (.*?);")

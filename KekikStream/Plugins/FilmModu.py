@@ -111,7 +111,6 @@ class FilmModu(PluginBase):
             return []
 
         results = []
-
         for alternatif in alternates:
             alt_link = alternatif.attrs.get("href")
             alt_name = alternatif.text(strip=True)

@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from contextlib       import suppress
 
 class FilmBip(PluginBase):
     name        = "FilmBip"
@@ -123,12 +124,8 @@ class FilmBip(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        # Tabs (Diller)
-        tabs = secici.select("ul.tab.alternative-group li[data-number]")
-
-        for tab in tabs:
+        for tab in secici.select("ul.tab.alternative-group li[data-number]"):
             tab_id   = tab.attrs.get("data-number")
-            # Tab ismini al
             tab_name = secici.select_text(None, tab)
             tab_hash = tab.attrs.get("data-group-hash")
 
@@ -148,7 +145,7 @@ class FilmBip(PluginBase):
 
             elif tab_hash:
                 # Div yok veya boş, AJAX ile çek
-                try:
+                with suppress(Exception):
                     hash_resp = await self.httpx.post(
                         url     = f"{self.main_url}/get/video/group",
                         headers = {
@@ -175,11 +172,9 @@ class FilmBip(PluginBase):
                                     sub_btns = sub_helper.select("ul li button")
                                     for btn in sub_btns:
                                         button_data.append((btn.text(strip=True), btn.attrs.get("data-hhs")))
-                except Exception:
-                    pass
 
             for player_name, iframe_url in button_data:
-                try:
+                with suppress(Exception):
                     if iframe_url:
                         data = await self.extract(
                             url           = self.fix_url(iframe_url),
@@ -190,8 +185,6 @@ class FilmBip(PluginBase):
                                 results.extend(data)
                             else:
                                 results.append(data)
-                except Exception:
-                    pass
 
         # Eğer hiç sonuç bulunamazsa fallback
         if not results:

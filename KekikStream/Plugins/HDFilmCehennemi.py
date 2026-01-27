@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
-from Kekik.Sifreleme   import Packer, StreamDecoder
-import random, string
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
+from Kekik.Sifreleme  import Packer, StreamDecoder
+import random, string, json, asyncio, contextlib
 
 class HDFilmCehennemi(PluginBase):
     name        = "HDFilmCehennemi"
@@ -34,8 +34,8 @@ class HDFilmCehennemi(PluginBase):
 
         results = []
         for veri in secici.select("div.section-content a.poster"):
-            title = secici.select_text("strong.poster-title", veri)
-            href = veri.attrs.get("href")
+            title  = secici.select_text("strong.poster-title", veri)
+            href   = veri.attrs.get("href")
             poster = secici.select_attr("img", "data-src", veri)
 
             if title and href:
@@ -98,117 +98,163 @@ class HDFilmCehennemi(PluginBase):
                 href = ep.attrs.get("href")
                 if name and href:
                     s, e = secici.extract_season_episode(name)
-                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
+                    episodes.append(Episode(
+                        season  = s or 1,
+                        episode = e or 1,
+                        title   = name,
+                        url     = self.fix_url(href)
+                    ))
 
             return SeriesInfo(
-                url=url, poster=self.fix_url(poster), title=title,
-                description=description, tags=tags, rating=rating, year=year, actors=actors, episodes=episodes
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = title,
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                episodes    = episodes
             )
 
         return MovieInfo(
-            url=url, poster=self.fix_url(poster), title=title,
-            description=description, tags=tags, rating=rating, year=year, actors=actors, duration=duration
+            url         = url,
+            poster      = self.fix_url(poster),
+            title       = title,
+            description = description,
+            tags        = tags,
+            rating      = rating,
+            year        = year,
+            actors      = actors,
+            duration    = duration
         )
 
     def generate_random_cookie(self):
         return "".join(random.choices(string.ascii_letters + string.digits, k=16))
 
-    async def cehennempass(self, video_id: str) -> list:
+    async def cehennempass(self, video_id: str, name_prefix: str = "", subtitles: list[Subtitle] = None) -> list[ExtractResult]:
         results = []
-        
-        istek = await self.httpx.post(
-            url     = "https://cehennempass.pw/process_quality_selection.php",
-            headers = {
-                "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
-                "X-Requested-With" : "fetch", 
-                "authority"        : "cehennempass.pw",
-                "Cookie"           : f"PHPSESSID={self.generate_random_cookie()}"
-            },
-            data    = {"video_id": video_id, "selected_quality": "low"},
-        )
-        if video_url := istek.json().get("download_link"):
-            results.append(ExtractResult(
-                url     = self.fix_url(video_url),
-                name    = "Düşük Kalite",
-                referer = f"https://cehennempass.pw/download/{video_id}"
-            ))
+        subs    = subtitles or []
 
-        istek = await self.httpx.post(
-            url     = "https://cehennempass.pw/process_quality_selection.php",
-            headers = {
-                "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
-                "X-Requested-With" : "fetch", 
-                "authority"        : "cehennempass.pw",
-                "Cookie"           : f"PHPSESSID={self.generate_random_cookie()}"
-            },
-            data    = {"video_id": video_id, "selected_quality": "high"},
-        )
-        if video_url := istek.json().get("download_link"):
-            results.append(ExtractResult(
-                url     = self.fix_url(video_url),
-                name    = "Yüksek Kalite",
-                referer = f"https://cehennempass.pw/download/{video_id}"
-            ))
+        for quality, label in [("low", "Düşük Kalite"), ("high", "Yüksek Kalite")]:
+            with contextlib.suppress(Exception):
+                istek = await self.httpx.post(
+                    url     = "https://cehennempass.pw/process_quality_selection.php",
+                    headers = {
+                        "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
+                        "X-Requested-With" : "fetch", 
+                        "authority"        : "cehennempass.pw",
+                        "Cookie"           : f"PHPSESSID={self.generate_random_cookie()}"
+                    },
+                    data    = {"video_id": video_id, "selected_quality": quality},
+                )
+                if video_url := istek.json().get("download_link"):
+                    results.append(ExtractResult(
+                        url       = self.fix_url(video_url),
+                        name      = f"{name_prefix} | {label}" if name_prefix else label,
+                        referer   = f"https://cehennempass.pw/download/{video_id}",
+                        subtitles = subs
+                    ))
 
         return results
 
-    def _extract_from_json_ld(self, html: str) -> str | None:
-        """JSON-LD script tag'inden contentUrl'i çıkar (Kotlin versiyonundaki gibi)"""
-        # Önce JSON-LD'den dene
-        json_ld = HTMLHelper(html).regex_first(r'(?s)<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>')
+    def _extract_video_url(self, html: str) -> str | None:
+        """Video URL'sini çeşitli yöntemlerle (JSON-LD, Regex, Packer) çıkarır"""
+        secici = HTMLHelper(html)
+
+        # 1. JSON-LD'den dene
+        json_ld = secici.regex_first(r'(?s)<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>')
         if json_ld:
-            try:
-                import json
+            with contextlib.suppress(Exception):
                 data = json.loads(json_ld.strip())
                 if content_url := data.get("contentUrl"):
                     if content_url.startswith("http"):
                         return content_url
-            except Exception:
-                # Regex ile contentUrl'i çıkarmayı dene
-                content_url = HTMLHelper(html).regex_first(r'"contentUrl"\s*:\s*"([^"]+)"')
-                if content_url and content_url.startswith("http"):
-                    return content_url
+
+        # 2. Regex ile contentUrl dene
+        content_url = secici.regex_first(r'"contentUrl"\s*:\s*"([^"]+)"')
+        if content_url and content_url.startswith("http"):
+            return content_url
+
+        # 3. Packed JavaScript (eval(function...)) dene
+        if eval_script := secici.regex_first(r'(eval\(function[\s\S]+)'):
+            with contextlib.suppress(Exception):
+                unpacked = Packer.unpack(eval_script)
+                return StreamDecoder.extract_stream_url(unpacked)
+
         return None
 
-    async def invoke_local_source(self, iframe: str, source: str, url: str):
-        self.httpx.headers.update({
-            "Referer": f"{self.main_url}/",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:137.0) Gecko/20100101 Firefox/137.0"
-        })
-        istek = await self.httpx.get(iframe)
-
-        if not istek.text:
-            return await self.cehennempass(iframe.split("/")[-1])
-
-        # Önce JSON-LD'den dene (Kotlin versiyonu gibi - daha güvenilir)
-        video_url = self._extract_from_json_ld(istek.text)
-
-        # Fallback: Packed JavaScript'ten çıkar
-        if not video_url:
-            # eval(function...) içeren packed script bul
-            eval_script = HTMLHelper(istek.text).regex_first(r'(eval\(function[\s\S]+)')
-            if not eval_script:
-                return await self.cehennempass(iframe.split("/")[-1])
-
-            try:
-                unpacked = Packer.unpack(eval_script)
-                video_url = StreamDecoder.extract_stream_url(unpacked)
-            except Exception:
-                return await self.cehennempass(iframe.split("/")[-1])
-        
-        if not video_url:
-            return await self.cehennempass(iframe.split("/")[-1])
-
+    def _extract_subtitles(self, html: str) -> list[Subtitle]:
+        """HTML içeriğinden çeşitli formatlardaki altyazıları çıkarır"""
         subtitles = []
-        try:
-            sub_data = istek.text.split("tracks: [")[1].split("]")[0]
-            for file_url, lang in HTMLHelper(sub_data).regex_all(r'(?s)file":"([^\\"]+)".*?"language":"([^\\"]+)"'):
-                subtitles.append(Subtitle(
-                    name = lang.upper(),
-                    url  = self.fix_url(file_url.replace("\\", "")),
-                ))
-        except Exception:
-            pass
+        secici    = HTMLHelper(html)
+
+        # 1. JWPlayer / Plyr / Generic JS Object (tracks: [ ... ])
+        if match := secici.regex_first(r'tracks\s*:\s*(\[[^\]]+\])'):
+            # JSON parse denemesi
+            with contextlib.suppress(Exception):
+                track_data = json.loads(match)
+                for t in track_data:
+                    if file_url := t.get("file"):
+                        label = t.get("label") or t.get("language") or "TR"
+                        if t.get("kind", "captions") in ["captions", "subtitles"]: 
+                            subtitles.append(Subtitle(name=label.upper(), url=self.fix_url(file_url)))
+                return subtitles # JSON başarılıysa dön
+
+            # Regex fallback
+            for m in HTMLHelper(match).regex_all(r'file\s*:\s*["\']([^"\']+)["\'].*?(?:label|language)\s*:\s*["\']([^"\']+)["\']'):
+                file_url, lang = m
+                subtitles.append(Subtitle(name=lang.upper(), url=self.fix_url(file_url.replace("\\", ""))))
+
+        # 2. PlayerJS (subtitle: "url,name;url,name")
+        if not subtitles:
+            if sub_str := secici.regex_first(r'subtitle\s*:\s*["\']([^"\']+)["\']'):
+                for sub_item in sub_str.split(";"):
+                    if "," in sub_item:
+                        # [TR]url,[EN]url gibi yapılar için split mantığı
+                        # Basitçe virgülle ayırıp http kontrolü yapalım
+                        parts = sub_item.split(",")
+                        u, n  = (parts[0], parts[1]) if "http" in parts[0] else (parts[1], parts[0])
+                        subtitles.append(Subtitle(name=n.strip(), url=self.fix_url(u.strip())))
+                    elif "http" in sub_item:
+                        subtitles.append(Subtitle(name="TR", url=self.fix_url(sub_item.strip())))
+
+        # 3. HTML5 Track Tags
+        if not subtitles:
+            for track in secici.select("track[kind='captions'], track[kind='subtitles']"):
+                src   = track.attrs.get("src")
+                label = track.attrs.get("label") or track.attrs.get("srclang") or "TR"
+                if src:
+                    subtitles.append(Subtitle(name=label.upper(), url=self.fix_url(src)))
+
+        return subtitles
+
+    async def invoke_local_source(self, iframe: str, source: str, url: str) -> list[ExtractResult]:
+        istek = await self.httpx.get(
+            url     = iframe,
+            headers = {
+                "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "X-Requested-With" : "XMLHttpRequest",
+                "Referer"          : self.main_url + "/" 
+            }
+        )
+
+        # ID'yi güvenli al
+        video_id = iframe.rstrip("/").split("/")[-1]
+
+        # Boş yanıt kontrolü
+        if not istek.text or len(istek.text) < 50:
+            return await self.cehennempass(video_id, source, [])
+
+        # 1. Altyazıları Çıkar
+        subtitles = self._extract_subtitles(istek.text)
+
+        # 2. Video URL'sini Çıkar
+        video_url = self._extract_video_url(istek.text)
+
+        # 3. Eğer Video URL yoksa CehennemPass'a git
+        if not video_url:
+            return await self.cehennempass(video_id, source, subtitles)
 
         return [ExtractResult(
             url       = video_url,
@@ -217,49 +263,72 @@ class HDFilmCehennemi(PluginBase):
             subtitles = subtitles
         )]
 
+    async def _get_video_source(self, video_id: str, source_name: str, referer: str) -> list[ExtractResult]:
+        try:
+            api_get = await self.httpx.get(
+                url     = f"{self.main_url}/video/{video_id}/",
+                headers = {
+                    "Content-Type"     : "application/json",
+                    "X-Requested-With" : "fetch",
+                    "Referer"          : referer,
+                }
+            )
+
+            # JSON Parse (Daha güvenli)
+            # Response: {"success": true, "data": {"html": "<iframe class=\"rapidrame\" data-src=\"...\" ...></iframe>"}}
+            try:
+                json_data    = api_get.json()
+                html_content = json_data.get("data", {}).get("html", "")
+                iframe       = HTMLHelper(html_content).select_attr("iframe", "data-src")
+            except:
+                # RegEx fallback
+                iframe = HTMLHelper(api_get.text).regex_first(r'data-src=\\\"([^\"]+)')
+                iframe = iframe.replace("\\", "") if iframe else None
+
+            if not iframe:
+                return []
+
+            # mobi URL'si varsa direkt kullan
+            if "mobi" in iframe: # m.hdfilmcehennemi.nl veya /mobi/
+                iframe = iframe.split("?")[0]
+            # rapidrame ve query varsa
+            elif "rapidrame" in iframe and "?rapidrame_id=" in iframe:
+                # /rplayer/ID/ formatına çevir
+                 rap_id = iframe.split('?rapidrame_id=')[1]
+                 iframe = f"{self.main_url}/rplayer/{rap_id}"
+
+            return await self.invoke_local_source(iframe, source_name, referer)
+        except Exception:
+            return []
+
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        results = []
+        sources = []
         for alternatif in secici.select("div.alternative-links"):
             lang_code = alternatif.attrs.get("data-lang", "").upper()
 
+            # Dil metnini bul
+            if lang_code:
+                if lang_btn := secici.select_first(f"button.language-link[data-lang='{lang_code.lower()}']"):
+                    lang_text = lang_btn.text(strip=True)
+                    # "DUAL (Türkçe Dublaj & Altyazılı)" -> "DUAL" yap, diğerleri aynen kalsın
+                    if "DUAL" in lang_text:
+                        lang_code = "DUAL"
+                    else:
+                        lang_code = lang_text
+
             for link in secici.select("button.alternative-link", alternatif):
                 source_text = link.text(strip=True).replace('(HDrip Xbet)', '').strip()
-                source   = f"{source_text} {lang_code}"
-                video_id = link.attrs.get("data-video")
+                source_name = f"{lang_code} | {source_text}".strip()
+                video_id    = link.attrs.get("data-video")
 
-                if not video_id:
-                    continue
+                if video_id:
+                    sources.append((video_id, source_name, url))
 
-                api_get = await self.httpx.get(
-                    url     = f"{self.main_url}/video/{video_id}/",
-                    headers = {
-                        "Content-Type"     : "application/json",
-                        "X-Requested-With" : "fetch",
-                        "Referer"          : url,
-                    },
-                )
+        tasks = []
+        for vid, name, ref in sources:
+            tasks.append(self._get_video_source(vid, name, ref))
 
-                iframe = HTMLHelper(api_get.text).regex_first(r'data-src=\\\"([^\"]+)')
-                iframe = iframe.replace("\\", "") if iframe else None
-
-                if not iframe:
-                    continue
-
-                # mobi URL'si varsa direkt kullan (query string'i kaldır)
-                if "mobi" in iframe:
-                    iframe = iframe.split("?")[0]  # rapidrame_id query param'ı kaldır
-                # mobi değilse ve rapidrame varsa rplayer kullan
-                elif "rapidrame" in iframe and "?rapidrame_id=" in iframe:
-                    iframe = f"{self.main_url}/rplayer/{iframe.split('?rapidrame_id=')[1]}"
-
-                video_data_list = await self.invoke_local_source(iframe, source, url)
-                if not video_data_list:
-                    continue
-
-                for video_data in video_data_list:
-                    results.append(video_data)
-
-        return results
+        return [item for sublist in await asyncio.gather(*tasks) for item in sublist]

@@ -131,7 +131,7 @@ class DiziPal(PluginBase):
                 rating      = rating,
                 year        = year,
                 duration    = duration,
-                episodes    = episodes or None,
+                episodes    = episodes,
                 actors      = actors
             )
 

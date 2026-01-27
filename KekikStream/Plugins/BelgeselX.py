@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from contextlib       import suppress
 
 class BelgeselX(PluginBase):
     name        = "BelgeselX"
@@ -209,12 +210,10 @@ class BelgeselX(PluginBase):
 
             # belgeselx.php redirect'ini çöz
             if "belgeselx.php" in video_url or "belgeselx2.php" in video_url:
-                try:
+                with suppress(Exception):
                     # HEAD isteği ile lokasyonu alalım
-                    resp = await self.httpx.head(video_url, headers={"Referer": main_url}, follow_redirects=True)
+                    resp      = await self.httpx.head(video_url, headers={"Referer": main_url}, follow_redirects=True)
                     video_url = str(resp.url)
-                except:
-                    pass
 
             links.append(ExtractResult(
                 url     = video_url,

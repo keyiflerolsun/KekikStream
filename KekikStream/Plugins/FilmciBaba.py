@@ -1,10 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import re
 
-class Full4kizle(PluginBase):
-    name        = "Full4kizle"
+class FilmciBaba(PluginBase):
+    name        = "FilmciBaba"
     language    = "tr"
     main_url    = "https://izlehdfilm.cc"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
@@ -35,81 +34,65 @@ class Full4kizle(PluginBase):
         f"{main_url}/Kategori/tur/18-erotik-filmler/page"           : "+18 Erotik Filmler",
     }
 
-
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        target_url = f"{url}/{page}/"
-        istek = await self.httpx.get(target_url)
-        helper = HTMLHelper(istek.text)
-        
-        items = helper.select("div.movie-preview")
-        results = []
-        
-        for item in items:
-            title_el = helper.select_first(".movie-title a", item)
-            if not title_el: continue
-            
-            title = title_el.text(strip=True)
-            # Remove " izle" case insensitive
-            title = re.sub(r"(?i) izle", "", title).strip()
-            
-            href = self.fix_url(title_el.attrs.get("href"))
-            
-            poster_el = helper.select_first(".movie-poster img", item)
-            poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
-            
+        istek  = await self.httpx.get(f"{url}/{page}/")
+        secici = HTMLHelper(istek.text)
+
+        results = []        
+        for item in secici.select("div.movie-preview"):
+            title_el = secici.select_first(".movie-title a", item)
+            if not title_el:
+                continue
+
+            title  = self.clean_title(title_el.text(strip=True))
+            href   = self.fix_url(title_el.attrs.get("href"))
+            poster = self.fix_url(secici.select_poster(".movie-poster img", item))
+
             results.append(MainPageResult(
                 category = category,
                 title    = title,
                 url      = href,
                 poster   = poster
             ))
-            
+
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        url = f"{self.main_url}/?s={query}"
-        istek = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
-        
-        items = helper.select("div.movie-preview")
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        secici = HTMLHelper(istek.text)
+
         results = []
-        
-        for item in items:
-            title_el = helper.select_first(".movie-title a", item)
-            if not title_el: continue
-            
-            title = title_el.text(strip=True)
-            # Remove " izle" case insensitive
-            title = re.sub(r"(?i) izle", "", title).strip()
-            
-            href = self.fix_url(title_el.attrs.get("href"))
-            
-            poster_el = helper.select_first(".movie-poster img", item)
-            poster = self.fix_url(poster_el.attrs.get("src")) if poster_el else None
-            
+        for item in secici.select("div.movie-preview"):
+            title_el = secici.select_first(".movie-title a", item)
+            if not title_el:
+                continue
+
+            title  = self.clean_title(title_el.text(strip=True))            
+            href   = self.fix_url(title_el.attrs.get("href"))
+            poster = self.fix_url(secici.select_poster(".movie-poster img", item))
+
             results.append(SearchResult(
                 title  = title,
                 url    = href,
                 poster = poster
             ))
-            
+
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(helper.select_text("h1"))
-        poster      = helper.select_poster(".poster img")
-        description = helper.select_text(".excerpt p")
-        year        = helper.extract_year(".release", ".movie-info")
-        rating      = helper.regex_first(r"([\d\.]+)", helper.select_text(".imdb-rating"))
-        duration    = int(helper.regex_first(r"(\d+)", helper.select_text(".movie-info")) or 0)
-        tags        = helper.select_texts("a[href*='/tur/'], a[href*='/Kategori/tur/']")
-        actors      = helper.select_texts("a[href*='/oyuncular/']") or helper.select_texts(".cast-list .actor-name, .cast-list a")
+        title       = self.clean_title(secici.select_text("h1"))
+        poster      = secici.select_poster(".poster img")
+        description = secici.select_text(".excerpt p")
+        year        = secici.extract_year(".release", ".movie-info")
+        rating      = secici.regex_first(r"([\d\.]+)", secici.select_text(".imdb-rating"))
+        tags        = secici.select_texts("div.categories a[href*='/Kategori/tur/']")
+        actors      = secici.select_texts("a[href*='/oyuncular/']") or secici.select_texts(".cast-list .actor-name, .cast-list a")
 
         # Bölüm linklerini kontrol et
-        ep_elements = helper.select(".parts-middle a, .parts-middle .part.active")
+        ep_elements = secici.select(".parts-middle a, .parts-middle .part.active")
 
         if not ep_elements:
             return MovieInfo(
@@ -118,17 +101,16 @@ class Full4kizle(PluginBase):
                 description = description,
                 poster      = self.fix_url(poster),
                 year        = year,
-                rating      = rating,
-                duration    = duration,
+                rating      = rating if rating != "." else None,
                 tags        = tags,
                 actors      = actors
             )
-        
+
         episodes = []
         for i, el in enumerate(ep_elements):
-            name = helper.select_text(".part-name", el) or f"Bölüm {i+1}"
+            name = secici.select_text(".part-name", el) or f"Bölüm {i+1}"
             href = el.attrs.get("href") or url
-            s, e = helper.extract_season_episode(name)
+            s, e = secici.extract_season_episode(name)
             episodes.append(Episode(season=s or 1, episode=e or (i + 1), title=name, url=self.fix_url(href)))
 
         return SeriesInfo(
@@ -138,25 +120,24 @@ class Full4kizle(PluginBase):
             poster      = self.fix_url(poster),
             year        = year,
             rating      = rating,
-            duration    = duration,
             tags        = tags,
             actors      = actors,
             episodes    = episodes
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
-        
-        iframe = helper.select_attr(".center-container iframe", "src")
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
+
+        iframe = secici.select_attr(".center-container iframe", "src")
         if not iframe:
-            iframe = helper.select_attr("iframe[src*='hotstream.club']", "src")
-            
+            iframe = secici.select_attr("iframe[src*='hotstream.club']", "src")
+
         results = []
-        
+
         if iframe:
             iframe = self.fix_url(iframe)
-            
+
             # Use general extract method
             extracted = await self.extract(iframe)
             if extracted:
@@ -166,9 +147,9 @@ class Full4kizle(PluginBase):
                     results.append(extracted)
             else:
                  results.append(ExtractResult(
-                    name = "Full4kizle | External",
-                    url  = iframe,
+                    name    = "FilmciBaba | External",
+                    url     = iframe,
                     referer = url
                 ))
-                
+
         return results
