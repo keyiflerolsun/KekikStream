@@ -65,7 +65,7 @@ class DiziMom(PluginBase):
         poster      = helper.select_poster("div.category_image img")
         description = helper.select_direct_text("div.category_desc")
         tags        = helper.select_texts("div.genres a")
-        rating      = helper.regex_first(r"IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", helper.html, flags=re.DOTALL)
+        rating      = helper.regex_first(r"(?s)IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", helper.html)
         year        = helper.extract_year("div.category_text")
         actors      = helper.meta_list("Oyuncular", container_selector="div#icerikcat2")
 

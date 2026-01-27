@@ -34,10 +34,29 @@ class BelgeselX(PluginBase):
     @staticmethod
     def _to_title_case(text: str) -> str:
         """Türkçe için title case dönüşümü."""
-        return " ".join(
-            word.lower().replace("i", "İ").capitalize() if word.lower().startswith("i") else word.capitalize()
-            for word in text.split()
-        )
+        if not text:
+            return ""
+        
+        words = text.split()
+        new_words = []
+        
+        for word in words:
+            # Önce Türkçe karakterleri koruyarak küçült
+            # İ -> i, I -> ı
+            word = word.replace("İ", "i").replace("I", "ı").lower()
+            
+            # Sonra ilk harfi Türkçe kurallarına göre büyüt
+            if word:
+                if word[0] == "i":
+                    word = "İ" + word[1:]
+                elif word[0] == "ı":
+                    word = "I" + word[1:]
+                else:
+                    word = word[0].upper() + word[1:]
+            
+            new_words.append(word)
+            
+        return " ".join(new_words)
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(f"{url}{page}")

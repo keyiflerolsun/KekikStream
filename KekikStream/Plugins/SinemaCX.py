@@ -117,7 +117,7 @@ class SinemaCX(PluginBase):
         if has_only_trailer:
             alt_url   = url.rstrip("/") + "/2/"
             alt_istek = await self.httpx.get(alt_url)
-            alt_istek = await self.httpx.get(alt_url)
+
             alt_sec   = HTMLHelper(alt_istek.text)
             iframe_list = alt_sec.select_attrs("iframe", "data-vsrc")
 

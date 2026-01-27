@@ -47,7 +47,7 @@ class VidMoly(ExtractorBase):
 
         # Altyazı kaynaklarını ayrıştır
         subtitles = []
-        if sub_str := sel.regex_first(r"tracks:\s*\[(.*?)\]", flags=re.DOTALL):
+        if sub_str := sel.regex_first(r"(?s)tracks:\s*\[(.*?)\]"):
             sub_data = self._add_marks(sub_str, "file")
             sub_data = self._add_marks(sub_data, "label")
             sub_data = self._add_marks(sub_data, "kind")
@@ -68,7 +68,7 @@ class VidMoly(ExtractorBase):
                     break
 
         if not video_url:
-            if src_str := sel.regex_first(r"sources:\s*\[(.*?)\],", flags=re.DOTALL):
+            if src_str := sel.regex_first(r"(?s)sources:\s*\[(.*?)\],"):
                 vid_data = self._add_marks(src_str, "file")
                 with contextlib.suppress(json.JSONDecodeError):
                     vid_sources = json.loads(f"[{vid_data}]")

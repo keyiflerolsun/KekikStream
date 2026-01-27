@@ -33,19 +33,19 @@ class HTMLHelper:
             return element
         return self._root(element).css_first(selector)
 
-    def select_text(self, selector: str | None = None, element: Node | None = None, strip: bool = True) -> str | None:
+    def select_text(self, selector: str | None = None, element: Node | None = None) -> str | None:
         """CSS selector ile element bul ve text içeriğini döndür."""
         el = self.select_first(selector, element)
         if not el:
             return None
-        val = el.text(strip=strip)
+        val = el.text(strip=True)
         return val or None
 
-    def select_texts(self, selector: str, element: Node | None = None, strip: bool = True) -> list[str]:
+    def select_texts(self, selector: str, element: Node | None = None) -> list[str]:
         """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
         out: list[str] = []
         for el in self.select(selector, element):
-            txt = el.text(strip=strip)
+            txt = el.text(strip=True)
             if txt:
                 out.append(txt)
         return out
@@ -71,42 +71,23 @@ class HTMLHelper:
             return None
         return el.attrs.get("data-src") or el.attrs.get("src")
 
-    def select_direct_text(self, selector: str, element: Node | None = None, strip: bool = True) -> str | None:
+    def select_direct_text(self, selector: str, element: Node | None = None) -> str | None:
         """
         Elementin yalnızca "kendi" düz metnini döndürür (child elementlerin text'ini katmadan).
-        Selectolax sürüm farklarına göre deep=False dene, yoksa node sibling-walk ile fallback yapar.
         """
         el = self.select_first(selector, element)
         if not el:
             return None
 
-        # 1) Bazı sürümlerde var: sadece direct text
-        try:
-            val = el.text(strip=strip, deep=False)  # type: ignore[call-arg]
-            return val or None
-        except TypeError:
-            pass  # deep parametresi yok, fallback'e geç
-
-        # 2) Fallback: direct children'ı el.child + next ile dolaş
-        parts: list[str] = []
-        ch = el.child
-        while ch is not None:
-            if ch.tag == "-text":
-                t = ch.text(strip=strip)
-                if t:
-                    parts.append(t)
-            elif ch.tag == "br":
-                parts.append("\n")
-            ch = ch.next
-
-        out = "".join(parts).strip()
-        return out or None
+        # type: ignore[call-arg]
+        val = el.text(strip=True, deep=False)
+        return val or None
 
     # ========================
     # META (LABEL -> VALUE) İŞLEMLERİ
     # ========================
 
-    def meta_value(self, label: str, container_selector: str | None = None, strip: bool = True) -> str | None:
+    def meta_value(self, label: str, container_selector: str | None = None) -> str | None:
         """
         Herhangi bir container içinde: LABEL metnini içeren bir elementten SONRA gelen metni döndürür.
         label örn: "Oyuncular", "Yapım Yılı", "IMDB"
@@ -127,7 +108,7 @@ class HTMLHelper:
 
                 # 1) Elementin kendi içindeki text'te LABEL: VALUE formatı olabilir
                 # "Oyuncular: Brad Pitt" gibi. LABEL: sonrasını al.
-                full_txt = label_el.text(strip=strip)
+                full_txt = label_el.text(strip=True)
                 if ":" in full_txt and needle in full_txt.split(":")[0].casefold():
                     val = full_txt.split(":", 1)[1].strip()
                     if val: return val
@@ -136,10 +117,10 @@ class HTMLHelper:
                 curr = label_el.next
                 while curr:
                     if curr.tag == "-text":
-                        val = curr.text(strip=strip).strip(" :")
+                        val = curr.text(strip=True).strip(" :")
                         if val: return val
                     elif curr.tag != "br":
-                        val = curr.text(strip=strip).strip(" :")
+                        val = curr.text(strip=True).strip(" :")
                         if val: return val
                     else: # <br> gördüysek satır bitmiştir
                         break
@@ -175,29 +156,25 @@ class HTMLHelper:
         """Regex için kaynak metni döndürür."""
         return target if isinstance(target, str) else self.html
 
-    def _regex_flags(self, target: str | int | None, flags: int) -> int:
-        """Regex flags değerini döndürür."""
-        return target if isinstance(target, int) else flags
-
-    def regex_first(self, pattern: str, target: str | int | None = None, flags: int = 0, group: int | None = 1) -> str | tuple | None:
+    def regex_first(self, pattern: str, target: str | int | None = None, group: int | None = 1) -> str | tuple | None:
         """Regex ile arama yap, istenen grubu döndür (group=None ise tüm grupları tuple olarak döndür)."""
-        match = re.search(pattern, self._regex_source(target), self._regex_flags(target, flags))
+        match = re.search(pattern, self._regex_source(target))
         if not match:
             return None
-        
+            
         if group is None:
             return match.groups()
             
         last_idx = match.lastindex or 0
         return match.group(group) if last_idx >= group else match.group(0)
 
-    def regex_all(self, pattern: str, target: str | int | None = None, flags: int = 0) -> list[str]:
+    def regex_all(self, pattern: str, target: str | int | None = None) -> list[str] | list[tuple]:
         """Regex ile tüm eşleşmeleri döndür."""
-        return re.findall(pattern, self._regex_source(target), self._regex_flags(target, flags))
+        return re.findall(pattern, self._regex_source(target))
 
-    def regex_replace(self, pattern: str, repl: str, target: str | int | None = None, flags: int = 0) -> str:
+    def regex_replace(self, pattern: str, repl: str, target: str | int | None = None) -> str:
         """Regex ile replace yap."""
-        return re.sub(pattern, repl, self._regex_source(target), flags=self._regex_flags(target, flags))
+        return re.sub(pattern, repl, self._regex_source(target))
 
     # ========================
     # ÖZEL AYIKLAYICILAR
