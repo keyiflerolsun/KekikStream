@@ -9,7 +9,16 @@ class VidHide(ExtractorBase):
     main_url = "https://vidhidepro.com"
 
     # Birden fazla domain destekle
-    supported_domains = ["vidhidepro.com", "vidhide.com", "rubyvidhub.com"]
+    supported_domains = [
+        "vidhidepro.com", "vidhide.com", "rubyvidhub.com", 
+        "vidhidevip.com", "vidhideplus.com", "vidhidepre.com", 
+        "movearnpre.com", "oneupload.to",
+        "filelions.live", "filelions.online", "filelions.to",
+        "kinoger.be",
+        "smoothpre.com",
+        "dhtpre.com",
+        "peytonepre.com"
+    ]
 
     def can_handle_url(self, url: str) -> bool:
         return any(domain in url for domain in self.supported_domains)
@@ -21,6 +30,8 @@ class VidHide(ExtractorBase):
             return url.replace("/download/", "/v/")
         elif "/file/" in url:
             return url.replace("/file/", "/v/")
+        elif "/embed/" in url:
+            return url.replace("/embed/", "/v/")
         else:
             return url.replace("/f/", "/v/")
 
@@ -32,18 +43,56 @@ class VidHide(ExtractorBase):
         })
         
         embed_url = self.get_embed_url(url)
-        istek     = await self.httpx.get(embed_url)
-        sel       = HTMLHelper(istek.text)
+        istek     = await self.httpx.get(embed_url, follow_redirects=True)
+        text      = istek.text
+
+        # Silinmiş dosya kontrolü
+        if "File is no longer available" in text or "File Not Found" in text:
+             raise ValueError(f"VidHide: Video silinmiş. {url}")
+
+        # JS Redirect Kontrolü (OneUpload vb.)
+        if js_redirect := HTMLHelper(text).regex_first(r"window\.location\.replace\(['\"]([^'\"]+)['\"]\)") or \
+                          HTMLHelper(text).regex_first(r"window\.location\.href\s*=\s*['\"]([^'\"]+)['\"]"):
+            # Redirect url'i al
+            target_url = js_redirect
+            # Bazen path relative olabilir ama genelde full url
+            if not target_url.startswith("http"):
+                 # urljoin gerekebilir ama şimdilik doğrudan deneyelim veya fix_url
+                 target_url = self.fix_url(target_url) # fix_url base'e göre düzeltebilir mi? ExtractorBase.fix_url genelde şema ekler.
+                 pass
+
+            # Yeniden istek at
+            istek = await self.httpx.get(target_url, headers={"Referer": embed_url}, follow_redirects=True)
+            text  = istek.text
+
+        sel       = HTMLHelper(text)
 
         unpacked = ""
-        if "eval(function" in istek.text:
+        # Eval script bul (regex ile daha sağlam)
+        if eval_match := sel.regex_first(r'(eval\s*\(\s*function[\s\S]+?)<\/script>'):
             try:
-                unpacked = Packer.unpack(istek.text)
+                unpacked = Packer.unpack(eval_match)
+                if "var links" in unpacked:
+                     unpacked = unpacked.split("var links")[1]
             except:
                 pass
         
-        content  = unpacked or istek.text
-        m3u8_url = HTMLHelper(content).regex_first(r'[:"]\s*["\']([^"\']+\.m3u8[^"\']*)["\']')
+        content  = unpacked or text
+
+        # Regex: Kotlin mantığı (: "url")
+        # Ayrıca sources: [...] mantığını da ekle
+        m3u8_url = HTMLHelper(content).regex_first(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"')
+
+        if not m3u8_url:
+            # Genel arama (hls:, file: vb.)
+            # Kotlin Regex: :\s*"(.*?m3u8.*?)"
+            match = HTMLHelper(content).regex_first(r':\s*["\']([^"\']+\.m3u8[^"\']*)["\']')
+            if match:
+                m3u8_url = match
+
+        if not m3u8_url:
+             # Son şans: herhangi bir m3u8 linki
+             m3u8_url = HTMLHelper(content).regex_first(r'["\']([^"\']+\.m3u8[^"\']*)["\']')
 
         if not m3u8_url:
             raise ValueError(f"VidHide: Video URL bulunamadı. {url}")

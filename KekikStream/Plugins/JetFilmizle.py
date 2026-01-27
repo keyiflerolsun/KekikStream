@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import asyncio
 
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
@@ -42,17 +43,15 @@ class JetFilmizle(PluginBase):
 
         results = []
         for veri in secici.select("article.movie"):
-            # h2-h6 içindeki a linki
             title_text = None
             for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
                 title_text = secici.select_text(f"{h_tag} a", veri)
                 if title_text:
                     break
 
-            href = secici.select_attr("a", "href", veri)
-            poster = secici.select_poster("img", veri)
-
             title  = self.clean_title(title_text) if title_text else None
+            href   = secici.select_attr("a", "href", veri)
+            poster = secici.select_poster("img", veri)
 
             if title and href:
                 results.append(MainPageResult(
@@ -74,17 +73,15 @@ class JetFilmizle(PluginBase):
 
         results = []
         for article in secici.select("article.movie"):
-            # h2-h6 içindeki a linki
             title_text = None
             for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
                 title_text = secici.select_text(f"{h_tag} a", article)
                 if title_text:
                     break
 
-            href = secici.select_attr("a", "href", article)
-            poster = secici.select_poster("img", article)
-
             title  = self.clean_title(title_text) if title_text else None
+            href   = secici.select_attr("a", "href", article)
+            poster = secici.select_poster("img", article)
 
             if title and href:
                 results.append(SearchResult(
@@ -126,53 +123,89 @@ class JetFilmizle(PluginBase):
             rating      = rating,
             year        = year,
             actors      = actors,
-            duration    = int(total_minutes) if duration else None
+            duration    = total_minutes if total_minutes else None
         )
+
+    async def _process_source(self, url: str, name: str, html: str | None) -> list[ExtractResult]:
+        results = []
+        try:
+            if html:
+                secici = HTMLHelper(html)
+            else:
+                resp   = await self.httpx.get(url)
+                secici = HTMLHelper(resp.text)
+
+            # Iframe'leri bul
+            container = secici.select_first("div#movie") or secici.select_first("div.film-content")
+
+            if container:
+                for iframe in secici.select("iframe", container):
+                    src = (iframe.attrs.get("src") or 
+                           iframe.attrs.get("data-src") or
+                           iframe.attrs.get("data-lazy-src"))
+
+                    if src and src != "about:blank":
+                        iframe_url = self.fix_url(src)
+                        # name_override KULLANMA, extractor kendi ismini versin
+                        # Sonra biz düzenleriz
+                        data = await self.extract(iframe_url)
+
+                        if data:
+                            items = data if isinstance(data, list) else [data]
+
+                            for item in items:
+                                # Sadece kalite bilgisi içeriyorsa ekle, yoksa sadece buton adını kullan
+                                # Özellikle Zeus için kalite önemli (1080p, 720p)
+                                # Diğerlerinde plugin adı (Apollo, JetPlay vb.) önemsiz
+
+                                # Kalite kontrolü (basitçe)
+                                quality_indicators = ["1080p", "720p", "480p", "360p", "240p", "144p", "4k", "2k"]
+                                has_quality = any(q in item.name.lower() for q in quality_indicators)
+
+                                if has_quality:
+                                    # Buton Adı | Extractor Adı (Kalite içerdiği için)
+                                    # Örn: Zeus | 1080p
+                                    # Eğer Extractor adı zaten Buton adını içeriyorsa (Zeus | 1080p -> Zeus) tekrar ekleme
+                                    if name.lower() not in item.name.lower():
+                                         item.name = f"{name} | {item.name}"
+                                else:
+                                    # Kalite yoksa sadece Buton adını kullan
+                                    # Örn: Apollo | JetTv -> JetTv
+                                    item.name = name
+
+                                results.append(item)
+            return results
+        except Exception:
+            return []
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        results = []
+        sources = []
+        if film_part := secici.select_first("div.film_part"):
+            # Tüm spanları gez
+            for span in secici.select("span", film_part):
+                # Eğer bu span bir <a> etiketi içinde değilse, aktif kaynaktır
+                if span.parent.tag != "a":
+                    name = span.text(strip=True)
+                    if name:
+                        sources.append((url, name, istek.text)) # html content var
+                        break
 
-        # 1) Ana iframe'leri kontrol et
-        for iframe in secici.select("iframe"):
-            src = (iframe.attrs.get("src") or 
-                   iframe.attrs.get("data-src") or
-                   iframe.attrs.get("data-lazy-src"))
-            
-            if src and src != "about:blank":
-                iframe_url = self.fix_url(src)
-                data = await self.extract(iframe_url)
-                if data:
-                    results.append(data)
-
-        # 2) Sayfa numaralarından linkleri topla (Fragman hariç)
-        page_links = []
-        for link in secici.select("a.post-page-numbers"):
-            isim = secici.select_text("span", link) or ""
-            if isim != "Fragman":
+            # Diğer kaynak linkleri
+            for link in secici.select("a.post-page-numbers", film_part):
+                name = secici.select_text("span", link) or link.text(strip=True)
                 href = link.attrs.get("href")
-                if href:
-                    page_links.append((self.fix_url(href), isim))
+                if name != "Fragman" and href:
+                    sources.append((self.fix_url(href), name, None)) # html yok, çekilecek
 
-        # 3) Her sayfa linkindeki iframe'leri bul
-        for page_url, isim in page_links:
-            try:
-                page_resp = await self.httpx.get(page_url)
-                page_sel = HTMLHelper(page_resp.text)
-                
-                for iframe in page_sel.select("div#movie iframe"):
-                    src = (iframe.attrs.get("src") or 
-                           iframe.attrs.get("data-src") or
-                           iframe.attrs.get("data-lazy-src"))
-                    
-                    if src and src != "about:blank":
-                        iframe_url = self.fix_url(src)
-                        data = await self.extract(iframe_url, prefix=isim)
-                        if data:
-                            results.append(data)
-            except Exception:
-                continue
+        # Eğer film_part yoksa, sadece mevcut sayfayı tara (Tek part olabilir)
+        if not sources:
+            sources.append((url, "JetFilmizle", istek.text))
 
-        return results
+        tasks = []
+        for page_url, source_name, html_content in sources:
+            tasks.append(self._process_source(page_url, source_name, html_content))
+
+        return [item for sublist in await asyncio.gather(*tasks) for item in sublist]
