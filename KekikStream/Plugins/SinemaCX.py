@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult
-from KekikStream.Core.HTMLHelper import HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult, HTMLHelper
+import asyncio, contextlib
 
 class SinemaCX(PluginBase):
     name        = "SinemaCX"
@@ -46,13 +46,13 @@ class SinemaCX(PluginBase):
             if not title:
                 continue
 
-            href = secici.select_attr("div.yanac a", "href", veri)
+            href   = secici.select_attr("div.yanac a", "href", veri)
             poster = secici.select_attr("a.resim img", "data-src", veri) or secici.select_attr("a.resim img", "src", veri)
 
             results.append(MainPageResult(
                 category = category,
                 title    = title,
-                url      = self.fix_url(href) if href else "",
+                url      = self.fix_url(href),
                 poster   = self.fix_url(poster),
             ))
 
@@ -68,12 +68,12 @@ class SinemaCX(PluginBase):
             if not title:
                 continue
 
-            href = secici.select_attr("div.yanac a", "href", veri)
+            href   = secici.select_attr("div.yanac a", "href", veri)
             poster = secici.select_attr("a.resim img", "data-src", veri) or secici.select_attr("a.resim img", "src", veri)
 
             results.append(SearchResult(
                 title  = title,
-                url    = self.fix_url(href) if href else "",
+                url    = self.fix_url(href),
                 poster = self.fix_url(poster),
             ))
 
@@ -90,6 +90,8 @@ class SinemaCX(PluginBase):
         tags        = secici.select_texts("div.f-bilgi div.tur a")
         year        = secici.extract_year("ul.detay a[href*='yapim']")
         actors      = secici.select_texts("li.oync li.oyuncu-k span.isim")
+        _duration   = secici.regex_first(r"<span>Süre:\s*</span>\s*(\d+)")
+        duration    = int(_duration) if _duration else None
 
         return MovieInfo(
             url         = url,
@@ -99,71 +101,145 @@ class SinemaCX(PluginBase):
             rating      = rating,
             tags        = tags,
             year        = year,
-            actors      = actors
+            actors      = actors,
+            duration    = duration,
         )
 
-    async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        secici = HTMLHelper(istek.text)
+    async def _get_iframe_from_source(self, text: str) -> str | None:
+        """Verilen sayfa kaynağındaki iframe'i (data-vsrc veya src) bulur."""
+        secici = HTMLHelper(text)
 
-        iframe_list = secici.select_attrs("iframe", "data-vsrc")
+        # Öncelik data-vsrc
+        if src := secici.select_attr("iframe", "data-vsrc"):
+            return self.fix_url(src.split("?img=")[0])
 
-        # Sadece fragman varsa /2/ sayfasından dene
-        has_only_trailer = all(
-            "youtube" in (i or "").lower() or "fragman" in (i or "").lower() or "trailer" in (i or "").lower()
-            for i in iframe_list
-        )
+        # Sonra src
+        if src := secici.select_attr("iframe", "src"):
+            return self.fix_url(src)
 
-        if has_only_trailer:
-            alt_url   = url.rstrip("/") + "/2/"
-            alt_istek = await self.httpx.get(alt_url)
+        return None
 
-            alt_sec   = HTMLHelper(alt_istek.text)
-            iframe_list = alt_sec.select_attrs("iframe", "data-vsrc")
-
-        if not iframe_list:
-            return []
-
-        iframe = self.fix_url(iframe_list[0].split("?img=")[0])
-        if not iframe:
-            return []
-
+    async def _process_player(self, iframe_url: str, name: str) -> list[ExtractResult]:
+        """Iframe URL'ini işler ve sonuç döndürür."""
         results = []
 
-        # Altyazı kontrolü
-        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
-        iframe_istek = await self.httpx.get(iframe)
-        iframe_text  = iframe_istek.text
+        if "player.filmizle.in" in iframe_url.lower():
+            with contextlib.suppress(Exception):
+                # Referer önemli
+                self.httpx.headers.update({"Referer": f"{self.main_url}/"})
 
-        subtitles = []
-        sub_section = HTMLHelper(iframe_text).regex_first(r'playerjsSubtitle\s*=\s*"(.+?)"')
-        if sub_section:
-            for lang, link in HTMLHelper(sub_section).regex_all(r'\[(.*?)](https?://[^\s\",]+)'):
-                subtitles.append(Subtitle(name=lang, url=self.fix_url(link)))
+                # Iframe içeriğini çek (Altyazı ve JS için)
+                iframe_resp = await self.httpx.get(iframe_url)
+                iframe_text = iframe_resp.text
 
-        # player.filmizle.in kontrolü
-        if "player.filmizle.in" in iframe.lower():
-            base_url = HTMLHelper(iframe).regex_first(r"https?://([^/]+)")
-            if base_url:
-                vid_id   = iframe.split("/")[-1]
+                subtitles = []
+                if sub_section := HTMLHelper(iframe_text).regex_first(r'playerjsSubtitle\s*=\s*"(.+?)"'):
+                    for lang, link in HTMLHelper(sub_section).regex_all(r'\[(.*?)](https?://[^\s\",]+)'):
+                        subtitles.append(Subtitle(name=lang, url=self.fix_url(link)))
 
-                self.httpx.headers.update({"X-Requested-With": "XMLHttpRequest"})
-                vid_istek = await self.httpx.post(
-                    f"https://{base_url}/player/index.php?data={vid_id}&do=getVideo",
-                )
-                vid_data = vid_istek.json()
+                base_url = HTMLHelper(iframe_url).regex_first(r"https?://([^/]+)")
+                if base_url:
+                    vid_id = iframe_url.split("/")[-1]
+                    self.httpx.headers.update({"X-Requested-With": "XMLHttpRequest"})
 
-                if vid_data.get("securedLink"):
-                    results.append(ExtractResult(
-                        name      = f"{self.name}",
-                        url       = vid_data["securedLink"],
-                        referer   = iframe,
-                        subtitles = subtitles
-                    ))
+                    vid_istek = await self.httpx.post(f"https://{base_url}/player/index.php?data={vid_id}&do=getVideo")
+                    vid_data  = vid_istek.json()
+
+                    if link := vid_data.get("securedLink"):
+                        results.append(ExtractResult(
+                            name      = name,
+                            url       = link,
+                            referer   = iframe_url,
+                            subtitles = subtitles
+                        ))
         else:
-            # Extractor'a yönlendir
-            data = await self.extract(iframe)
-            if data:
-                results.append(data)
+            # Standart Extractor
+            with contextlib.suppress(Exception):
+                extracted = await self.extract(iframe_url)
+                if extracted:
+                    items = extracted if isinstance(extracted, list) else [extracted]
+                    for item in items:
+                        item.name = name
+                        results.append(item)
 
         return results
+
+    async def load_links(self, url: str) -> list[ExtractResult]:
+        istek     = await self.httpx.get(url)
+        main_text = istek.text
+        secici    = HTMLHelper(main_text)
+
+        sources = [] #List of tuple (url, name, needs_fetch)
+
+        if part_list := secici.select("ul#part li, ul#f_part li"):
+            for li in part_list:
+                # Aktif Tab (li.tab-aktif veya span.secili)
+                if "tab-aktif" in li.attrs.get("class", ""):
+                     if a_tag := secici.select_first("a", li):
+                         # Direkt text al (deep=False)
+                         val  = a_tag.text(strip=True, deep=False)
+                         name = val if val else "SinemaCX"
+                         sources.append((None, name, False))
+
+                elif span := secici.select_first("span.secili", li):
+                    name = span.text(strip=True)
+                    sources.append((None, name, False)) 
+                
+                # Pasif Tab
+                elif a_tag := secici.select_first("a", li):
+                    href = a_tag.attrs.get("href")
+                    # title varsa title, yoksa text (deep=False ile almayı dene önce)
+                    name = a_tag.attrs.get("title")
+                    if not name:
+                         name = a_tag.text(strip=True, deep=False)
+                    if not name:
+                         name = a_tag.text(strip=True) # Fallback
+
+                    if href:
+                        sources.append((self.fix_url(href), name, True))
+        else:
+            # Tab yoksa, tek parça filmdir.
+            sources.append((None, "SinemaCX", False))
+
+        # 2. Kaynakları İşle
+        extract_tasks = []
+        
+        async def process_task(source):
+            src_url, src_name, needs_fetch = source
+
+            iframe_url = None
+            if not needs_fetch:
+                # Mevcut sayfa (main_text)
+                iframe_url = await self._get_iframe_from_source(main_text)
+            else:
+                # Yeni sayfa fetch et
+                with contextlib.suppress(Exception):
+                    resp = await self.httpx.get(src_url)
+                    iframe_url = await self._get_iframe_from_source(resp.text)
+            
+            if iframe_url:
+                if "youtube.com" in iframe_url or "youtu.be" in iframe_url:
+                    return []
+                return await self._process_player(iframe_url, src_name)
+            return []
+
+        for src in sources:
+            extract_tasks.append(process_task(src))
+
+        results_groups = await asyncio.gather(*extract_tasks)
+
+        final_results = []
+        for group in results_groups:
+            if group: 
+                final_results.extend(group)
+
+        # Duplicate Eliminasyonu
+        unique_results = []
+        seen = set()
+        for res in final_results:
+            key = (res.url, res.name)
+            if res.url and key not in seen:
+                unique_results.append(res)
+                seen.add(key)
+
+        return unique_results

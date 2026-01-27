@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class SuperFilmGeldi(PluginBase):
     name        = "SuperFilmGeldi"
@@ -42,7 +42,7 @@ class SuperFilmGeldi(PluginBase):
             if not title_text:
                 continue
 
-            href = secici.select_attr("span.movie-title a", "href", veri)
+            href   = secici.select_attr("span.movie-title a", "href", veri)
             poster = secici.select_attr("img", "src", veri)
 
             results.append(MainPageResult(
@@ -64,7 +64,7 @@ class SuperFilmGeldi(PluginBase):
             if not title_text:
                 continue
 
-            href = secici.select_attr("span.movie-title a", "href", veri)
+            href   = secici.select_attr("span.movie-title a", "href", veri)
             poster = secici.select_attr("img", "src", veri)
 
             results.append(SearchResult(

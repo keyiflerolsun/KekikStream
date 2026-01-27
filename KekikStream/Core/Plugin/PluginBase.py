@@ -144,14 +144,20 @@ class PluginBase(ABC):
                     if name_override:
                         item.name = name_override
                     elif prefix and item.name:
-                        item.name = f"{prefix} | {item.name}"
+                        if item.name.lower() in prefix.lower():
+                            item.name = prefix
+                        else:
+                            item.name = f"{prefix} | {item.name}"
                 return data
 
             # Tekil öğe ise
             if name_override:
                 data.name = name_override
             elif prefix and data.name:
-                data.name = f"{prefix} | {data.name}"
+                if data.name.lower() in prefix.lower():
+                    data.name = prefix
+                else:
+                    data.name = f"{prefix} | {data.name}"
 
             return data
         except Exception as hata:

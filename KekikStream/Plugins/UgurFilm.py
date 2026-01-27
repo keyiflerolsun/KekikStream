@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import asyncio, contextlib
 
 class UgurFilm(PluginBase):
     name        = "UgurFilm"
@@ -33,7 +34,7 @@ class UgurFilm(PluginBase):
             if not title:
                 continue
 
-            href = secici.select_attr("a", "href", veri)
+            href   = secici.select_attr("a", "href", veri)
             poster = secici.select_attr("img", "src", veri)
 
             results.append(MainPageResult(
@@ -51,8 +52,8 @@ class UgurFilm(PluginBase):
 
         results = []
         for film in secici.select("div.icerik div"):
-            title = secici.select_text("a.baslik span", film)
-            href = secici.select_attr("a", "href", film)
+            title  = secici.select_text("a.baslik span", film)
+            href   = secici.select_attr("a", "href", film)
             poster = secici.select_attr("img", "src", film)
 
             if title and href:
@@ -95,26 +96,72 @@ class UgurFilm(PluginBase):
         results = []
 
         part_links = secici.select_attrs("li.parttab a", "href")
+        if not part_links:
+            part_links = [url]
 
-        for part_link in part_links:
-            sub_response = await self.httpx.get(part_link)
-            sub_selector = HTMLHelper(sub_response.text)
-
-            iframe = sub_selector.select_attr("div#vast iframe", "src")
-
-            if iframe and self.main_url in iframe:
-                post_data = {
-                    "vid"         : iframe.split("vid=")[-1],
-                    "alternative" : "vidmoly",
-                    "ord"         : "0",
-                }
-                player_response = await self.httpx.post(
+        async def process_alt(vid: str, alt_name: str, ord_val: str) -> list[ExtractResult]:
+            """Alternatif player kaynağından video linkini çıkarır."""
+            with contextlib.suppress(Exception):
+                resp = await self.httpx.post(
                     url  = f"{self.main_url}/player/ajax_sources.php",
-                    data = post_data
+                    data = {"vid": vid, "alternative": alt_name, "ord": ord_val}
                 )
-                iframe = self.fix_url(player_response.json().get("iframe"))
-                data = await self.extract(iframe)
-                if data:
-                    results.append(data)
+                if iframe_url := resp.json().get("iframe"):
+                    data = await self.extract(self.fix_url(iframe_url))
+                    if not data:
+                        return []
 
-        return results
+                    return data if isinstance(data, list) else [data]
+
+            return []
+
+        async def process_part(part_url: str) -> list[ExtractResult]:
+            """Her bir part sayfasını ve alternatiflerini işler."""
+            try:
+                # Elimizde zaten olan ana sayfayı tekrar çekmemek için
+                if part_url == url:
+                    sub_sec = secici
+                else:
+                    sub_resp = await self.httpx.get(part_url)
+                    sub_sec  = HTMLHelper(sub_resp.text)
+
+                iframe = sub_sec.select_attr("div#vast iframe", "src")
+                if not iframe:
+                    return []
+
+                if self.main_url not in iframe:
+                    data = await self.extract(self.fix_url(iframe))
+                    if not data:
+                        return []
+
+                    return data if isinstance(data, list) else [data]
+
+                # İç kaynaklı ise 3 alternatif için paralel istek at
+                vid = iframe.split("vid=")[-1]
+                tasks = [
+                    process_alt(vid, "vidmoly", "0"),
+                    process_alt(vid, "ok.ru", "1"),
+                    process_alt(vid, "mailru", "2")
+                ]
+
+                alt_results = await asyncio.gather(*tasks)
+
+                return [item for sublist in alt_results for item in sublist]
+            except Exception:
+                return []
+
+        # Tüm partları paralel işle
+        groups = await asyncio.gather(*(process_part(p) for p in part_links))
+
+        for group in groups:
+            results.extend(group)
+
+        # Duplicate Temizliği
+        unique_results = []
+        seen = set()
+        for res in results:
+            if res.url and res.url not in seen:
+                unique_results.append(res)
+                seen.add(res.url)
+
+        return unique_results

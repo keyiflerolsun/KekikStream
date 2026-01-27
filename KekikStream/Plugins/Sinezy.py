@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 import base64
 
 class Sinezy(PluginBase):
@@ -42,16 +42,15 @@ class Sinezy(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        full_url = f"{url}page/{page}/"
-        resp     = await self.httpx.get(full_url)
-        secici   = HTMLHelper(resp.text)
-        
+        istek  = await self.httpx.get(f"{url}page/{page}/")
+        secici = HTMLHelper(istek.text)
+
         results = []
         for item in secici.select("div.container div.content div.movie_box.move_k"):
             title  = secici.select_attr("a", "title", item)
             href   = secici.select_attr("a", "href", item)
             poster = secici.select_attr("img", "data-src", item)
-             
+
             if title and href:
                 results.append(MainPageResult(
                     category = category,
@@ -63,9 +62,8 @@ class Sinezy(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        url  = f"{self.main_url}/arama/?s={query}"
-        resp = await self.httpx.get(url)
-        secici  = HTMLHelper(resp.text)
+        istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
+        secici = HTMLHelper(istek.text)
 
         results = []
         for item in secici.select("div.movie_box.move_k"):
@@ -83,8 +81,8 @@ class Sinezy(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        resp   = await self.httpx.get(url)
-        secici = HTMLHelper(resp.text)
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
 
         title       = secici.select_attr("div.detail", "title")
         poster      = secici.select_poster("div.move_k img")
@@ -108,19 +106,20 @@ class Sinezy(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        resp = await self.httpx.get(url)
-        secici = HTMLHelper(resp.text)
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
 
         encoded = secici.regex_first(r"ilkpartkod\s*=\s*'([^']+)'", secici.html)
+        name    = secici.select_direct_text("li.pgrup a")
         if encoded:
             try:
-                decoded = base64.b64decode(encoded).decode('utf-8')
+                decoded     = base64.b64decode(encoded).decode('utf-8')
                 decoded_sec = HTMLHelper(decoded)
-                iframe = decoded_sec.select_attr('iframe', 'src')
+                iframe      = decoded_sec.select_attr('iframe', 'src')
 
                 if iframe:
                     iframe = self.fix_url(iframe)
-                    data = await self.extract(iframe)
+                    data = await self.extract(iframe, name_override=name)
                     if data:
                         return [data]
             except Exception:
