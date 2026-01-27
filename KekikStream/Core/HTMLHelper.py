@@ -41,14 +41,14 @@ class HTMLHelper:
         val = el.text(strip=True)
         return val or None
 
-    def select_texts(self, selector: str, element: Node | None = None) -> list[str]:
+    def select_texts(self, selector: str, element: Node | None = None) -> list[str] | None:
         """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
         out: list[str] = []
         for el in self.select(selector, element):
             txt = el.text(strip=True)
             if txt:
                 out.append(txt)
-        return out
+        return out or None
 
     def select_attr(self, selector: str | None, attr: str, element: Node | None = None) -> str | None:
         """CSS selector ile element bul ve attribute değerini döndür."""

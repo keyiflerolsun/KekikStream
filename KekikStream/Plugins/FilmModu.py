@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Subtitle, ExtractResult, HTMLHelper
 
 class FilmModu(PluginBase):
     name        = "FilmModu"
@@ -44,8 +44,8 @@ class FilmModu(PluginBase):
 
         results = []
         for veri in secici.select("div.movie"):
-            title = secici.select_text("a", veri)
-            href = secici.select_attr("a", "href", veri)
+            title  = secici.select_text("a", veri)
+            href   = secici.select_attr("a", "href", veri)
             poster = secici.select_attr("picture img", "data-src", veri)
 
             if title and href:
@@ -53,7 +53,7 @@ class FilmModu(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -64,15 +64,15 @@ class FilmModu(PluginBase):
 
         results = []
         for veri in secici.select("div.movie"):
-            title = secici.select_text("a", veri)
-            href = secici.select_attr("a", "href", veri)
+            title  = secici.select_text("a", veri)
+            href   = secici.select_attr("a", "href", veri)
             poster = secici.select_attr("picture img", "data-src", veri)
 
             if title and href:
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -83,7 +83,7 @@ class FilmModu(PluginBase):
 
         org_title   = secici.select_text("div.titles h1")
         alt_title   = secici.select_text("div.titles h2")
-        title       = f"{org_title} - {alt_title}" if alt_title else (org_title or "")
+        title       = f"{org_title} - {alt_title}" if alt_title else (org_title)
         poster      = secici.select_poster("img.img-responsive")
         description = secici.select_text("p[itemprop='description']")
         tags        = secici.select_texts("a[href*='film-tur/']")
@@ -93,13 +93,13 @@ class FilmModu(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
+            poster      = self.fix_url(poster),
             title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
-            actors      = actors,
+            year        = year,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
@@ -119,20 +119,18 @@ class FilmModu(PluginBase):
             if alt_name == "Fragman" or not alt_link:
                 continue
 
-            alt_link = self.fix_url(alt_link)
+            alt_link  = self.fix_url(alt_link)
             alt_istek = await self.httpx.get(alt_link)
-            alt_text  = alt_istek.text
+            secici    = HTMLHelper(alt_istek.text)
 
-            vid_id   = HTMLHelper(alt_text).regex_first(r"var videoId = '([^']*)'")
-            vid_type = HTMLHelper(alt_text).regex_first(r"var videoType = '([^']*)'")
+            vid_id   = secici.regex_first(r"var videoId = '([^']*)'")
+            vid_type = secici.regex_first(r"var videoType = '([^']*)'")
 
             if not vid_id or not vid_type:
                 continue
 
-            source_istek = await self.httpx.get(
-                f"{self.main_url}/get-source?movie_id={vid_id}&type={vid_type}"
-            )
-            source_data = source_istek.json()
+            source_istek = await self.httpx.get(f"{self.main_url}/get-source?movie_id={vid_id}&type={vid_type}")
+            source_data  = source_istek.json()
 
             if source_data.get("subtitle"):
                 subtitle_url = self.fix_url(source_data["subtitle"])

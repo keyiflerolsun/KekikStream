@@ -1,11 +1,11 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
 
 class DiziPal(PluginBase):
     name        = "DiziPal"
     language    = "tr"
-    main_url    = "https://dizipal.cc"
+    main_url    = "https://dizipal.uk"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "dizipal güncel, dizipal yeni ve gerçek adresi. dizipal en yeni dizi ve filmleri güvenli ve hızlı şekilde sunar."
 
@@ -46,7 +46,7 @@ class DiziPal(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -65,7 +65,7 @@ class DiziPal(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -82,8 +82,8 @@ class DiziPal(PluginBase):
         rating       = secici.meta_value("IMDB Puanı")
         duration_raw = secici.meta_value("Süre")
         if duration_raw:
-            parts = duration_raw.split()
-            saat = 0
+            parts  = duration_raw.split()
+            saat   = 0
             dakika = 0
 
             for p in parts:
@@ -95,7 +95,7 @@ class DiziPal(PluginBase):
             duration = saat * 60 + dakika
         else:
             duration = None
-    
+
         tags   = secici.meta_list("Tür")
         actors = secici.meta_list("Oyuncular")
         if not actors:
@@ -104,36 +104,50 @@ class DiziPal(PluginBase):
         if "/dizi/" in url:
             episodes = []
             for ep in secici.select("div.episode-item"):
-                name = secici.select_text("h4 a", ep)
-                href = secici.select_attr("a", "href", ep)
+                name       = secici.select_text("h4 a", ep)
+                href       = secici.select_attr("a", "href", ep)
                 link_title = secici.select_attr("a", "title", ep)
-                
+
                 h4_texts = secici.select_texts("h4", ep)
-                text = h4_texts[1] if len(h4_texts) > 1 else (h4_texts[0] if h4_texts else "")
+                text     = h4_texts[1] if len(h4_texts) > 1 else (h4_texts[0] if h4_texts else "")
 
                 full_text = f"{text} {link_title}" if link_title else text
 
                 if name and href:
                     s, e = secici.extract_season_episode(full_text or "")
-                    episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
+                    episodes.append(Episode(
+                        season  = s,
+                        episode = e,
+                        title   = name,
+                        url     = self.fix_url(href)
+                    ))
 
             return SeriesInfo(
-                url=url, poster=poster.replace("https://test4test.online", self.main_url), title=title, description=description, tags=tags,
-                rating=rating, year=year, duration=duration, episodes=episodes or None, actors=actors
+                url         = url,
+                poster      = poster.replace("https://test4test.online", self.main_url),
+                title       = title,
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                duration    = duration,
+                episodes    = episodes or None,
+                actors      = actors
             )
-        
+
         return MovieInfo(
-            url=url, poster=poster.replace("https://test4test.online", self.main_url), title=title, description=description, tags=tags,
-            rating=rating, year=year, duration=duration, actors=actors
+            url         = url,
+            poster      = poster.replace("https://test4test.online", self.main_url),
+            title       = title,
+            description = description,
+            tags        = tags,
+            rating      = rating,
+            year        = year,
+            duration    = duration,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        # Reset headers to get HTML response
-        self.httpx.headers.update({
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        })
-        self.httpx.headers.pop("X-Requested-With", None)
-
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 

@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from Kekik.Sifreleme   import CryptoJS
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from Kekik.Sifreleme  import CryptoJS
 import urllib.parse, base64, contextlib, asyncio, time
 
 class DiziBox(PluginBase):
@@ -61,7 +61,7 @@ class DiziBox(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -84,7 +84,7 @@ class DiziBox(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -114,12 +114,12 @@ class DiziBox(PluginBase):
 
         return SeriesInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
+            poster      = self.fix_url(poster),
             title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
+            year        = year,
             episodes    = episodes,
             actors      = actors,
         )
@@ -182,13 +182,16 @@ class DiziBox(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
+        # Aktif kaynağın adını bul (DBX Pro vs.)
+        current_source_name = secici.select_text("div.video-toolbar option[selected]") or self.name
+
         results = []
         main_iframe = secici.select_attr("div#video-area iframe", "src")
 
         if main_iframe:
             if decoded := await self._iframe_decode(self.name, main_iframe, url):
                 for iframe in decoded:
-                    data = await self.extract(iframe)
+                    data = await self.extract(iframe, name_override=current_source_name)
                     if data:
                         results.append(data)
 
@@ -209,7 +212,7 @@ class DiziBox(PluginBase):
             if alt_iframe:
                 if decoded := await self._iframe_decode(alt_name, alt_iframe, url):
                     for iframe in decoded:
-                        data = await self.extract(iframe, prefix=alt_name)
+                        data = await self.extract(iframe, name_override=alt_name)
                         if data:
                             results.append(data)
 

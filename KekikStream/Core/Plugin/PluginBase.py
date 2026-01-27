@@ -106,7 +106,13 @@ class PluginBase(ABC):
         url = f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
         return url.replace("\\", "")
 
-    async def extract(self, url: str, referer: str = None, prefix: str | None = None) -> ExtractResult | None:
+    async def extract(
+        self, 
+        url: str, 
+        referer: str = None, 
+        prefix: str | None = None, 
+        name_override: str | None = None
+    ) -> ExtractResult | list[ExtractResult] | None:
         """
         Extractor ile video URL'sini çıkarır.
 
@@ -114,6 +120,7 @@ class PluginBase(ABC):
             url: Iframe veya video URL'si
             referer: Referer header (varsayılan: plugin main_url)
             prefix: İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
+            name_override: İsmi tamamen değiştirecek opsiyonel etiket (Extractor adını ezer)
 
         Returns:
             ExtractResult: Extractor sonucu (name prefix ile birleştirilmiş) veya None
@@ -131,15 +138,19 @@ class PluginBase(ABC):
         try:
             data = await extractor.extract(url, referer=referer)
 
-            # Liste ise her bir öğe için prefix ekle
+            # Liste ise her bir öğe için prefix/override ekle
             if isinstance(data, list):
                 for item in data:
-                    if prefix and item.name:
+                    if name_override:
+                        item.name = name_override
+                    elif prefix and item.name:
                         item.name = f"{prefix} | {item.name}"
                 return data
 
             # Tekil öğe ise
-            if prefix and data.name:
+            if name_override:
+                data.name = name_override
+            elif prefix and data.name:
                 data.name = f"{prefix} | {data.name}"
 
             return data

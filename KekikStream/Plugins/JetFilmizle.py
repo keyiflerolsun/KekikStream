@@ -59,7 +59,7 @@ class JetFilmizle(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -90,7 +90,7 @@ class JetFilmizle(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -119,12 +119,12 @@ class JetFilmizle(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "Bilinmiyor",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
+            year        = year,
             actors      = actors,
             duration    = int(total_minutes) if duration else None
         )

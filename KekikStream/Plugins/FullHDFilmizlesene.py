@@ -54,7 +54,7 @@ class FullHDFilmizlesene(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -73,7 +73,7 @@ class FullHDFilmizlesene(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -93,12 +93,12 @@ class FullHDFilmizlesene(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "Bilinmiyor",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
+            year        = year,
             actors      = actors,
             duration    = duration
         )
@@ -129,8 +129,7 @@ class FullHDFilmizlesene(PluginBase):
 
         response = []
         for link in link_list:
-            link = f"https:{link}" if link.startswith("//") else link
-            data = await self.extract(link)
+            data = await self.extract(self.fix_url(link))
             if data:
                 response.append(data)
 

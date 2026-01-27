@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-import json
+import json, html
 
 class Odnoklassniki(ExtractorBase):
     name     = "Odnoklassniki"
@@ -19,12 +19,18 @@ class Odnoklassniki(ExtractorBase):
         resp = await self.httpx.get(url, follow_redirects=True)
         sel  = HTMLHelper(resp.text)
         
-        v_data = sel.regex_first(r'"videos":(\[.*?\])')
+        # Metadata içinden videos array'ini al (esnek regex)
+        v_data = sel.regex_first(r'videos[^:]+:(\[.*?\])')
         if not v_data:
+            if "Видео заблокировано" in resp.text or "copyrightsRestricted" in resp.text:
+                raise ValueError("Odnoklassniki: Video telif nedeniyle silinmiş/erişilemiyor.")
             raise ValueError(f"Odnoklassniki: Video verisi bulunamadı. {url}")
 
         # Kalite sıralaması (En yüksekten düşüğe)
         order = ["ULTRA", "QUAD", "FULL", "HD", "SD", "LOW", "MOBILE"]
+        # Escaped string'i temizle
+        v_data = html.unescape(v_data)
+        v_data = v_data.replace('\\"', '"').replace('\\/', '/')
         videos = json.loads(v_data)
         
         best_url = None
@@ -37,5 +43,11 @@ class Odnoklassniki(ExtractorBase):
 
         if not best_url:
             raise ValueError("Odnoklassniki: Geçerli video URL'si bulunamadı.")
+
+        # URL temizliği (u0026 -> & ve olası unicode kaçışları)
+        best_url = best_url.replace("u0026", "&").replace("\\u0026", "&")
+        # Eğer hala \uXXXX formatında unicode kaçışları varsa çöz
+        if "\\u" in best_url:
+            best_url = best_url.encode().decode('unicode-escape')
 
         return ExtractResult(name=self.name, url=self.fix_url(best_url), referer=referer)

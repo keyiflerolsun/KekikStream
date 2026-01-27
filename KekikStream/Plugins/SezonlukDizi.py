@@ -64,7 +64,7 @@ class SezonlukDizi(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -83,7 +83,7 @@ class SezonlukDizi(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -120,12 +120,12 @@ class SezonlukDizi(PluginBase):
 
         return SeriesInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
+            poster      = self.fix_url(poster),
             title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
+            year        = year,
             episodes    = episodes,
             actors      = actors
         )

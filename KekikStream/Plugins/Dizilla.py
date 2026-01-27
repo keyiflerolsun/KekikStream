@@ -1,10 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from json              import loads
-from urllib.parse      import urlparse, urlunparse
-from Crypto.Cipher     import AES
-from base64            import b64decode
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from json             import loads
+from urllib.parse     import urlparse, urlunparse
+from Crypto.Cipher    import AES
+from base64           import b64decode
 
 class Dizilla(PluginBase):
     name        = "Dizilla"
@@ -44,7 +44,7 @@ class Dizilla(PluginBase):
                     category = category,
                     title    = veri.get("original_title"),
                     url      = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
-                    poster   = self.fix_poster_url(self.fix_url(veri.get("object_poster_url"))),
+                    poster   = self.fix_poster_url(self.fix_url(veri.get("poster_url"))),
                 )
                     for veri in veriler
             ])
@@ -60,15 +60,15 @@ class Dizilla(PluginBase):
                     continue
 
                 # Detay sayfasından poster vb. bilgileri al
-                ep_req = await self.httpx.get(self.fix_url(href))
+                ep_req    = await self.httpx.get(self.fix_url(href))
                 ep_secici = HTMLHelper(ep_req.text)
-                poster = ep_secici.select_poster('img.imgt') or ep_secici.select_poster('img')
+                poster    = ep_secici.select_poster('img.imgt') or ep_secici.select_poster('img')
 
                 ana_sayfa.append(MainPageResult(
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None
+                    poster   = self.fix_url(poster)
                 ))
 
         return ana_sayfa
@@ -118,7 +118,7 @@ class Dizilla(PluginBase):
             SearchResult(
                 title  = veri.get("object_name"),
                 url    = self.fix_url(f"{self.main_url}/{veri.get('used_slug')}"),
-                poster = self.fix_poster_url(self.fix_url(veri.get("object_poster_url"))),
+                poster = self.fix_poster_url(self.fix_url(veri.get("poster_url"))),
             )
                 for veri in arama_veri
         ]
@@ -138,15 +138,18 @@ class Dizilla(PluginBase):
         secici = HTMLHelper(istek.text)
 
         next_data_text = secici.select_text("script#__NEXT_DATA__")
-        if not next_data_text: return None
+        if not next_data_text:
+            return None
 
         next_data   = loads(next_data_text)
         secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData")
-        if not secure_data: return None
+        if not secure_data:
+            return None
 
         decrypted = await self.decrypt_response(secure_data)
         content   = decrypted.get("contentItem", {})
-        if not content: return None
+        if not content:
+            return None
 
         title       = content.get("original_title") or content.get("used_title")
         description = content.get("description") or content.get("used_description")
@@ -165,29 +168,34 @@ class Dizilla(PluginBase):
                 slug = ep.get("used_slug")
                 name = ep.get("episode_text") or ""
                 if not any(e.season == s_no and e.episode == e_no for e in episodes):
-                    episodes.append(Episode(season=s_no, episode=e_no, title=name, url=self.fix_url(f"{self.main_url}/{slug}")))
+                    episodes.append(Episode(
+                        season  = s_no,
+                        episode = e_no,
+                        title   = name,
+                        url     = self.fix_url(f"{self.main_url}/{slug}")
+                    ))
 
         return SeriesInfo(
             url         = url,
             poster      = poster,
-            title       = title or "Bilinmiyor",
+            title       = title,
             description = description,
             tags        = tags,
-            rating      = str(rating) if rating else None,
-            year        = str(year) if year else None,
+            rating      = rating,
+            year        = year,
             episodes    = episodes,
             actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek   = await self.httpx.get(url)
-        secici  = HTMLHelper(istek.text)
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
 
         next_data_text = secici.select_text("script#__NEXT_DATA__")
         if not next_data_text:
             return []
 
-        next_data = loads(next_data_text)
+        next_data   = loads(next_data_text)
         secure_data = next_data.get("props", {}).get("pageProps", {}).get("secureData", {})
         decrypted   = await self.decrypt_response(secure_data)
         results     = decrypted.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
@@ -195,24 +203,21 @@ class Dizilla(PluginBase):
         if not results:
             return []
 
-        # Get first source (matching Kotlin)
-        first_result = results[0]
+        first_result   = results[0]
         source_content = str(first_result.get("source_content", ""))
-        
-        # Clean the source_content string (matching Kotlin: .replace("\"", "").replace("\\", ""))
+
         cleaned_source = source_content.replace('"', '').replace('\\', '')
-        
-        # Parse cleaned HTML
+
         iframe_secici = HTMLHelper(cleaned_source)
-        iframe_src = iframe_secici.select_attr("iframe", "src")
-        
-        # Referer check (matching Kotlin: loadExtractor(iframe, "${mainUrl}/", ...))
+        iframe_src    = iframe_secici.select_attr("iframe", "src")
+
         iframe_url = self.fix_url(iframe_src) if iframe_src else None
-        
+
         if not iframe_url:
             return []
 
         data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=first_result.get('language_name', 'Unknown'))
         if not data:
             return []
+
         return data if isinstance(data, list) else [data]

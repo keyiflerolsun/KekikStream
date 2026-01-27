@@ -52,7 +52,7 @@ class SelcukFlix(PluginBase):
                             category = category,
                             title    = title,
                             url      = final_url,
-                            poster   = self.fix_url(poster) if poster else None
+                            poster   = self.fix_url(poster)
                         ))
             except Exception:
                 pass
@@ -227,7 +227,7 @@ class SelcukFlix(PluginBase):
             common_info = {
                 "url"         : url,
                 "poster"      : poster,
-                "title"       : title or "Bilinmiyor",
+                "title"       : title,
                 "description" : description,
                 "tags"        : tags,
                 "rating"      : rating,

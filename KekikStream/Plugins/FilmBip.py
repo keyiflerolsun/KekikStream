@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class FilmBip(PluginBase):
     name        = "FilmBip"
@@ -39,8 +39,8 @@ class FilmBip(PluginBase):
 
         results = []
         for veri in secici.select("div.poster-long"):
-            title = secici.select_attr("a.block img.lazy", "alt", veri)
-            href = secici.select_attr("a.block", "href", veri)
+            title  = secici.select_attr("a.block img.lazy", "alt", veri)
+            href   = secici.select_attr("a.block", "href", veri)
             poster = secici.select_poster("a.block img.lazy", veri)
 
             if title and href:
@@ -48,7 +48,7 @@ class FilmBip(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -87,7 +87,7 @@ class FilmBip(PluginBase):
                 results.append(SearchResult(
                     title  = title.strip(),
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -108,13 +108,13 @@ class FilmBip(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
-            year        = str(year) if year else None,
+            year        = year,
             rating      = rating,
-            duration    = int(duration) if duration else None,
+            duration    = duration,
             actors      = actors,
         )
 
@@ -123,14 +123,86 @@ class FilmBip(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
+        # Tabs (Diller)
+        tabs = secici.select("ul.tab.alternative-group li[data-number]")
 
-        for player in secici.select("div#tv-spoox2"):
-            iframe    = secici.select_attr("iframe", "src", player)
+        for tab in tabs:
+            tab_id   = tab.attrs.get("data-number")
+            # Tab ismini al
+            tab_name = secici.select_text(None, tab)
+            tab_hash = tab.attrs.get("data-group-hash")
 
-            if iframe:
-                iframe = self.fix_url(iframe)
-                data = await self.extract(iframe)
-                if data:
-                    results.append(data)
+            if not tab_id:
+                continue
+
+            button_data = [] # (player_name, iframe_url)
+
+            # İlgili content divini bul
+            content_div = secici.select_first(f"div#{tab_id}")
+
+            # Eğer div var ve içi doluysa oradan al
+            if content_div and secici.select("ul li button", content_div):
+                buttons = secici.select("ul li button", content_div)
+                for btn in buttons:
+                    button_data.append((btn.text(strip=True), btn.attrs.get("data-hhs")))
+
+            elif tab_hash:
+                # Div yok veya boş, AJAX ile çek
+                try:
+                    hash_resp = await self.httpx.post(
+                        url     = f"{self.main_url}/get/video/group",
+                        headers = {
+                            "X-Requested-With" : "XMLHttpRequest",
+                            "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
+                            "Referer"          : url
+                        },
+                        data    = {"hash": tab_hash}
+                    )
+
+                    if hash_resp.status_code == 200:
+                        json_data = hash_resp.json()
+                        if json_data.get("success"):
+                            # 1. Videos listesi (API yanıtı)
+                            if videos := json_data.get("videos"):
+                                for vid in videos:
+                                    button_data.append((vid.get("name"), vid.get("link")))
+
+                            # 2. HTML content (Fallback)
+                            else:
+                                html_content = json_data.get("content") or json_data.get("html") or json_data.get("theme")
+                                if html_content:
+                                    sub_helper = HTMLHelper(html_content)
+                                    sub_btns = sub_helper.select("ul li button")
+                                    for btn in sub_btns:
+                                        button_data.append((btn.text(strip=True), btn.attrs.get("data-hhs")))
+                except Exception:
+                    pass
+
+            for player_name, iframe_url in button_data:
+                try:
+                    if iframe_url:
+                        data = await self.extract(
+                            url           = self.fix_url(iframe_url),
+                            name_override = f"{tab_name} | {player_name}"
+                        )
+                        if data:
+                            if isinstance(data, list):
+                                results.extend(data)
+                            else:
+                                results.append(data)
+                except Exception:
+                    pass
+
+        # Eğer hiç sonuç bulunamazsa fallback
+        if not results:
+             for player in secici.select("div#tv-spoox2"):
+                if iframe := secici.select_attr("iframe", "src", player):
+                    iframe = self.fix_url(iframe)
+                    data = await self.extract(iframe)
+                    if data:
+                        if isinstance(data, list):
+                            results.extend(data)
+                        else:
+                            results.append(data)
 
         return results

@@ -43,7 +43,7 @@ class HDFilmCehennemi(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -101,12 +101,12 @@ class HDFilmCehennemi(PluginBase):
                     episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
+                url=url, poster=self.fix_url(poster), title=title,
                 description=description, tags=tags, rating=rating, year=year, actors=actors, episodes=episodes
             )
 
         return MovieInfo(
-            url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
+            url=url, poster=self.fix_url(poster), title=title,
             description=description, tags=tags, rating=rating, year=year, actors=actors, duration=duration
         )
 

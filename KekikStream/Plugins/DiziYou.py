@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, Subtitle, ExtractResult, HTMLHelper
 
 class DiziYou(PluginBase):
     name        = "DiziYou"
@@ -42,7 +42,7 @@ class DiziYou(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -61,7 +61,7 @@ class DiziYou(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -76,8 +76,8 @@ class DiziYou(PluginBase):
         tags        = secici.select_texts("div.genres a")
         rating      = secici.regex_first(r"(?is)IMDB\s*:\s*</span>([0-9.]+)", secici.html)
         year        = secici.extract_year("div#icerikcat2")
-        actors      = secici.meta_value("Oyuncular", container_selector="div#icerikcat2")
-        actors      = [a.strip() for a in actors.split(",")] if actors else []
+        raw_actors  = secici.meta_value("Oyuncular", container_selector="div#icerikcat2")
+        actors      = [x.strip() for x in raw_actors.split(",")] if raw_actors else None
 
         episodes = []
         for link in secici.select("div#scrollbar-container a"):
@@ -86,23 +86,35 @@ class DiziYou(PluginBase):
                 name = secici.select_text("div.bolumismi", link).strip("()")
                 s, e = secici.extract_season_episode(f"{name} {href}")
                 if e:
-                    episodes.append(Episode(season=s or 1, episode=e, title=name, url=self.fix_url(href)))
+                    episodes.append(Episode(
+                        season  = s or 1,
+                        episode = e,
+                        title   = name,
+                        url     = self.fix_url(href)
+                    ))
 
         return SeriesInfo(
-            url=url, poster=poster, title=title or "Bilinmiyor", description=description,
-            tags=tags, rating=rating, year=str(year) if year else None, episodes=episodes, actors=actors
+            url         = url,
+            poster      = poster,
+            title       = title,
+            description = description,
+            tags        = tags,
+            rating      = rating,
+            year        = year,
+            episodes    = episodes,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        
+
         # Player iframe'inden ID'yi yakala
         iframe_src = secici.select_attr("iframe#diziyouPlayer", "src") or secici.select_attr("iframe[src*='/player/']", "src")
         if not iframe_src:
             return []
 
-        item_id = iframe_src.split("/")[-1].replace(".html", "")
+        item_id      = iframe_src.split("/")[-1].replace(".html", "")
         base_storage = self.main_url.replace("www", "storage")
 
         subtitles = []

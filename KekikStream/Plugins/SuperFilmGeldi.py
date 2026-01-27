@@ -49,7 +49,7 @@ class SuperFilmGeldi(PluginBase):
                 category = category,
                 title    = self.clean_title(title_text.split(" izle")[0]),
                 url      = self.fix_url(href) if href else "",
-                poster   = self.fix_url(poster) if poster else None,
+                poster   = self.fix_url(poster),
             ))
 
         return results
@@ -70,7 +70,7 @@ class SuperFilmGeldi(PluginBase):
             results.append(SearchResult(
                 title  = self.clean_title(title_text.split(" izle")[0]),
                 url    = self.fix_url(href) if href else "",
-                poster = self.fix_url(poster) if poster else None,
+                poster = self.fix_url(poster),
             ))
 
         return results
@@ -88,11 +88,11 @@ class SuperFilmGeldi(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "Bilinmiyor",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
-            year        = str(year) if year else None,
+            year        = year,
             actors      = actors
         )
 

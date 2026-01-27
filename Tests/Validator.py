@@ -16,6 +16,7 @@ from random           import choice
 from rich.table       import Table
 from rich.panel       import Panel
 from rich.text        import Text
+from copy             import copy
 
 class PluginValidator:
     """Her eklentinin tüm metotlarını ve veri modellerini doğrular."""
@@ -146,7 +147,15 @@ class PluginValidator:
         
         try:
             item = await plugin.load_item(test_url)
-            konsol.print(item)
+            
+            # Terminal kirliliğini önlemek için SeriesInfo ise tek bölüm göster
+            if isinstance(item, SeriesInfo) and item.episodes:
+                item_copy = copy(item)
+                item_copy.episodes = item.episodes[:1]
+                konsol.print(item_copy)
+                konsol.print(f"[dim italic]... ({len(item.episodes) - 1} bölüm daha var)[/]")
+            else:
+                konsol.print(item)
 
             if not item:
                 result["message"] = "Boş sonuç"
@@ -216,7 +225,7 @@ class PluginValidator:
 
             result["data"] = first_link
 
-            result["message"] += f"\nLinkler : {links}"
+            konsol.print(links)
 
         except Exception as e:
             result["message"] = f"Hata: {str(e)}"
@@ -271,6 +280,7 @@ class PluginValidator:
                 
                 if link_url:
                     konsol.log("[yellow]▶ load_links test ediliyor...")
+                    konsol.log(f"[dim]URL: {link_url}[/]")
                     load_links_result = await self.test_load_links(plugin, link_url)
                     validation_results["load_links"] = load_links_result
                     konsol.log(f"  {load_links_result['status']} {load_links_result['message']}")

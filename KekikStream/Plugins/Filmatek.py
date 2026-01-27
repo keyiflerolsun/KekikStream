@@ -1,9 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import re
-from json import loads
-from urllib.parse import unquote
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from urllib.parse     import unquote
+
 
 class Filmatek(PluginBase):
     name        = "Filmatek"
@@ -12,7 +11,6 @@ class Filmatek(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Sosyalizmin Sineması Veritabanı"
 
-    # Main page categories
     main_page = {
         f"{main_url}/tur/aile/page"             : "Aile",
         f"{main_url}/tur/aksiyon/page"          : "Aksiyon",
@@ -28,22 +26,20 @@ class Filmatek(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        target_url = f"{url}/{page}/"
-        istek = await self.httpx.get(target_url)
-        helper = HTMLHelper(istek.text)
+        istek  = await self.httpx.get(f"{url}/{page}/")
+        secici = HTMLHelper(istek.text)
 
-        items = helper.select("div.items article, #archive-content article")
+        items   = secici.select("div.items article, #archive-content article")
         results = []
 
         for item in items:
-            title_el = helper.select_first("div.data h3 a, h3 a", item)
-            if not title_el: continue
+            title_el = secici.select_first("div.data h3 a, h3 a", item)
+            if not title_el:
+                continue
 
-            title = title_el.text(strip=True)
-            href = self.fix_url(title_el.attrs.get("href"))
-            
-            img_el = helper.select_first("img", item)
-            poster = self.fix_url(img_el.attrs.get("data-src") or img_el.attrs.get("src")) if img_el else None
+            title  = title_el.text(strip=True)
+            href   = self.fix_url(title_el.attrs.get("href"))
+            poster = self.fix_url(secici.select_poster("img", item))
 
             results.append(MainPageResult(
                 category = category,
@@ -51,26 +47,24 @@ class Filmatek(PluginBase):
                 url      = href,
                 poster   = poster
             ))
-            
+
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        url = f"{self.main_url}/?s={query}"
-        istek = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        secici = HTMLHelper(istek.text)
 
-        items = helper.select("div.result-item")
+        items   = secici.select("div.result-item")
         results = []
 
         for item in items:
-            title_el = helper.select_first("div.title a", item)
-            if not title_el: continue
+            title_el = secici.select_first("div.title a", item)
+            if not title_el:
+                continue
 
-            title = title_el.text(strip=True)
-            href = self.fix_url(title_el.attrs.get("href"))
-            
-            img_el = helper.select_first("div.image img", item)
-            poster = self.fix_url(img_el.attrs.get("src")) if img_el else None
+            title  = title_el.text(strip=True)
+            href   = self.fix_url(title_el.attrs.get("href"))            
+            poster = self.fix_url(secici.select_poster("div.image img", item))
 
             results.append(SearchResult(
                 title  = title,
@@ -82,76 +76,86 @@ class Filmatek(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo:
         istek  = await self.httpx.get(url)
-        helper = HTMLHelper(istek.text)
+        secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(helper.select_text("div.data h1, h1"))
-        poster      = helper.select_poster("div.poster img") or helper.select_attr("meta[property='og:image']", "content")
-        description = helper.select_text("div.wp-content p") or helper.select_attr("meta[property='og:description']", "content")
-        year        = helper.extract_year("span.date")
-        rating      = helper.select_text("span.dt_rating_vgs") or helper.select_text("span.dt_rating_vmanual")
-        duration    = helper.regex_first(r"(\d+)", helper.select_text("span.runtime"))
-        tags        = helper.select_texts("div.sgeneros a")
-        actors      = helper.select_texts("div.person div.name a")
+        title       = self.clean_title(secici.select_text("div.data h1, h1"))
+        poster      = secici.select_poster("div.poster img") or secici.select_attr("meta[property='og:image']", "content")
+        description = secici.select_text("div.wp-content p") or secici.select_attr("meta[property='og:description']", "content")
+        year        = secici.extract_year("span.date")
+        rating      = secici.select_text("span.dt_rating_vgs") or secici.select_text("span.dt_rating_vmanual")
+        duration    = secici.regex_first(r"(\d+)", secici.select_text("span.runtime"))
+        tags        = secici.select_texts("div.sgeneros a")
+        actors      = secici.select_texts("div.person div.name a")
 
         return MovieInfo(
             url         = url,
-            title       = title or "Bilinmiyor",
+            title       = title,
             description = description,
-            poster      = self.fix_url(poster) if poster else None,
-            year        = str(year) if year else None,
+            poster      = self.fix_url(poster),
+            year        = year,
             rating      = rating,
-            duration    = int(duration) if duration else None,
+            duration    = duration,
             tags        = tags,
             actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek = await self.httpx.get(url)
-        html = istek.text
-        helper = HTMLHelper(html)
+        istek  = await self.httpx.get(url)
+        secici = HTMLHelper(istek.text)
 
-        # Get Post ID from body class usually "postid-123"
-        body_class = helper.select_attr("body", "class") or ""
-        post_id_match = re.search(r"postid-(\d+)", body_class)
-        
+        # Player seçeneklerini bul
+        options = secici.select("div#playeroptions ul.ajax_mode li.dooplay_player_option")
+        if not options:
+            # Fallback: Body class'tan post_id
+            body_class = secici.select_attr("body", "class") or ""
+            if pid := secici.regex_first(r"postid-(\d+)", body_class):
+                options = [{"data-post": pid, "data-nume": "1", "data-type": "movie", "title": "Varsayılan"}]
+            else:
+                 options = []
+
         results = []
-        
-        if post_id_match:
-            post_id = post_id_match.group(1)
-            
-            # AJAX request for player
-            ajax_url = f"{self.main_url}/wp-admin/admin-ajax.php"
-            data = {
-                "action": "doo_player_ajax",
-                "post": post_id,
-                "nume": "1", # Usually implies source number 1? Kotlin uses "1" hardcoded.
-                "type": "movie"
-            }
-            
-            headers = {
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": url,
-                "Content-Type": "application/x-www-form-urlencoded"
-            }
-            
+
+        for opt in options:
+            if isinstance(opt, dict):
+                post_id = opt.get("data-post")
+                nume    = opt.get("data-nume")
+                type_   = opt.get("data-type")
+                title   = opt.get("title")
+            else:
+                post_id = opt.attrs.get("data-post")
+                nume    = opt.attrs.get("data-nume")
+                type_   = opt.attrs.get("data-type")
+                title   = secici.select_text("span.title", opt)
+
+            if not post_id or not nume:
+                continue
+
             try:
                 # Need to use post with data
-                player_resp = await self.httpx.post(ajax_url, data=data, headers=headers)
-                
-                # Kotlin parses it as text and cleans slashes
-                content = player_resp.text.replace(r"\/", "/")
-                
-                # Regex for URL
-                # Kotlin: (?:src|url)["']?\s*[:=]\s*["']([^"']+)["']
-                src_match = re.search(r'(?:src|url)["\']?\s*[:=]\s*["\']([^"\']+)["\']', content)
-                
-                if src_match:
-                    iframe_url = src_match.group(1)
+                player_resp = await self.httpx.post(
+                    url     = f"{self.main_url}/wp-admin/admin-ajax.php",
+                    headers = {
+                        "X-Requested-With" : "XMLHttpRequest",
+                        "Referer"          : url,
+                        "Content-Type"     : "application/x-www-form-urlencoded"
+                    },
+                    data    = {
+                        "action" : "doo_player_ajax",
+                        "post"   : post_id,
+                        "nume"   : nume,
+                        "type"   : type_
+                    }
+                )
+
+                content    = player_resp.text.replace(r"\/", "/")
+                iframe_url = secici.regex_first(r'(?:src|url)["\']?\s*[:=]\s*["\']([^"\']+)["\']', content)
+
+                if iframe_url:
                     if iframe_url.startswith("/"):
                         iframe_url = self.main_url + iframe_url
-                        
+
                     iframe_url = self.fix_url(iframe_url)
-                    
+
                     # Unwrap internal JWPlayer
                     if "jwplayer/?source=" in iframe_url:
                         try:
@@ -159,19 +163,27 @@ class Filmatek(PluginBase):
                             iframe_url = unquote(raw_source)
                         except:
                             pass
-                    
-                    extracted = await self.extract(iframe_url)
-                    if extracted:
-                        if isinstance(extracted, list):
-                            results.extend(extracted)
-                        else:
-                            results.append(extracted)
-                    else:
+
+                    # Direct media files
+                    if ".m3u8" in iframe_url or ".mp4" in iframe_url:
                         results.append(ExtractResult(
-                            name = "Filmatek | External",
-                            url  = iframe_url,
+                            name    = f"{title} | Direct",
+                            url     = iframe_url,
                             referer = url
                         ))
+                    else:
+                        extracted = await self.extract(iframe_url, prefix=title)
+                        if extracted:
+                            if isinstance(extracted, list):
+                                results.extend(extracted)
+                            else:
+                                results.append(extracted)
+                        else:
+                            results.append(ExtractResult(
+                                name    = f"{title} | External",
+                                url     = iframe_url,
+                                referer = url
+                            ))
             except Exception as e:
                 # print(f"Filmatek Error: {e}")
                 pass

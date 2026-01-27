@@ -38,7 +38,7 @@ class RoketDizi(PluginBase):
                     category = category,
                     title    = self.clean_title(title),
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None
+                    poster   = self.fix_url(poster)
                 ))
 
         return results
@@ -76,7 +76,7 @@ class RoketDizi(PluginBase):
                     results.append(SearchResult(
                         title  = self.clean_title(title.strip()),
                         url    = self.fix_url(f"{self.main_url}/{slug}"),
-                        poster = self.fix_url(poster) if poster else None
+                        poster = self.fix_url(poster)
                     ))
 
             return results
@@ -138,7 +138,7 @@ class RoketDizi(PluginBase):
 
                 return SeriesInfo(
                     url         = url,
-                    poster      = self.fix_url(poster) if poster else None,
+                    poster      = self.fix_url(poster),
                     title       = self.clean_title(title),
                     description = description,
                     tags        = tags,
@@ -150,7 +150,7 @@ class RoketDizi(PluginBase):
             else:
                 return MovieInfo(
                     url         = url,
-                    poster      = self.fix_url(poster) if poster else None,
+                    poster      = self.fix_url(poster),
                     title       = self.clean_title(title),
                     description = description,
                     tags        = tags,
@@ -191,7 +191,7 @@ class RoketDizi(PluginBase):
                 iframe_url = HTMLHelper(source_content).regex_first(r'<iframe[^>]*src=["\']([^"\']*)["\']')
                 if not iframe_url:
                     continue
-                
+
                 # Fix URL protocol
                 if not iframe_url.startswith("http"):
                     if iframe_url.startswith("//"):

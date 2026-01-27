@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from json             import dumps, loads
-import re
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class DiziMom(PluginBase):
     name        = "DiziMom"
@@ -31,23 +29,33 @@ class DiziMom(PluginBase):
                 href  = helper.select_attr("div.episode-name a", "href", item)
                 img   = helper.select_poster("div.cat-img img", item)
                 if title and href:
-                    results.append(MainPageResult(category=category, title=title.split(" izle")[0], url=self.fix_url(href), poster=self.fix_url(img)))
+                    results.append(MainPageResult(
+                        category = category,
+                        title    = title.split(" izle")[0],
+                        url      = self.fix_url(href),
+                        poster   = self.fix_url(img)
+                    ))
         else:
             for item in helper.select("div.single-item"):
                 title = helper.select_text("div.categorytitle a", item)
                 href  = helper.select_attr("div.categorytitle a", "href", item)
                 img   = helper.select_poster("div.cat-img img", item)
                 if title and href:
-                    results.append(MainPageResult(category=category, title=title.split(" izle")[0], url=self.fix_url(href), poster=self.fix_url(img)))
+                    results.append(MainPageResult(
+                        category = category,
+                        title    = title.split(" izle")[0],
+                        url      = self.fix_url(href),
+                        poster   = self.fix_url(img)
+                    ))
 
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        url = f"{self.main_url}/?s={query}"
-        istek = await self.httpx.get(url)
+        url    = f"{self.main_url}/?s={query}"
+        istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
-        items = helper.select("div.single-item")
-        
+        items  = helper.select("div.single-item")
+
         return [
             SearchResult(
                 title  = helper.select_text("div.categorytitle a", item).split(" izle")[0],
@@ -78,68 +86,78 @@ class DiziMom(PluginBase):
                 episodes.append(Episode(
                     season  = s or 1,
                     episode = e or 1,
-                    title   = self.clean_title(name.replace(title or "", "").strip()),
+                    title   = self.clean_title(name.replace(title, "").strip()),
                     url     = self.fix_url(href)
                 ))
 
         return SeriesInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "Bilinmiyor",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
+            year        = year,
             actors      = actors,
             episodes    = episodes
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        # Login simulation headers
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-            "sec-ch-ua": 'Not/A)Brand";v="8", "Chromium";v="137", "Google Chrome";v="137"',
-            "sec-ch-ua-mobile": "?1",
-            "sec-ch-ua-platform": "Android"
-        }
-        
-        # Simulate login (as seen in Kotlin)
-        login_url = f"{self.main_url}/wp-login.php"
-        login_data = {
-            "log": "keyiflerolsun",
-            "pwd": "12345",
-            "rememberme": "forever",
-            "redirect_to": self.main_url
-        }
-        
-        await self.httpx.post(login_url, headers=headers, data=login_data)
-        
-        istek = await self.httpx.get(url, headers=headers)
+        await self.httpx.post(
+            url     = f"{self.main_url}/wp-login.php",
+            headers = {
+                "User-Agent"         : "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
+                "sec-ch-ua"          : 'Not/A)Brand";v="8", "Chromium";v="137", "Google Chrome";v="137"',
+                "sec-ch-ua-mobile"   : "?1",
+                "sec-ch-ua-platform" : "Android"
+            },
+            data    = {
+                "log"         : "keyiflerolsun",
+                "pwd"         : "12345",
+                "rememberme"  : "forever",
+                "redirect_to" : self.main_url
+            }
+        )
+
+        istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
-        
-        iframes = []
-        
+
+        iframe_data = []
+
+        # Aktif kaynağın (main iframe) adını bul
+        current_name = helper.select_text("div.sources span.current_dil") or ""
         main_iframe = helper.select_attr("iframe[src]", "src")
+
+        # Bazen iframe doğrudan video p içinde olabilir
+        if not main_iframe:
+            main_iframe = helper.select_attr("div.video p iframe", "src")
+
         if main_iframe:
-            iframes.append(main_iframe)
-            
-        sources = helper.select("div.sources a")
+            iframe_data.append((main_iframe, current_name))
+
+        # Diğer kaynakları (Partlar) gez
+        sources = helper.select("div.sources a.post-page-numbers")
         for source in sources:
-            href = source.attrs.get("href")
+            href = helper.select_attr(None, "href", source)
+            name = helper.select_text("span.dil", source)
+
             if href:
-                sub_istek = await self.httpx.get(href, headers=headers)
+                # Part sayfasına git
+                sub_istek  = await self.httpx.get(href)
                 sub_helper = HTMLHelper(sub_istek.text)
-                sub_iframe = sub_helper.select_attr("div.video p iframe", "src")
+                sub_iframe = sub_helper.select_attr("div.video p iframe", "src") or sub_helper.select_attr("iframe[src]", "src")
+
                 if sub_iframe:
-                    iframes.append(sub_iframe)
-                    
+                    iframe_data.append((sub_iframe, name or f"{len(iframe_data)+1}.Kısım"))
+
         results = []
-        for iframe_url in iframes:
-            # Check for known extractors
-            if iframe_url.startswith("//"):
-                iframe_url = f"https:{iframe_url}"
-             
-            extract_result = await self.extract(iframe_url)
+        for iframe_url, source_name in iframe_data:
+            # URL düzeltme
+            iframe_url = self.fix_url(iframe_url)
+
+            # Prefix olarak kaynak adını kullan (1.Kısım | HDMomPlayer)
+            extract_result = await self.extract(iframe_url, prefix=source_name)
+
             if extract_result:
                 if isinstance(extract_result, list):
                     results.extend(extract_result)
@@ -147,9 +165,9 @@ class DiziMom(PluginBase):
                     results.append(extract_result)
             else:
                  results.append(ExtractResult(
-                    url  = iframe_url,
-                    name = f"{self.name} | External",
+                    url     = iframe_url,
+                    name    = f"{source_name} | External",
                     referer = self.main_url
                 ))
-                
+
         return results

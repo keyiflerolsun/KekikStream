@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, ExtractResult, HTMLHelper
-from json             import dumps, loads
-import re
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class FilmEkseni(PluginBase):
     name        = "FilmEkseni"
@@ -46,15 +44,16 @@ class FilmEkseni(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        url = f"{self.main_url}/search/"
-        headers = {
-            "X-Requested-With" : "XMLHttpRequest",
-            "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
-            "Referer"          : self.main_url,
-        }
-        data = {"query": query}
-        
-        istek = await self.httpx.post(url, headers=headers, data=data)
+        istek = await self.httpx.post(
+            url     = f"{self.main_url}/search/",
+            headers = {
+                "X-Requested-With" : "XMLHttpRequest",
+                "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
+                "Referer"          : self.main_url,
+            },
+            data    = {"query": query}
+        )
+
         veriler = istek.json().get("result", [])
 
         return [
@@ -81,40 +80,79 @@ class FilmEkseni(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster) if poster else None,
-            title       = title or "Bilinmiyor",
+            poster      = self.fix_url(poster),
+            title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
-            year        = str(year) if year else None,
-            actors      = actors if actors else None,
-            duration    = int(duration) if duration else None
+            year        = year,
+            actors      = actors,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.httpx.get(url)
         helper = HTMLHelper(istek.text)
-        
-        iframe = helper.select_first("div.card-video iframe")
-        if not iframe:
-            return []
-            
-        iframe_url = iframe.attrs.get("data-src") or iframe.attrs.get("src")
-        if not iframe_url:
-            return []
-            
-        if iframe_url.startswith("//"):
-            iframe_url = f"https:{iframe_url}"
-            
-        video_id = iframe_url.split("/")[-1]
-        master_url = f"https://eksenload.site/uploads/encode/{video_id}/master.m3u8"
-        
-        results = [
-            ExtractResult(
-                url     = master_url,
-                name    = f"{self.name} | 1080p",
-                referer = self.main_url
-            )
-        ]
-        
+
+        results = []
+        sources = [] # (name, url, is_active)
+
+        nav_links = helper.select("nav.card-nav a.nav-link")
+        if nav_links:
+            seen_urls = set()
+            for link in nav_links:
+                if link.attrs.get("href") == "#":
+                    continue # Sinema Modu vb.
+
+                name      = link.text(strip=True)
+                href      = link.attrs.get("href")
+                is_active = "active" in link.attrs.get("class", "")
+
+                if href and href not in seen_urls:
+                    seen_urls.add(href)
+                    sources.append((name, href, is_active))
+        else:
+            # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
+            sources.append(("VIP", url, True))
+
+        for name, link_url, is_active in sources:
+            current_helper = helper
+
+            # Eğer aktif değilse sayfaya git
+            if not is_active:
+                try:
+                    resp = await self.httpx.get(link_url)
+                    current_helper = HTMLHelper(resp.text)
+                except:
+                    continue
+
+            iframe = current_helper.select_first("div.card-video iframe")
+            if not iframe:
+                continue
+
+            iframe_url = iframe.attrs.get("data-src") or iframe.attrs.get("src")
+            if not iframe_url:
+                continue
+
+            iframe_url = self.fix_url(iframe_url)
+
+            # VIP / EksenLoad mantığı
+            if "eksenload" in iframe_url or name == "VIP":
+                video_id   = iframe_url.split("/")[-1]
+                master_url = f"https://eksenload.site/uploads/encode/{video_id}/master.m3u8"
+                results.append(ExtractResult(
+                    url     = master_url,
+                    name    = name,
+                    referer = self.main_url
+                ))
+            else:
+                # Diğerleri (Moly, vs.) için extract
+                # Name override: "Kaynak Adı | Player Adı" olacak şekilde
+                extracted = await self.extract(iframe_url, name_override=name)
+                if extracted:
+                    if isinstance(extracted, list):
+                        results.extend(extracted)
+                    else:
+                        results.append(extracted)
+
         return results

@@ -151,8 +151,8 @@ class YTDLP(ExtractorBase):
         ydl_opts = {
             "quiet"                 : True,
             "no_warnings"           : True,
-            "extract_flat"          : False,   # Tam bilgi al
-            "format"                : "best",  # En iyi kalite
+            "extract_flat"          : False,       # Tam bilgi al
+            "format"                : "best/all",  # En iyi kalite, yoksa herhangi biri
             "no_check_certificates" : True,
             "socket_timeout"        : 3,
             "retries"               : 1

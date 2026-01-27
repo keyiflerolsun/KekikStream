@@ -50,7 +50,7 @@ class KultFilmler(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -69,7 +69,7 @@ class KultFilmler(PluginBase):
                 results.append(SearchResult(
                     title  = title,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -99,13 +99,13 @@ class KultFilmler(PluginBase):
                     episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url=url, poster=poster, title=title or "Bilinmiyor", description=description,
-                tags=tags, year=str(year) if year else None, actors=actors, rating=rating, episodes=episodes
+                url=url, poster=poster, title=title, description=description,
+                tags=tags, year=year, actors=actors, rating=rating, episodes=episodes
             )
 
         return MovieInfo(
-            url=url, poster=poster, title=title or "Bilinmiyor", description=description,
-            tags=tags, year=str(year) if year else None, rating=rating, actors=actors, duration=duration
+            url=url, poster=poster, title=title, description=description,
+            tags=tags, year=year, rating=rating, actors=actors, duration=duration
         )
 
     def _get_iframe(self, source_code: str) -> str:

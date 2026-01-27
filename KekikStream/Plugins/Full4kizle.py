@@ -114,10 +114,10 @@ class Full4kizle(PluginBase):
         if not ep_elements:
             return MovieInfo(
                 url         = url,
-                title       = title or "Bilinmiyor",
+                title       = title,
                 description = description,
-                poster      = self.fix_url(poster) if poster else None,
-                year        = str(year) if year else None,
+                poster      = self.fix_url(poster),
+                year        = year,
                 rating      = rating,
                 duration    = duration,
                 tags        = tags,
@@ -133,10 +133,10 @@ class Full4kizle(PluginBase):
 
         return SeriesInfo(
             url         = url,
-            title       = title or "Bilinmiyor",
+            title       = title,
             description = description,
-            poster      = self.fix_url(poster) if poster else None,
-            year        = str(year) if year else None,
+            poster      = self.fix_url(poster),
+            year        = year,
             rating      = rating,
             duration    = duration,
             tags        = tags,

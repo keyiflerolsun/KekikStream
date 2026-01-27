@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class FilmMakinesi(PluginBase):
     name        = "FilmMakinesi"
@@ -39,8 +39,8 @@ class FilmMakinesi(PluginBase):
 
         results = []
         for veri in secici.select("div.item-relative"):
-            title = secici.select_text("div.title", veri)
-            href = secici.select_attr("a", "href", veri)
+            title  = secici.select_text("div.title", veri)
+            href   = secici.select_attr("a", "href", veri)
             poster = secici.select_poster("img", veri)
 
             if title and href:
@@ -48,7 +48,7 @@ class FilmMakinesi(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -59,15 +59,15 @@ class FilmMakinesi(PluginBase):
 
         results = []
         for article in secici.select("div.item-relative"):
-            title = secici.select_text("div.title", article)
-            href = secici.select_attr("a", "href", article)
+            title  = secici.select_text("div.title", article)
+            href   = secici.select_attr("a", "href", article)
             poster = secici.select_poster("img", article)
 
             if title and href:
                 results.append(SearchResult(
-                    title  = title.strip(),
-                    url    = self.fix_url(href.strip()),
-                    poster = self.fix_url(poster.strip()) if poster else None,
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -92,7 +92,7 @@ class FilmMakinesi(PluginBase):
             if s and e:
                 name = link.text(strip=True).split("Bölüm")[-1].strip() if "Bölüm" in link.text() else ""
                 episodes.append(Episode(season=s, episode=e, title=name, url=self.fix_url(href)))
-        
+
         # Tekrar edenleri temizle ve sırala
         if episodes:
             seen = set()
@@ -104,13 +104,28 @@ class FilmMakinesi(PluginBase):
             unique.sort(key=lambda x: (x.season or 0, x.episode or 0))
 
             return SeriesInfo(
-                url=url, poster=self.fix_url(poster) if poster else None, title=title, description=description,
-                tags=tags, rating=rating, year=year, actors=actors, duration=duration, episodes=unique
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = title,
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                duration    = duration,
+                episodes    = unique
             )
 
         return MovieInfo(
-            url=url, poster=self.fix_url(poster) if poster else None, title=title, description=description,
-            tags=tags, rating=rating, year=year, actors=actors, duration=duration
+            url         = url,
+            poster      = self.fix_url(poster),
+            title       = title,
+            description = description,
+            tags        = tags,
+            rating      = rating,
+            year        = year,
+            actors      = actors,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

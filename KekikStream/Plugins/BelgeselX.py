@@ -36,15 +36,15 @@ class BelgeselX(PluginBase):
         """Türkçe için title case dönüşümü."""
         if not text:
             return ""
-        
-        words = text.split()
+
+        words     = text.split()
         new_words = []
-        
+
         for word in words:
             # Önce Türkçe karakterleri koruyarak küçült
             # İ -> i, I -> ı
             word = word.replace("İ", "i").replace("I", "ı").lower()
-            
+
             # Sonra ilk harfi Türkçe kurallarına göre büyüt
             if word:
                 if word[0] == "i":
@@ -53,9 +53,9 @@ class BelgeselX(PluginBase):
                     word = "I" + word[1:]
                 else:
                     word = word[0].upper() + word[1:]
-            
+
             new_words.append(word)
-            
+
         return " ".join(new_words)
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -63,21 +63,17 @@ class BelgeselX(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        # xpath kullanamıyoruz, en üst seviye gen-movie-contain'leri alıp içlerinden bilgileri çekelim
         for container in secici.select("div.gen-movie-contain"):
-            # Poster için img'i container'ın içinden alalım
             poster = secici.select_attr("div.gen-movie-img img", "src", container)
-
-            # Title ve href için gen-movie-info
-            title = secici.select_text("div.gen-movie-info h3 a", container)
-            href  = secici.select_attr("div.gen-movie-info h3 a", "href", container)
+            title  = secici.select_text("div.gen-movie-info h3 a", container)
+            href   = secici.select_attr("div.gen-movie-info h3 a", "href", container)
 
             if title and href:
                 results.append(MainPageResult(
                     category = category,
                     title    = self._to_title_case(title),
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None
+                    poster   = self.fix_url(poster)
                 ))
 
         return results
@@ -117,7 +113,6 @@ class BelgeselX(PluginBase):
             poster  = images[i] if i < len(images) else None
 
             if not url_val or "diziresimleri" not in url_val:
-                # URL'den belgesel linkini oluştur
                 if poster and "diziresimleri" in poster:
                     file_name = poster.rsplit("/", 1)[-1]
                     file_name = HTMLHelper(file_name).regex_replace(r"\.(jpe?g|png|webp)$", "")
@@ -154,6 +149,7 @@ class BelgeselX(PluginBase):
             if not rating:
                 if r_match := secici.regex_first(r"%\s*(\d+)\s*Puan", item):
                     rating = float(r_match) / 10
+        rating = rating or None
 
         episodes = []
         for i, ep in enumerate(secici.select("div.gen-movie-contain")):
@@ -166,12 +162,23 @@ class BelgeselX(PluginBase):
                 final_url = self.fix_url(href)
                 if item_id:
                     final_url = f"{final_url}?id={item_id}"
-                
-                episodes.append(Episode(season=s or 1, episode=e or (i + 1), title=name, url=final_url))
+
+                episodes.append(Episode(
+                    season  = s or 1,
+                    episode = e or (i + 1),
+                    title   = name,
+                    url     = final_url
+                ))
 
         return SeriesInfo(
-            url=url, poster=self.fix_url(poster) if poster else None, title=title or "Bilinmiyor",
-            description=description, tags=tags, year=year, rating=rating, episodes=episodes
+            url         = url,
+            poster      = self.fix_url(poster),
+            title       = title,
+            description = description,
+            tags        = tags,
+            year        = year,
+            rating      = rating,
+            episodes    = episodes
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
@@ -198,6 +205,7 @@ class BelgeselX(PluginBase):
 
         for i, video_url in enumerate(files):
             quality = labels[i] if i < len(labels) else "HD"
+            name    = f"{'Google' if 'google' in video_url.lower() or 'blogspot' in video_url.lower() or quality == 'FULL' else self.name} | {'1080p' if quality == 'FULL' else quality}"
 
             # belgeselx.php redirect'ini çöz
             if "belgeselx.php" in video_url or "belgeselx2.php" in video_url:
@@ -210,7 +218,7 @@ class BelgeselX(PluginBase):
 
             links.append(ExtractResult(
                 url     = video_url,
-                name    = f"{'Google' if 'google' in video_url.lower() or 'blogspot' in video_url.lower() or quality == 'FULL' else self.name} | {'1080p' if quality == 'FULL' else quality}",
+                name    = name,
                 referer = main_url
             ))
 

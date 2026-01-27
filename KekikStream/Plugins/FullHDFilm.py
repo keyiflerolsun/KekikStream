@@ -60,7 +60,7 @@ class FullHDFilm(PluginBase):
                     category = category,
                     title    = alt,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None,
+                    poster   = self.fix_url(poster),
                 ))
 
         return results
@@ -79,7 +79,7 @@ class FullHDFilm(PluginBase):
                 results.append(SearchResult(
                     title  = alt,
                     url    = self.fix_url(href),
-                    poster = self.fix_url(poster) if poster else None,
+                    poster = self.fix_url(poster),
                 ))
 
         return results
@@ -110,13 +110,13 @@ class FullHDFilm(PluginBase):
                 episodes.append(Episode(season=s or 1, episode=e or (idx+1), title=f"{s or 1}. Sezon {e or idx+1}. Bölüm", url=url))
 
             return SeriesInfo(
-                url=url, poster=self.fix_url(poster) if poster else None, title=title or "", description=description,
-                tags=tags, year=str(year) if year else None, actors=actors, rating=rating, episodes=episodes
+                url=url, poster=self.fix_url(poster), title=title, description=description,
+                tags=tags, year=year, actors=actors, rating=rating, episodes=episodes
             )
 
         return MovieInfo(
-            url=url, poster=self.fix_url(poster) if poster else None, title=title or "", description=description,
-            tags=tags, year=str(year) if year else None, actors=actors, rating=rating
+            url=url, poster=self.fix_url(poster), title=title, description=description,
+            tags=tags, year=year, actors=actors, rating=rating
         )
 
     def _get_iframe(self, source_code: str) -> str:

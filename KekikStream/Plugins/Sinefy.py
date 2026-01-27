@@ -59,7 +59,7 @@ class Sinefy(PluginBase):
                     category = category,
                     title    = title,
                     url      = self.fix_url(href),
-                    poster   = self.fix_url(poster) if poster else None
+                    poster   = self.fix_url(poster)
                 ))
 
         return results
@@ -127,7 +127,7 @@ class Sinefy(PluginBase):
                         results.append(SearchResult(
                             title=name,
                             url=self.fix_url(slug),
-                            poster=self.fix_url(poster) if poster else None
+                            poster=self.fix_url(poster)
                         ))
                 return results
 
@@ -157,12 +157,12 @@ class Sinefy(PluginBase):
 
         common_info = {
             "url"         : url,
-            "poster"      : self.fix_url(poster) if poster else None,
-            "title"       : title or "Bilinmiyor",
+            "poster"      : self.fix_url(poster),
+            "title"       : title,
             "description" : description,
             "tags"        : tags,
             "rating"      : rating,
-            "year"        : str(year) if year else None,
+            "year"        : year,
             "actors"      : actors,
             "duration"    : duration
         }
