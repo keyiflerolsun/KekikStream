@@ -2,7 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, ExtractResult, HTMLHelper
 from json             import dumps, loads
-import re
+import re, contextlib
 
 class RecTV(PluginBase):
     name        = "RecTV"
@@ -73,11 +73,10 @@ class RecTV(PluginBase):
         duration_raw = veri.get("duration")
         duration = None
         if duration_raw:
-            try:
+            with contextlib.suppress(Exception):
                 h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
                 m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
                 duration = h * 60 + m
-            except: pass
 
         common_info = {
             "url"         : url,
@@ -110,10 +109,15 @@ class RecTV(PluginBase):
                             tag = " (Altyazı)"; clean_s = re.sub(r"\s*altyaz[ıi]\s*", "", s_title, flags=re.I).strip()
 
                         ep_data = {"url": self.fix_url(source.get("url")), "title": f"{veri.get('title')} | {s_title} {e_title} - {source.get('title')}", "is_episode": True}
-                        episodes.append(Episode(season=s or 1, episode=e or 1, title=f"{clean_s} {e_title}{tag} - {source.get('title')}", url=dumps(ep_data)))
+                        episodes.append(Episode(
+                            season  = s or 1,
+                            episode = e or 1,
+                            title   = f"{clean_s} {e_title}{tag} - {source.get('title')}",
+                            url     = dumps(ep_data)
+                        ))
 
             return SeriesInfo(**common_info, episodes=episodes, actors=[])
-        
+
         return MovieInfo(**common_info, actors=[])
 
     async def load_links(self, url: str) -> list[ExtractResult]:

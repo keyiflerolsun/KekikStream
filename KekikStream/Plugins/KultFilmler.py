@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle, HTMLHelper
-import base64
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, Subtitle, HTMLHelper
+import base64, asyncio, contextlib
 
 class KultFilmler(PluginBase):
     name        = "KultFilmler"
@@ -99,91 +99,159 @@ class KultFilmler(PluginBase):
                     episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
 
             return SeriesInfo(
-                url=url, poster=poster, title=title, description=description,
-                tags=tags, year=year, actors=actors, rating=rating, episodes=episodes
+                url         = url,
+                poster      = poster,
+                title       = title,
+                description = description,
+                tags        = tags,
+                year        = year,
+                actors      = actors,
+                rating      = rating,
+                episodes    = episodes
             )
 
         return MovieInfo(
-            url=url, poster=poster, title=title, description=description,
-            tags=tags, year=year, rating=rating, actors=actors, duration=duration
+            url         = url,
+            poster      = poster,
+            title       = title,
+            description = description,
+            tags        = tags,
+            year        = year,
+            rating      = rating,
+            actors      = actors,
+            duration    = duration
         )
 
-    def _get_iframe(self, source_code: str) -> str:
-        """Base64 kodlu iframe'i çözümle"""
-        atob = HTMLHelper(source_code).regex_first(r"PHA\+[0-9a-zA-Z+/=]*")
-        if not atob:
-            return ""
+    def _decode_iframe(self, content: str) -> str | None:
+        """Base64 kodlanmış iframe verisini çözer"""
+        match = HTMLHelper(content).regex_first(r"PHA\+[0-9a-zA-Z+/=]*")
+        if not match:
+            return None
 
-        # Padding düzelt
-        padding = 4 - len(atob) % 4
-        if padding < 4:
-            atob = atob + "=" * padding
+        # Base64 Padding Fix
+        pad = len(match) % 4
+        if pad:
+            match += "=" * (4 - pad)
 
         try:
-            decoded = base64.b64decode(atob).decode("utf-8")
-            secici  = HTMLHelper(decoded)
-            iframe_src = secici.select_attr("iframe", "src")
-            return self.fix_url(iframe_src) if iframe_src else ""
+            decoded = base64.b64decode(match).decode("utf-8")
+            src = HTMLHelper(decoded).select_attr("iframe", "src")
+            return self.fix_url(src) if src else None
         except Exception:
-            return ""
+            return None
 
-    def _extract_subtitle_url(self, source_code: str) -> str | None:
-        """Altyazı URL'sini çıkar"""
-        return HTMLHelper(source_code).regex_first(r"(https?://[^\s\"]+\.srt)")
+    async def _resolve_alt_page(self, url: str, title: str) -> tuple[str | None, str]:
+        """Alternatif sayfa kaynak kodunu indirip iframe'i bulur"""
+        try:
+            res = await self.httpx.get(url)
+            return self._decode_iframe(res.text), title
+        except Exception:
+            return None, title
 
-    async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        secici = HTMLHelper(istek.text)
-
-        iframes = set()
-
-        # Ana iframe
-        main_frame = self._get_iframe(istek.text)
-        if main_frame:
-            iframes.add(main_frame)
-
-        # Alternatif player'lar
-        for player in secici.select("div.container#player"):
-            iframe_src = secici.select_attr("iframe", "src", player)
-            alt_iframe = self.fix_url(iframe_src) if iframe_src else None
-            if alt_iframe:
-                alt_istek = await self.httpx.get(alt_iframe)
-                alt_frame = self._get_iframe(alt_istek.text)
-                if alt_frame:
-                    iframes.add(alt_frame)
-
+    async def _extract_stream(self, iframe_url: str, title: str, subtitles: list[Subtitle]) -> list[ExtractResult]:
+        """Iframe üzerinden stream linklerini ayıklar"""
         results = []
 
-        for iframe in iframes:
-            subtitles = []
+        # 1. VidMoly Özel Çözümleme(M3U)
+        if "vidmoly" in iframe_url:
+            with contextlib.suppress(Exception):
+                res = await self.httpx.get(
+                    url     = iframe_url,
+                    headers = {
+                        "User-Agent"     : "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
+                        "Sec-Fetch-Dest" : "iframe"
+                    }
+                )
+                m3u = HTMLHelper(res.text).regex_first(r'file:"([^"]+)"')
 
-            # VidMoly özel işleme
-            if "vidmoly" in iframe:
-                headers = {
-                    "User-Agent"     : "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36",
-                    "Sec-Fetch-Dest" : "iframe"
-                }
-                iframe_istek = await self.httpx.get(iframe, headers=headers)
-                m3u_match    = HTMLHelper(iframe_istek.text).regex_first(r'file:"([^"]+)"')
-
-                if m3u_match:
+                if m3u:
                     results.append(ExtractResult(
-                        name      = "VidMoly",
-                        url       = m3u_match,
+                        name      = title or "VidMoly",
+                        url       = m3u,
                         referer   = self.main_url,
-                        subtitles = []
+                        subtitles = subtitles
                     ))
-                    continue
 
-            # Altyazı çıkar
-            subtitle_url = self._extract_subtitle_url(url)
-            if subtitle_url:
-                subtitles.append(Subtitle(name="Türkçe", url=subtitle_url))
+            return results
 
-            data = await self.extract(iframe)
-            if data:
-                # ExtractResult objesi immutable, yeni bir kopya oluştur
-                updated_data = data.model_copy(update={"subtitles": subtitles}) if subtitles else data
-                results.append(updated_data)
+        # 2. Genel Extractor Kullanımı
+        with contextlib.suppress(Exception):
+            extracted = await self.extract(iframe_url)
+            if not extracted:
+                return []
+
+            items = extracted if isinstance(extracted, list) else [extracted]
+            for item in items:
+                # İsim ve altyazı bilgilerini güncelle
+                # Orijinal extractor ismini ezmek için title kullan
+                if title:
+                    item.name = title
+
+                # Varsa altyazıları ekle
+                if subtitles:
+                     # Copy update daha güvenli (Pydantic model)
+                    if hasattr(item, "model_copy"):
+                        item = item.model_copy(update={"subtitles": subtitles})
+                    else:
+                        item.subtitles = subtitles
+
+                results.append(item)
 
         return results
+
+    async def load_links(self, url: str) -> list[ExtractResult]:
+        response = await self.httpx.get(url)
+        source   = response.text
+        helper   = HTMLHelper(source)
+
+        # Altyazı Bul
+        sub_url   = helper.regex_first(r"(https?://[^\s\"]+\.srt)")
+        subtitles = [Subtitle(name="Türkçe", url=sub_url)] if sub_url else []
+
+        # İşlenecek kaynakları topla: (Iframe_URL, Başlık)
+        sources = []
+
+        # A) Ana Player
+        main_iframe = self._decode_iframe(source)
+        if main_iframe:
+            p_name = helper.select_text("div.parts-middle div.part.active div.part-name") or None
+            p_lang = helper.select_attr("div.parts-middle div.part.active div.part-lang span", "title")
+            full_title = f"{p_name} | {p_lang}" if p_lang else p_name
+            sources.append((main_iframe, full_title))
+
+        # B) Alternatif Playerlar (Link Çözümleme Gerektirir)
+        alt_tasks = []
+        for link in helper.select("div.parts-middle a.post-page-numbers"):
+            href = link.attrs.get("href")
+            if not href:
+                continue
+
+            a_name     = helper.select_text("div.part-name", link) or "Alternatif"
+            a_lang     = helper.select_attr("div.part-lang span", "title", link)
+            full_title = f"{a_name} | {a_lang}" if a_lang else a_name
+
+            alt_tasks.append(self._resolve_alt_page(self.fix_url(href), full_title))
+
+        if alt_tasks:
+            resolved_alts = await asyncio.gather(*alt_tasks)
+            for iframe, title in resolved_alts:
+                if iframe:
+                    sources.append((iframe, title))
+
+        # 3. Tüm kaynakları paralel işle (Extract)
+        if not sources:
+            return []
+
+        extract_tasks = [
+            self._extract_stream(iframe, title, subtitles) 
+                for iframe, title in sources
+        ]
+
+        results_groups = await asyncio.gather(*extract_tasks)
+
+        # Sonuçları düzleştir
+        final_results = []
+        for group in results_groups:
+            final_results.extend(group)
+
+        return final_results

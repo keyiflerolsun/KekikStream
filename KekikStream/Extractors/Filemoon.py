@@ -13,7 +13,8 @@ class Filemoon(ExtractorBase):
         "filemoon.in",
         "filemoon.sx",
         "filemoon.nl",
-        "filemoon.com"
+        "filemoon.com",
+        "bysejikuar.com"
     ]
 
     def can_handle_url(self, url: str) -> bool:

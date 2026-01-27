@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import json, asyncio
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import asyncio, contextlib
 
 class SetFilmIzle(PluginBase):
     name        = "SetFilmIzle"
@@ -35,7 +35,7 @@ class SetFilmIzle(PluginBase):
 
     def _get_nonce(self, nonce_type: str = "video", referer: str = None) -> str:
         """Site cache'lenmiş nonce'ları expire olabiliyor, fresh nonce al veya sayfadan çek"""
-        try:
+        with contextlib.suppress(Exception):
             resp = self.cloudscraper.post(
                 f"{self.main_url}/wp-admin/admin-ajax.php",
                 headers = {
@@ -49,17 +49,15 @@ class SetFilmIzle(PluginBase):
             if data and data.get("success"):
                 nonces = data.get("data", {}).get("nonces", {})
                 return nonces.get(nonce_type if nonce_type != "search" else "dt_ajax_search", "")
-        except:
-            pass
 
         # AJAX başarısızsa sayfadan çekmeyi dene
-        try:
+        with contextlib.suppress(Exception):
             main_resp = self.cloudscraper.get(referer or self.main_url)
             # STMOVIE_AJAX = { ... nonces: { search: "...", ... } }
             nonce = HTMLHelper(main_resp.text).regex_first(rf'"{nonce_type}":\s*"([^"]+)"')
             return nonce or ""
-        except:
-            return ""
+
+        return ""
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         istek  = self.cloudscraper.get(url)
@@ -106,8 +104,8 @@ class SetFilmIzle(PluginBase):
             return []
 
         secici  = HTMLHelper(html)
-        results = []
 
+        results = []
         for item in secici.select("div.items article"):
             title  = secici.select_text("h2", item)
             href   = secici.select_attr("a", "href", item)
@@ -175,14 +173,14 @@ class SetFilmIzle(PluginBase):
         semaphore = asyncio.Semaphore(5)
         tasks = []
 
-        async def fetch_and_extract(player):
+        async def fetch_and_extract(player) -> list[ExtractResult]:
             async with semaphore:
                 source_id   = player.attrs.get("data-post-id")
-                player_name = player.attrs.get("data-player-name")
+                player_name = player.attrs.get("data-player-name") or secici.select_text("b", player)
                 part_key    = player.attrs.get("data-part-key")
 
                 if not source_id or "event" in source_id or source_id == "":
-                    return None
+                    return []
 
                 try:
                     resp = self.cloudscraper.post(
@@ -192,17 +190,17 @@ class SetFilmIzle(PluginBase):
                             "action"      : "get_video_url",
                             "nonce"       : nonce,
                             "post_id"     : source_id,
-                            "player_name" : player_name or "",
+                            "player_name" : player.attrs.get("data-player-name") or "",
                             "part_key"    : part_key or ""
                         }
                     )
                     data = resp.json()
                 except:
-                    return None
+                    return []
 
                 iframe_url = data.get("data", {}).get("url")
                 if not iframe_url:
-                    return None
+                    return []
 
                 if "setplay" not in iframe_url and part_key:
                     iframe_url = f"{iframe_url}?partKey={part_key}"
@@ -211,10 +209,40 @@ class SetFilmIzle(PluginBase):
                 if not label and part_key:
                     label = part_key.replace("_", " ").title()
 
-                return await self.extract(iframe_url, prefix=label if label else None)
+                # İsimlendirme Formatı: "FastPlay | Türkçe Dublaj"
+                final_name = player_name
+                if label:
+                    final_name = f"{final_name} | {label}" if final_name else label
 
-        for player in secici.select("nav.player a"):
+                # Extract et
+                extracted = await self.extract(iframe_url)
+                if not extracted:
+                    return []
+
+                results = []
+                items = extracted if isinstance(extracted, list) else [extracted]
+                for item in items:
+                    if final_name:
+                        item.name = final_name
+                    results.append(item)
+
+                return results
+
+        # Selector Güncellemesi: data-player-name içeren tüm a tagleri
+        players = secici.select("a[data-player-name]")
+        if not players:
+            # Fallback legacy selector
+            players = secici.select("nav.player a")
+
+        for player in players:
             tasks.append(fetch_and_extract(player))
 
-        results = await asyncio.gather(*tasks)
-        return [r for r in results if r]
+        results_groups = await asyncio.gather(*tasks)
+
+        # Flatten
+        final_results = []
+        for group in results_groups:
+             if group:
+                 final_results.extend(group)
+
+        return final_results

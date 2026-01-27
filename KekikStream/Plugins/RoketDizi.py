@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, MovieInfo, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, MovieInfo, HTMLHelper
 import base64, json
 
 class RoketDizi(PluginBase):
@@ -26,8 +26,6 @@ class RoketDizi(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-
-        # Use div.new-added-list to find the container, then get items
         for item in secici.select("div.new-added-list > span"):
             title  = secici.select_text("span.line-clamp-1", item)
             href   = secici.select_attr("a", "href", item)
@@ -52,7 +50,7 @@ class RoketDizi(PluginBase):
                 "Referer"          : f"{self.main_url}/",
             }
         )
-        
+
         try:
             veri    = istek.json()
             encoded = veri.get("response", "")
@@ -87,39 +85,33 @@ class RoketDizi(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
-        
+
         next_data_text = sel.select_text("script#__NEXT_DATA__")
         if not next_data_text:
             return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
 
         try:
-            next_data = json.loads(next_data_text)
+            next_data       = json.loads(next_data_text)
             secure_data_raw = next_data["props"]["pageProps"]["secureData"]
-            secure_data = json.loads(base64.b64decode(secure_data_raw).decode('utf-8'))
-            
+            secure_data     = json.loads(base64.b64decode(secure_data_raw).decode('utf-8'))
+
             content_item = secure_data.get("contentItem", {})
             content      = secure_data.get("content", {}).get("result", {})
-            
+
             title       = content_item.get("original_title") or content_item.get("culture_title")
             poster      = content_item.get("poster_url") or content_item.get("face_url")
             description = content_item.get("description")
             rating      = str(content_item.get("imdb_point") or "")
             year        = str(content_item.get("release_year") or "")
             tags        = content_item.get("categories", "").split(",")
-            
-            # Actors extraction from getSerieCastsById or getMovieCastsById
+
             actors = []
             casts_data = content.get("getSerieCastsById") or content.get("getMovieCastsById")
             if casts_data and casts_data.get("result"):
                 actors = [cast.get("name") for cast in casts_data["result"] if cast.get("name")]
 
-            # Episodes extraction
             episodes = []
             if "Series" in str(content.get("FindedType")):
-                # Check for episodes in SecureData -> RelatedResults -> getEpisodeSources (this might be for the current episode)
-                # Usually full episode list isn't in secureData, but we can get it from HTML or another API
-                # However, many times Next.js pages have them in props
-                # Let's fallback to the previous regex method for episodes if not in JSON
                 all_urls = HTMLHelper(resp.text).regex_all(r'"url":"([^"]*)"')
                 episodes_dict = {}
                 for u in all_urls:
@@ -169,17 +161,16 @@ class RoketDizi(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
-        
+
         next_data = sel.select_text("script#__NEXT_DATA__")
         if not next_data:
             return []
 
         try:
-            data = json.loads(next_data)
-            secure_data = data["props"]["pageProps"]["secureData"]
+            data         = json.loads(next_data)
+            secure_data  = data["props"]["pageProps"]["secureData"]
             decoded_json = json.loads(base64.b64decode(secure_data).decode('utf-8'))
 
-            # secureData içindeki RelatedResults -> getEpisodeSources -> result dizisini al
             sources = decoded_json.get("RelatedResults", {}).get("getEpisodeSources", {}).get("result", [])
 
             seen_urls = set()
@@ -200,8 +191,8 @@ class RoketDizi(PluginBase):
                         iframe_url = "https://" + iframe_url
 
                 iframe_url = self.fix_url(iframe_url)
-                
-                # Deduplicate  
+
+                # Deduplicate
                 if iframe_url in seen_urls:
                     continue
                 seen_urls.add(iframe_url)

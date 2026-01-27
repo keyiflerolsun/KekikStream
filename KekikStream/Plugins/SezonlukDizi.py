@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import asyncio
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import asyncio, contextlib
 
 class SezonlukDizi(PluginBase):
     name        = "SezonlukDizi"
@@ -40,10 +40,10 @@ class SezonlukDizi(PluginBase):
 
     async def _get_asp_data(self) -> dict:
         js_req = await self.httpx.get(f"{self.main_url}/js/site.min.js")
-        js = HTMLHelper(js_req.text)
-        alt = js.regex_first(r"dataAlternatif(.*?)\.asp")
-        emb = js.regex_first(r"dataEmbed(.*?)\.asp")
-        
+        js     = HTMLHelper(js_req.text)
+        alt    = js.regex_first(r"dataAlternatif(.*?)\.asp")
+        emb    = js.regex_first(r"dataEmbed(.*?)\.asp")
+
         return {
             "alternatif": alt or "",
             "embed":      emb or ""
@@ -116,7 +116,12 @@ class SezonlukDizi(PluginBase):
                 href = e_sel.select_attr("a", "href", tds[3])
                 if name and href:
                     s, e = e_sel.extract_season_episode(f"{tds[1].text(strip=True)} {tds[2].text(strip=True)}")
-                    episodes.append(Episode(season=s or 1, episode=e or 1, title=name, url=self.fix_url(href)))
+                    episodes.append(Episode(
+                        season  = s or 1,
+                        episode = e or 1,
+                        title   = name,
+                        url     = self.fix_url(href)
+                    ))
 
         return SeriesInfo(
             url         = url,
@@ -131,10 +136,10 @@ class SezonlukDizi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        secici = HTMLHelper(istek.text)
+        istek    = await self.httpx.get(url)
+        secici   = HTMLHelper(istek.text)
         asp_data = await self._get_asp_data()
-        
+
         bid = secici.select_attr("div#dilsec", "data-id")
         if not bid:
             return []
@@ -142,41 +147,64 @@ class SezonlukDizi(PluginBase):
         semaphore = asyncio.Semaphore(5)
         tasks = []
 
-        async def fetch_and_extract(veri, dil_etiketi):
+        async def fetch_and_extract(veri, dil_etiketi) -> list[ExtractResult]:
             async with semaphore:
                 try:
                     embed_resp = await self.httpx.post(
-                        f"{self.main_url}/ajax/dataEmbed{asp_data['embed']}.asp",
+                        url     = f"{self.main_url}/ajax/dataEmbed{asp_data['embed']}.asp",
                         headers = {"X-Requested-With": "XMLHttpRequest"},
                         data    = {"id": str(veri.get("id"))}
                     )
                     embed_secici = HTMLHelper(embed_resp.text)
-                    iframe_src = embed_secici.select_attr("iframe", "src")
-                    
-                    if iframe_src:
-                        if "link.asp" in iframe_src:
-                            return None
-                            
-                        iframe_url = self.fix_url(iframe_src)
-                        return await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=f"{dil_etiketi} - {veri.get('baslik')}")
-                except:
-                    pass
-                return None
+                    iframe_src   = embed_secici.select_attr("iframe", "src") or embed_secici.regex_first(r'src="(.*?)"')
+
+                    if not iframe_src:
+                        return []
+
+                    iframe_url = self.fix_url(iframe_src)
+
+                    real_url = iframe_url
+                    if "url=" in iframe_url:
+                        real_url = HTMLHelper(iframe_url).regex_first(r"url=([^&]+)")
+                        if real_url:
+                            real_url = self.fix_url(real_url)
+
+                    source_name = veri.get('baslik') or "SezonlukDizi"
+                    full_name   = f"{dil_etiketi} - {source_name}"
+
+                    extracted = await self.extract(real_url, referer=f"{self.main_url}/")
+
+                    if not extracted:
+                         return []
+
+                    results = []
+                    items   = extracted if isinstance(extracted, list) else [extracted]
+                    for item in items:
+                        item.name = full_name
+                        results.append(item)
+                    return results
+
+                except Exception:
+                    return []
 
         for dil_kodu, dil_etiketi in [("1", "Altyazı"), ("0", "Dublaj")]:
-            altyazi_resp = await self.httpx.post(
-                f"{self.main_url}/ajax/dataAlternatif{asp_data['alternatif']}.asp",
-                headers = {"X-Requested-With": "XMLHttpRequest"},
-                data    = {"bid": bid, "dil": dil_kodu}
-            )
-            
-            try:
+            with contextlib.suppress(Exception):
+                altyazi_resp = await self.httpx.post(
+                    url     = f"{self.main_url}/ajax/dataAlternatif{asp_data['alternatif']}.asp",
+                    headers = {"X-Requested-With": "XMLHttpRequest"},
+                    data    = {"bid": bid, "dil": dil_kodu}
+                )
+
                 data_json = altyazi_resp.json()
                 if data_json.get("status") == "success" and data_json.get("data"):
                     for veri in data_json["data"]:
                         tasks.append(fetch_and_extract(veri, dil_etiketi))
-            except:
-                continue
 
-        results = await asyncio.gather(*tasks)
-        return [r for r in results if r]
+        results_groups = await asyncio.gather(*tasks)
+
+        final_results = []
+        for group in results_groups:
+             if group:
+                 final_results.extend(group)
+
+        return final_results
