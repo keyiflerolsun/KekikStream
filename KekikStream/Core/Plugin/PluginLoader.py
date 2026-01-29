@@ -10,7 +10,7 @@ class PluginLoader:
         # Yerel ve global eklenti dizinlerini ayarla
         self.proxy = proxy
         self.local_plugins_dir  = Path(plugins_dir).resolve()
-        self.global_plugins_dir = Path(__file__).parent.parent.parent / plugins_dir
+        self.global_plugins_dir = Path(__file__).parent.parent.parent / "Plugins"
 
         # Dizin kontrolü
         if not self.local_plugins_dir.exists() and not self.global_plugins_dir.exists():
@@ -18,19 +18,16 @@ class PluginLoader:
             cikis_yap(False)
 
     def load_all(self) -> dict[str, PluginBase]:
-        plugins = {}
+        plugins         = {}
+        local_dir_exists = self.local_plugins_dir.exists() and self.local_plugins_dir.resolve() != self.global_plugins_dir.resolve()
 
-        # Eğer yerel dizinde Plugin varsa, sadece onları yükle (eklenti geliştirme modu)
-        if self.local_plugins_dir.exists():
+        # Eğer yerel dizin varsa, sadece oradan yükle (eklenti geliştirme/yayınlama modu)
+        if local_dir_exists:
             # konsol.log(f"[green][*] Yerel Eklenti dizininden yükleniyor: {self.local_plugins_dir}[/green]")
-            local_plugins = self._load_from_directory(self.local_plugins_dir)
-
-            if local_plugins:
-                # konsol.log("[cyan][*] Yerel Plugin bulundu, global Plugin'ler atlanıyor (eklenti geliştirme modu)[/cyan]")
-                plugins |= local_plugins
-
-        # Yerel dizinde Plugin yoksa, global'leri yükle
-        if not plugins and self.global_plugins_dir.exists():
+            plugins |= self._load_from_directory(self.local_plugins_dir)
+        
+        # Yerel dizin yoksa (veya core ile aynı yerse), global'leri yükle
+        else:
             # konsol.log(f"[green][*] Global Eklenti dizininden yükleniyor: {self.global_plugins_dir}[/green]")
             plugins |= self._load_from_directory(self.global_plugins_dir)
 
