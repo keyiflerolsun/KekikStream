@@ -137,23 +137,60 @@ class FilmEkseni(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
+        # Dil sekmelerini bul (Dublaj, Altyazı vb.)
+        # Fragman vb. linkleri dahil etmemek için sadece 'a.nav-link' bakıyoruz
+        lang_tabs = [
+            tab for tab in secici.select("ul.nav-tabs.nav-slider a.nav-link")
+                if "fragman" not in tab.text().lower()
+        ]
+
+        # Player panellerini bul
+        tab_panes = secici.select("div.tab-pane")
+
         sources = [] # (name, url, is_active)
-        if nav_links := secici.select("nav.card-nav a.nav-link"):
-            seen_urls = set()
-            for link in nav_links:
-                if link.attrs.get("href") == "#":
-                    continue # Sinema Modu vb.
 
-                name      = link.text(strip=True)
-                href      = link.attrs.get("href")
-                is_active = "active" in link.attrs.get("class", "")
+        # Eğer dil sekmeleri ve paneller eşleşiyorsa (ideal durum)
+        if lang_tabs and tab_panes:
+            for i, pane in enumerate(tab_panes):
+                if i >= len(lang_tabs):
+                    break
 
-                if href and href not in seen_urls:
-                    seen_urls.add(href)
-                    sources.append((name, href, is_active))
-        else:
-            # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
-            sources.append(("VIP", url, True))
+                lang_name    = lang_tabs[i].text(strip=True)
+                player_links = secici.select("a.nav-link", element=pane)
+
+                for link in player_links:
+                    p_name = link.text(strip=True)
+                    if not p_name or any(x in p_name.lower() for x in ["paylaş", "indir", "hata"]):
+                        continue
+
+                    href = link.attrs.get("href")
+                    if not href or href == "#":
+                        continue
+
+                    # Yeni isim "Moly | Türkçe Dublaj"
+                    full_name = f"{p_name} | {lang_name}"
+                    is_active = "active" in link.attrs.get("class", "")
+
+                    sources.append((full_name, self.fix_url(href), is_active))
+
+        # Eğer panel yapısı beklediğimizden farklıysa eski mantığa dön
+        if not sources:
+            if nav_links := secici.select("nav.card-nav a.nav-link"):
+                seen_urls = set()
+                for link in nav_links:
+                    if link.attrs.get("href") == "#":
+                        continue # Sinema Modu vb.
+
+                    name      = link.text(strip=True)
+                    href      = link.attrs.get("href")
+                    is_active = "active" in link.attrs.get("class", "")
+
+                    if href and href not in seen_urls:
+                        seen_urls.add(href)
+                        sources.append((name, self.fix_url(href), is_active))
+            else:
+                # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
+                sources.append(("VIP", url, True))
 
         tasks = []
         for name, link_url, is_active in sources:

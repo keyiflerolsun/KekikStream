@@ -78,7 +78,7 @@ class FilmMakinesi(PluginBase):
 
         title       = self.clean_title(secici.select_text("h1.title"))
         poster      = secici.select_poster("img.cover-img")
-        description = secici.select_text("div.info-description p")
+        description = secici.select_text("div.info-description")
         rating      = secici.select_text("div.info div.imdb b")
         year        = secici.select_text("span.date a")
         actors      = secici.select_texts("div.cast-name")

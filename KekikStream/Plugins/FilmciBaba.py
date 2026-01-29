@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class FilmciBaba(PluginBase):
     name        = "FilmciBaba"
     language    = "tr"
-    main_url    = "https://izlehdfilm.cc"
+    main_url    = "https://4kizle.live"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Filmci Baba, film izleme sitesi 4k Full film izle, 1080p ve 4k kalite de sinema filmleri ve dizileri, tek parça hd kalitede türkçe dublajlı filmler seyret."
 
