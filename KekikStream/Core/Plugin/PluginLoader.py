@@ -4,6 +4,7 @@ from ...CLI      import konsol, cikis_yap
 from .PluginBase import PluginBase
 from pathlib     import Path
 import os, importlib.util, traceback
+from ..Extractor.ExtractorManager import ExtractorManager
 
 class PluginLoader:
     def __init__(self, plugins_dir: str, ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):

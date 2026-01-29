@@ -2,6 +2,7 @@
 
 from .PluginLoader import PluginLoader
 from .PluginBase   import PluginBase
+from ..Extractor.ExtractorManager import ExtractorManager
 
 class PluginManager:
     def __init__(self, plugin_dir="Plugins", ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
