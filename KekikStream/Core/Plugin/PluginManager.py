@@ -4,9 +4,9 @@ from .PluginLoader import PluginLoader
 from .PluginBase   import PluginBase
 
 class PluginManager:
-    def __init__(self, plugin_dir="Plugins", proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
+    def __init__(self, plugin_dir="Plugins", ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
         # Eklenti yükleyiciyi başlat ve tüm eklentileri yükle
-        self.plugin_loader = PluginLoader(plugin_dir, proxy=proxy, ex_manager=ex_manager)
+        self.plugin_loader = PluginLoader(plugin_dir, ex_manager=ex_manager, proxy=proxy)
         self.plugins       = self.plugin_loader.load_all()
 
     def get_plugin_names(self):

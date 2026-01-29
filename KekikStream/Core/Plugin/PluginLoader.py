@@ -6,10 +6,10 @@ from pathlib     import Path
 import os, importlib.util, traceback
 
 class PluginLoader:
-    def __init__(self, plugins_dir: str, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
+    def __init__(self, plugins_dir: str, ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
         # Yerel ve global eklenti dizinlerini ayarla
-        self.proxy = proxy
         self.ex_manager = ex_manager
+        self.proxy      = proxy
         self.local_plugins_dir  = Path(plugins_dir).resolve()
         self.global_plugins_dir = Path(__file__).parent.parent.parent / "Plugins"
 
