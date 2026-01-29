@@ -7,8 +7,8 @@ from contextlib import suppress
 
 class KekikStream:
     def __init__(self):
-        self.plugin    = PluginManager()
         self.extractor = ExtractorManager()
+        self.plugin    = PluginManager(ex_manager=self.extractor)
         self.ui        = UIManager()
         self.media     = MediaManager()
         

@@ -22,8 +22,8 @@ class PluginValidator:
     """Her eklentinin tüm metotlarını ve veri modellerini doğrular."""
     
     def __init__(self):
-        self.plugins = PluginManager()
         self.ext     = ExtractorManager()
+        self.plugins = PluginManager(ex_manager=self.ext)
         self.results = {}
     
     def validate_model_completeness(self, obj, model_name: str) -> dict:
