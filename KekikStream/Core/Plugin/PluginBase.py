@@ -25,7 +25,7 @@ class PluginBase(ABC):
         self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
         self.main_url  = new_url
 
-    def __init__(self, proxy: str | dict | None = None, extractor_dir: str = "Extractors"):
+    def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # cloudscraper - for bypassing Cloudflare
         self.cloudscraper = CloudScraper()
         if proxy:
@@ -50,7 +50,12 @@ class PluginBase(ABC):
         })
 
         self.media_handler = MediaHandler()
-        self.ex_manager    = ExtractorManager(extractor_dir=extractor_dir)
+        
+        # If an instance is passed, use it; otherwise create a new one
+        if isinstance(ex_manager, ExtractorManager):
+            self.ex_manager = ex_manager
+        else:
+            self.ex_manager = ExtractorManager(extractor_dir=ex_manager)
 
     @abstractmethod
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
