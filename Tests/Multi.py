@@ -14,8 +14,8 @@ from asyncio          import run
 from KekikStream.Core import PluginManager, ExtractorManager, MediaManager, MovieInfo, SeriesInfo
 
 async def main():
-    plugins = PluginManager()
     ext     = ExtractorManager()
+    plugins = PluginManager(ex_manager=ext)
     media   = MediaManager()
 
     for eklenti_adi in plugins.get_plugin_names():
