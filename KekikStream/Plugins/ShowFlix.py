@@ -2,6 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import json
+from Kekik.cli import konsol
 
 class ShowFlix(PluginBase):
     name        = "ShowFlix"
@@ -151,7 +152,8 @@ class ShowFlix(PluginBase):
                     "streamwish": embeds.get("streamwish"),
                     "streamruby": embeds.get("streamruby"),
                     "upnshare": embeds.get("upnshare"),
-                    "vihide": embeds.get("vihide")
+                    "vihide": embeds.get("vihide"),
+                    "original": ep.get("originalURL")
                 }
                 
                 all_episodes.append(Episode(
@@ -183,6 +185,21 @@ class ShowFlix(PluginBase):
                             results.extend(res)
                         else:
                             results.append(res)
+            
+            if val := data.get("original"):
+                 results.append(ExtractResult(name="ShowFlix (Original)", url=val, referer=self.main_url))
+
+            # Alt yazıları senkronize et
+            all_subs = {}
+            for res in results:
+                for sub in res.subtitles:
+                    if sub.name not in all_subs:
+                        all_subs[sub.name] = sub
+            
+            unique_subs = list(all_subs.values())
+            for res in results:
+                res.subtitles = unique_subs
+
             return results
 
         # Movie Fallback
@@ -208,4 +225,18 @@ class ShowFlix(PluginBase):
                     if isinstance(res, list): results.extend(res)
                     else: results.append(res)
         
+        if val := item.get("originalURL"):
+             results.append(ExtractResult(name="ShowFlix (Original)", url=val, referer=self.main_url))
+
+        # Alt yazıları senkronize et
+        all_subs = {}
+        for res in results:
+            for sub in res.subtitles:
+                if sub.name not in all_subs:
+                    all_subs[sub.name] = sub
+        
+        unique_subs = list(all_subs.values())
+        for res in results:
+            res.subtitles = unique_subs
+
         return results
