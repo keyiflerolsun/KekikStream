@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-from Kekik.Sifreleme import AESManager
+from Kekik.Sifreleme  import AESManager
 import contextlib
 
 class HotStream(ExtractorBase):
@@ -24,4 +24,9 @@ class HotStream(ExtractorBase):
         if not m3u8_url:
             raise ValueError(f"HotStream: Video linki bulunamadı. {url}")
 
-        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=url)
+        return ExtractResult(
+            name       = self.name,
+            url        = self.fix_url(m3u8_url),
+            referer    = url,
+            user_agent = self.httpx.headers.get("User-Agent")
+        )
