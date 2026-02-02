@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import asyncio
 
 class SuperFilmIzle(PluginBase):
     name        = "SuperFilmIzle"
@@ -91,7 +92,7 @@ class SuperFilmIzle(PluginBase):
         tags        = secici.select_texts("ul.post-categories li a")
         rating      = secici.select_text("div.imdb-count")
         rating      = rating.replace("IMDB Puanı", "") if rating else None
-        actors      = secici.select_texts("div.actors a")
+        actors      = secici.select_texts("div.actors a") or secici.select_texts("div.cast a")
 
         return MovieInfo(
             url         = url,
@@ -105,15 +106,73 @@ class SuperFilmIzle(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        secici = HTMLHelper(istek.text)
+        istek     = await self.httpx.get(url)
+        main_text = istek.text
+        secici    = HTMLHelper(main_text)
 
-        iframe = secici.select_attr("div.video-content iframe", "src")
-        iframe = self.fix_url(iframe) if iframe else None
+        # 1. Alternatifleri / Parçaları Belirle
+        # (url, name, needs_fetch)
+        sources = []
 
-        if not iframe:
-            return []
+        # Keremiya / Movifox Alternatif Yapısı (li.part)
+        part_items = secici.select("div#action-parts li.part")
+        if part_items:
+            for li in part_items:
+                name = secici.select_text("div.part-name", li) or "Alternatif"
 
-        results = []
+                # Aktif olan parça (Mevcut sayfada)
+                if "active" in li.attrs.get("class", []):
+                    sources.append((None, name, False))
 
-        return results
+                # Pasif olanlar (Link verilmişse)
+                elif a_tag := secici.select_first("a.post-page-numbers", li):
+                    href = a_tag.attrs.get("href")
+                    if href:
+                        sources.append((self.fix_url(href), name, True))
+        else:
+            # Alternatif menüsü yoksa tek parça olarak işle
+            sources.append((None, "", False))
+
+        # 2. İşleme Görevlerini Hazırla
+        extract_tasks = []
+
+        async def process_task(source_data):
+            src_url, src_name, needs_fetch = source_data
+
+            # Iframe'i bulacağımız HTML kaynağını belirle
+            html_to_parse = main_text
+            if needs_fetch:
+                try:
+                    resp = await self.httpx.get(src_url)
+                    html_to_parse = resp.text
+                except:
+                    return []
+
+            # HTML içindeki iframeleri topla
+            temp_secici = HTMLHelper(html_to_parse)
+            iframes = []
+            for ifr in temp_secici.select("div.video-content iframe"):
+                if src := ifr.attrs.get("src") or ifr.attrs.get("data-src"):
+                    iframes.append(self.fix_url(src))
+
+            # Bulunan iframeleri extract et (prefix olarak parça adını ekle)
+            results = []
+            for ifr_url in iframes:
+                if extracted := await self.extract(ifr_url, prefix=src_name or None):
+                    if isinstance(extracted, list):
+                        results.extend(extracted)
+                    else:
+                        results.append(extracted)
+            return results
+
+        for src in sources:
+            extract_tasks.append(process_task(src))
+
+        # 3. Tüm Görevleri Paralel Çalıştır ve Sonuçları Topla
+        results_groups = await asyncio.gather(*extract_tasks)
+
+        final_results = []
+        for group in results_groups:
+            final_results.extend(group)
+
+        return final_results
