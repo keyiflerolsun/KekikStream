@@ -40,7 +40,7 @@ class UgurFilm(PluginBase):
             results.append(MainPageResult(
                 category = category,
                 title    = title,
-                url      = self.fix_url(href) if href else "",
+                url      = self.fix_url(href),
                 poster   = self.fix_url(poster),
             ))
 

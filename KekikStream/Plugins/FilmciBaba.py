@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class FilmciBaba(PluginBase):
     name        = "FilmciBaba"
     language    = "tr"
-    main_url    = "https://4kizle.live"
+    main_url    = "https://izle.live"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Filmci Baba, film izleme sitesi 4k Full film izle, 1080p ve 4k kalite de sinema filmleri ve dizileri, tek parça hd kalitede türkçe dublajlı filmler seyret."
 
@@ -38,7 +38,7 @@ class FilmciBaba(PluginBase):
         istek  = await self.httpx.get(f"{url}/{page}/")
         secici = HTMLHelper(istek.text)
 
-        results = []        
+        results = []
         for item in secici.select("div.movie-preview"):
             title_el = secici.select_first(".movie-title a", item)
             if not title_el:
@@ -67,7 +67,7 @@ class FilmciBaba(PluginBase):
             if not title_el:
                 continue
 
-            title  = self.clean_title(title_el.text(strip=True))            
+            title  = self.clean_title(title_el.text(strip=True))
             href   = self.fix_url(title_el.attrs.get("href"))
             poster = self.fix_url(secici.select_poster(".movie-poster img", item))
 

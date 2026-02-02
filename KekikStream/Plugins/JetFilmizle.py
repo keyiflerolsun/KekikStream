@@ -6,7 +6,7 @@ import asyncio
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
     language    = "tr"
-    main_url    = "https://jetfilmizle.website"
+    main_url    = "https://jetfilmizle.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Film izle, Yerli, Yabancı film izle, Türkçe dublaj, alt yazılı seçenekleriyle ödül almış filmleri Full HD kalitesiyle ve jetfilmizle hızıyla donmadan ücretsizce izleyebilirsiniz."
 
