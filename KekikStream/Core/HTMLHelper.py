@@ -98,7 +98,8 @@ class HTMLHelper:
         targets = self.select(container_selector) if container_selector else [self.parser.body]
 
         for root in targets:
-            if not root: continue
+            if not root:
+                continue
 
             # Kalın/vurgulu elementlerde (span, strong, b, label, dt) label'ı ara
             for label_el in self.select("span, strong, b, label, dt", root):
@@ -111,17 +112,20 @@ class HTMLHelper:
                 full_txt = label_el.text(strip=True)
                 if ":" in full_txt and needle in full_txt.split(":")[0].casefold():
                     val = full_txt.split(":", 1)[1].strip()
-                    if val: return val
+                    if val:
+                        return val
 
                 # 2) Label sonrası gelen ilk text node'u veya element'i al
                 curr = label_el.next
                 while curr:
                     if curr.tag == "-text":
                         val = curr.text(strip=True).strip(" :")
-                        if val: return val
+                        if val:
+                            return val
                     elif curr.tag != "br":
                         val = curr.text(strip=True).strip(" :")
-                        if val: return val
+                        if val:
+                            return val
                     else: # <br> gördüysek satır bitmiştir
                         break
                     curr = curr.next
@@ -134,16 +138,19 @@ class HTMLHelper:
         targets = self.select(container_selector) if container_selector else [self.parser.body]
 
         for root in targets:
-            if not root: continue
+            if not root:
+                continue
             for label_el in self.select("span, strong, b, label, dt", root):
                 if needle in (label_el.text(strip=True) or "").casefold():
                     # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
                     links = self.select_texts("a", label_el.parent)
-                    if links: return links
+                    if links:
+                        return links
 
                     # Yoksa düz metin olarak meta_value mantığıyla al
                     raw = self.meta_value(label, container_selector=container_selector)
-                    if not raw: return []
+                    if not raw:
+                        return []
                     return [x.strip() for x in raw.split(sep) if x.strip()]
 
         return []

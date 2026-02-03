@@ -103,7 +103,8 @@ class DDizi(PluginBase):
             # Sonraki sayfa kontrolü
             has_next = any("Sonraki" in a.text() for a in secici.select(".pagination a"))
             current_page += 1
-            if current_page > 10: break # Emniyet kilidi
+            if current_page > 10:
+                break # Emniyet kilidi
 
         if not episodes:
             s, e = secici.extract_season_episode(title)
@@ -155,8 +156,10 @@ class DDizi(PluginBase):
                     else:
                         res = await self.extract(src, referer=og_video)
                         if res:
-                            if isinstance(res, list): results.extend(res)
-                            else: results.append(res)
+                            if isinstance(res, list):
+                                results.extend(res)
+                            else:
+                                results.append(res)
                 
                 # Fallback to direct extraction if nothing found but we have og_video
                 if not results:
@@ -170,7 +173,9 @@ class DDizi(PluginBase):
                     else:
                         res = await self.extract(og_video)
                         if res:
-                            if isinstance(res, list): results.extend(res)
-                            else: results.append(res)
+                            if isinstance(res, list):
+                                results.extend(res)
+                            else:
+                                results.append(res)
 
         return results

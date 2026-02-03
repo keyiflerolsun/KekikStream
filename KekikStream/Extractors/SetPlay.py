@@ -28,11 +28,14 @@ class SetPlay(ExtractorBase):
         part_key = params.get("partKey", [""])[0].lower()
         
         suffix = "Bilinmiyor"
-        if "turkcedublaj" in part_key: suffix = "Dublaj"
-        elif "turkcealtyazi" in part_key: suffix = "Altyazı"
+        if "turkcedublaj" in part_key:
+            suffix = "Dublaj"
+        elif "turkcealtyazi" in part_key:
+            suffix = "Altyazı"
         else:
             title = sel.regex_first(r'title":"([^",]+)"')
-            if title: suffix = title.split(".")[-1]
+            if title:
+                suffix = title.split(".")[-1]
 
         return ExtractResult(
             name      = f"{self.name} - {suffix}",

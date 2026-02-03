@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper, Subtitle
-from urllib.parse import quote
-import re
+from urllib.parse     import quote
+import re, contextlib
 
 class Videostr(ExtractorBase):
     name     = "Videostr"
@@ -19,7 +19,8 @@ class Videostr(ExtractorBase):
         nonce = sel.regex_first(r"\b[a-zA-Z0-9]{48}\b")
         if not nonce:
             m = re.search(r"\b([a-zA-Z0-9]{16})\b.*?\b([a-zA-Z0-9]{16})\b.*?\b([a-zA-Z0-9]{16})\b", resp.text, re.DOTALL)
-            if m: nonce = m.group(1) + m.group(2) + m.group(3)
+            if m:
+                nonce = m.group(1) + m.group(2) + m.group(3)
 
         if not nonce:
             raise ValueError(f"Videostr: Nonce bulunamadı. {url}")
@@ -54,5 +55,3 @@ class Videostr(ExtractorBase):
         ]
 
         return ExtractResult(name=self.name, url=m3u8_url, referer=f"{self.main_url}/", subtitles=subtitles)
-
-import contextlib

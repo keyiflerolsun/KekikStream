@@ -13,7 +13,8 @@ class Odnoklassniki(ExtractorBase):
         return any(domain in url for domain in self.supported_domains)
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        if "/video/" in url: url = url.replace("/video/", "/videoembed/")
+        if "/video/" in url:
+            url = url.replace("/video/", "/videoembed/")
         self.httpx.headers.update({"Origin": self.main_url})
 
         resp = await self.httpx.get(url, follow_redirects=True)
@@ -36,7 +37,8 @@ class Odnoklassniki(ExtractorBase):
         best_url = None
         for q in order:
             best_url = next((v.get("url") for v in videos if v.get("name", "").upper() == q), None)
-            if best_url: break
+            if best_url:
+                break
         
         if not best_url:
             best_url = videos[0].get("url") if videos else None

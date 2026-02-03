@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, MovieInfo, Episode, ExtractResult, HTMLHelper
-import asyncio, time, json
+import asyncio, time
 
 class YabanciDizi(PluginBase):
     name        = "YabanciDizi"
@@ -162,7 +162,8 @@ class YabanciDizi(PluginBase):
                 ))
 
                 res_json = post_resp.json()
-                if not res_json.get("data"): return []
+                if not res_json.get("data"):
+                    return []
 
                 res_sel = HTMLHelper(res_json["data"])
                 sources = []
@@ -170,7 +171,8 @@ class YabanciDizi(PluginBase):
                 for item in res_sel.select("div.item"):
                     name      = item.text(strip=True)
                     data_link = item.attrs.get("data-link")
-                    if not data_link: continue
+                    if not data_link:
+                        continue
 
                     # Link normalizasyonu
                     safe_link = data_link.replace("/", "_").replace("+", "-")

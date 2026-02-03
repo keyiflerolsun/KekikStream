@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-from urllib.parse import urlparse, parse_qs
+from urllib.parse     import urlparse, parse_qs
 
 class ExPlay(ExtractorBase):
     name     = "ExPlay"
@@ -26,7 +26,8 @@ class ExPlay(ExtractorBase):
         suffix = part_key or "Bilinmiyor"
         if not part_key:
             title = sel.regex_first(r'title":"([^",]+)"')
-            if title: suffix = title.split(".")[-1]
+            if title:
+                suffix = title.split(".")[-1]
 
         return ExtractResult(
             name    = f"{self.name} - {suffix}",

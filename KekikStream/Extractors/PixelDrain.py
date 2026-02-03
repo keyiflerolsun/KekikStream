@@ -7,7 +7,8 @@ class PixelDrain(ExtractorBase):
     main_url = "https://pixeldrain.com"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        if referer: self.httpx.headers.update({"Referer": referer})
+        if referer:
+            self.httpx.headers.update({"Referer": referer})
 
         p_id = HTMLHelper(url).regex_first(r"/u/([^/?]+)|([^\/]+)(?=\?download)")
         if not p_id:

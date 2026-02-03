@@ -200,7 +200,8 @@ class SelcukFlix(PluginBase):
                 secure_data_raw = secure_data_raw.strip('"')
 
             content_details = json.loads(base64.b64decode(secure_data_raw).decode('utf-8'))
-            if isinstance(content_details, str): content_details = json.loads(content_details)
+            if isinstance(content_details, str):
+                content_details = json.loads(content_details)
 
             item            = content_details.get("contentItem", {})
             related_results = content_details.get("RelatedResults", {})
@@ -322,7 +323,8 @@ class SelcukFlix(PluginBase):
             return []
 
     def clean_image_url(self, url: str) -> str:
-        if not url: return None
+        if not url:
+            return None
         url = url.replace("images-macellan-online.cdn.ampproject.org/i/s/", "")
         url = url.replace("file.dizilla.club", "file.macellan.online")
         url = url.replace("images.dizilla.club", "images.macellan.online")

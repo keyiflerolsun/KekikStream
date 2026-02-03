@@ -13,8 +13,10 @@ class VCTPlay(ExtractorBase):
         part_key = params.get("partKey", [""])[0].lower()
 
         suffix = ""
-        if "turkcedublaj" in part_key: suffix = "Dublaj"
-        elif "turkcealtyazi" in part_key: suffix = "Altyazı"
+        if "turkcedublaj" in part_key:
+            suffix = "Dublaj"
+        elif "turkcealtyazi" in part_key:
+            suffix = "Altyazı"
 
         return ExtractResult(
             name    = f"{self.name} - {suffix}" if suffix else self.name,

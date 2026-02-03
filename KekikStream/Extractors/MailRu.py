@@ -8,7 +8,8 @@ class MailRu(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         v_id = url.split("video/embed/")[-1].strip()
-        if referer: self.httpx.headers.update({"Referer": referer})
+        if referer:
+            self.httpx.headers.update({"Referer": referer})
 
         resp = await self.httpx.get(f"{self.main_url}/+/video/meta/{v_id}")
         data = resp.json()

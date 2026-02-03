@@ -2,7 +2,6 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import json
-from Kekik.cli import konsol
 
 class ShowFlix(PluginBase):
     name        = "ShowFlix"
@@ -222,8 +221,10 @@ class ShowFlix(PluginBase):
             if val := embeds.get(key):
                 res = await self.extract(template.format(val))
                 if res:
-                    if isinstance(res, list): results.extend(res)
-                    else: results.append(res)
+                    if isinstance(res, list):
+                        results.extend(res)
+                    else:
+                        results.append(res)
         
         if val := item.get("originalURL"):
              results.append(ExtractResult(name="ShowFlix (Original)", url=val, referer=self.main_url))
