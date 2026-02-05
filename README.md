@@ -265,6 +265,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 - [feroxx/Kekik-cloudstream](https://github.com/feroxx/Kekik-cloudstream)
 - [kerimmkirac/cs-kerim](https://github.com/kerimmkirac/cs-kerim)
 - [Phisher98/Extractors](https://github.com/phisher98/cloudstream-extensions-phisher/blob/master/StreamPlay/src/main/kotlin/com/Phisher98/Extractors.kt)
+- [cloudstream3/extractors](https://github.com/recloudstream/cloudstream/tree/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors)
 
 ## 🌐 Telif Hakkı ve Lisans
 
