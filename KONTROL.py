@@ -88,6 +88,9 @@ class MainUrlGuncelleyici:
                     konsol.log(f"[!] {type(hata).__name__}: {hata}")
                     continue
 
+            if eski_url in yeni_url:
+                continue
+
             if eski_url != yeni_url:
                 eski_satir = f"{prefix}{tirnak}{eski_url}{son_tirnak}"
                 yeni_satir = f"{prefix}{tirnak}{yeni_url}{son_tirnak}"
