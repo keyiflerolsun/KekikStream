@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInf
 class DiziMom(PluginBase):
     name        = "DiziMom"
     language    = "tr"
-    main_url    = "https://www.dizimom.one"
+    main_url    = "https://www.dizimom.art"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Binlerce yerli yabancı dizi arşivi, tüm sezonlar, kesintisiz bölümler. Sadece dizi izle, Dizimom heryerde seninle!"
 

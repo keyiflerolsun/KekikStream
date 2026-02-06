@@ -6,7 +6,7 @@ import asyncio, contextlib
 class SinemaCX(PluginBase):
     name        = "SinemaCX"
     language    = "tr"
-    main_url    = "https://www.sinema.live"
+    main_url    = "https://www.sinema.news"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en iyi film platformu Sinema.cc! 2026'nın en yeni ve popüler yabancı yapımları, Türkçe dublaj ve altyazılı HD kalitede, reklamsız ve ücretsiz olarak seni bekliyor. Şimdi izle!"
 

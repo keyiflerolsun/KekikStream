@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class RealFilmIzle(PluginBase):
     name        = "RealFilmIzle"
     language    = "tr"
-    main_url    = "https://realfilmizle.com"
+    main_url    = "https://filmizlefullhd.live"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "realfilmizle.com, sinemayı seven kullanıcılar için hazırlanmış, zengin içerik yapısına sahip bir online film izleme sitesidir."
 
