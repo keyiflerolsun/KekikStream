@@ -43,10 +43,12 @@ class YabanciDizi(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         istek = await self.httpx.post(
-            url     = f"{self.main_url}/search?qr={query}",
+            url     = f"{self.main_url}/search",
+            params  = {"qr": query},
             headers = {
                 "X-Requested-With" : "XMLHttpRequest",
-                "Referer"          : f"{self.main_url}/"
+                "Referer"          : f"{self.main_url}/",
+                "Content-Length"   : "0"
             }
         )
 
@@ -83,12 +85,12 @@ class YabanciDizi(PluginBase):
         secici = HTMLHelper(istek.text)
 
         title       = (secici.select_attr("meta[property='og:title']", "content") or "").split("|")[0].strip() or secici.select_text("h1")
-        poster      = secici.select_poster("meta[property='og:image']")
+        poster      = secici.select_poster("div#series-profile-wrapper img")
         description = secici.select_text("p#tv-series-desc")
         year        = secici.extract_year("td div.truncate")
         tags        = secici.meta_list("Türü", container_selector="div.item")
-        rating      = secici.meta_value("IMDb Puanı", container_selector="div.item")
-        duration    = int(secici.regex_first(r"(\d+)", secici.meta_value("Süre", container_selector="div.item")) or 0)
+        rating      = secici.meta_value("IMDb Puanı", container_selector="div.media-meta")
+        duration    = secici.extract_duration("Süre", container_selector="div.media-meta")
         actors      = secici.meta_list("Oyuncular", container_selector="div.item") or secici.select_texts("div#common-cast-list div.item h5")
 
         common_info = {

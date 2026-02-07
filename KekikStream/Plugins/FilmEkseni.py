@@ -50,12 +50,17 @@ class FilmEkseni(PluginBase):
             headers = {
                 "X-Requested-With" : "XMLHttpRequest",
                 "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
-                "Referer"          : self.main_url,
+                "Referer"          : f"{self.main_url}/",
+                "Origin"           : self.main_url,
+                "Accept"           : "application/json, text/javascript, */*; q=0.01",
             },
             data    = {"query": query}
         )
 
-        veriler = istek.json().get("result", [])
+        try:
+            veriler = istek.json().get("result", [])
+        except Exception:
+            return []
 
         return [
             SearchResult(
