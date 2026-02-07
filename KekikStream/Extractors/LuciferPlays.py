@@ -37,7 +37,7 @@ class LuciferPlays(ExtractorBase):
                         sub_url = self.fix_url(sub.get("file"))
                         if sub_url and "Forced" not in sub.get("label", ""):
                             subtitles.append(Subtitle(
-                                name = sub.get("label", "TR").upper(), 
+                                name = sub.get("label", "TR").upper(),
                                 url  = sub_url
                             ))
 
@@ -58,8 +58,8 @@ class LuciferPlays(ExtractorBase):
             raise ValueError(f"LuciferPlays: Video linki bulunamadı. {url}")
 
         return ExtractResult(
-            name      = self.name, 
-            url       = self.fix_url(m3u8_url), 
-            referer   = url, 
+            name      = self.name,
+            url       = self.fix_url(m3u8_url),
+            referer   = url,
             subtitles = subtitles
         )

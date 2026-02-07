@@ -65,27 +65,27 @@ class DDizi(PluginBase):
         title       = self.clean_title(secici.select_text("h1, h2, div.dizi-boxpost-cat a"))
         poster      = secici.select_poster("div.afis img, img.afis, img.img-back, img.img-back-cat")
         description = secici.select_text("div.dizi-aciklama, div.aciklama, p")
-        rating      = secici.select_text("span.comments-ss") 
-        
+        rating      = secici.select_text("span.comments-ss")
+
         # Meta verileri (DDizi'de pek yok ama deniyoruz)
         # Year için sadece açıklama kısmına bakalım ki URL'deki ID'yi almasın
         year   = HTMLHelper(description).regex_first(r"(\d{4})") if description else None
         actors = secici.select_texts("div.oyuncular a, ul.bilgi li a")
-        
+
         episodes = []
         current_page = 1
         has_next = True
-        
+
         while has_next:
             page_url = f"{url}/sayfa-{current_page}" if current_page > 1 else url
             if current_page > 1:
                 istek = await self.httpx.get(page_url)
                 secici = HTMLHelper(istek.text)
-            
+
             page_eps = secici.select("div.bolumler a, div.sezonlar a, div.dizi-arsiv a, div.dizi-boxpost-cat a")
             if not page_eps:
                 break
-                
+
             for ep in page_eps:
                 name = ep.text().strip()
                 href = ep.attrs.get("href")
@@ -99,7 +99,7 @@ class DDizi(PluginBase):
                         title   = name,
                         url     = self.fix_url(href)
                     ))
-            
+
             # Sonraki sayfa kontrolü
             has_next = any("Sonraki" in a.text() for a in secici.select(".pagination a"))
             current_page += 1
@@ -138,14 +138,14 @@ class DDizi(PluginBase):
             with suppress(Exception):
                 player_istek = await self.httpx.get(og_video, headers={"Referer": url})
                 player_secici = HTMLHelper(player_istek.text)
-                
+
                 # file: '...' logic
                 sources = player_secici.regex_all(r'file:\s*["\']([^"\']+)["\']')
                 for src in sources:
                     src = self.fix_url(src)
                     # Direkt link kontrolü - Extractor gerektirmeyenler
                     is_direct = any(x in src.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"])
-                    
+
                     if is_direct:
                         results.append(ExtractResult(
                             url        = src,
@@ -160,7 +160,7 @@ class DDizi(PluginBase):
                                 results.extend(res)
                             else:
                                 results.append(res)
-                
+
                 # Fallback to direct extraction if nothing found but we have og_video
                 if not results:
                     if any(x in og_video.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"]):

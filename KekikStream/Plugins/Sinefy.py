@@ -132,7 +132,7 @@ class Sinefy(PluginBase):
     async def load_item(self, url: str) -> SeriesInfo | MovieInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
-        
+
         title       = secici.select_direct_text("h1")
         poster_attr = secici.select_attr("img.series-profile-thumb", "data-srcset") or secici.select_attr("img.series-profile-thumb", "srcset")
         if poster_attr:
@@ -290,7 +290,7 @@ class Sinefy(PluginBase):
         unique_results = []
         seen = set()
         for res in final_results:
-            key = (res.url, res.name) 
+            key = (res.url, res.name)
             if res.url and key not in seen:
                 unique_results.append(res)
                 seen.add(key)

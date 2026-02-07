@@ -13,7 +13,7 @@ class MailRu(ExtractorBase):
 
         resp = await self.httpx.get(f"{self.main_url}/+/video/meta/{v_id}")
         data = resp.json()
-        
+
         v_url = data.get("videos", [{}])[0].get("url")
         if not v_url:
             raise ValueError(f"MailRu: Video URL bulunamadı. {url}")

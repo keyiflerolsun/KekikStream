@@ -37,7 +37,7 @@ class Filemoon(ExtractorBase):
         # Eğer iframe varsa, iframe'e git
         iframe_src = secici.select_attr("iframe", "src")
         m3u8_url   = None
-        
+
         if iframe_src:
             url    = self.fix_url(iframe_src)
             istek  = await self.httpx.get(url)

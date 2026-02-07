@@ -11,7 +11,7 @@ class Vidoza(ExtractorBase):
 
         resp = await self.httpx.get(url)
         v_url = HTMLHelper(resp.text).select_attr("source", "src")
-        
+
         if not v_url:
             raise ValueError(f"Vidoza: Video bulunamadı. {url}")
 

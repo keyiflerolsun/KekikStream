@@ -57,7 +57,7 @@ class SelcukFlix(PluginBase):
             except Exception:
                 pass
             return results
-        
+
         base_api = f"{self.main_url}/api/bg/findSeries"
 
         params = {
@@ -184,7 +184,7 @@ class SelcukFlix(PluginBase):
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
-        
+
         next_data_text = sel.select_text("script#__NEXT_DATA__")
         if not next_data_text:
             return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")
@@ -194,7 +194,7 @@ class SelcukFlix(PluginBase):
             secure_data_raw = next_data["props"]["pageProps"].get("secureData")
             if not secure_data_raw:
                   return SeriesInfo(url=url, title=self.clean_title(sel.select_text("h1")) or "Bilinmeyen")
-            
+
             # Clean possible quotes from string before decoding
             if isinstance(secure_data_raw, str):
                 secure_data_raw = secure_data_raw.strip('"')
@@ -264,7 +264,7 @@ class SelcukFlix(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
-        
+
         next_data = sel.select_text("script#__NEXT_DATA__")
         if not next_data:
             return []
@@ -273,17 +273,17 @@ class SelcukFlix(PluginBase):
             data = json.loads(next_data)
             secure_data = data["props"]["pageProps"]["secureData"]
             raw_data = base64.b64decode(secure_data.replace('"', ''))
-            
+
             try:
                 decoded_str = raw_data.decode('utf-8')
             except UnicodeDecodeError:
                 decoded_str = raw_data.decode('iso-8859-1')
-            
+
             content_details = json.loads(decoded_str)
             related_results = content_details.get("RelatedResults", {})
-            
+
             source_content = None
-            
+
             # Dizi (bölüm) için
             if "/dizi/" in url:
                 episode_sources = related_results.get("getEpisodeSources", {})
@@ -312,11 +312,11 @@ class SelcukFlix(PluginBase):
                     # Hotlinger domain değişimi (Kotlin referansı)
                     if "sn.dplayer74.site" in iframe_src:
                         iframe_src = iframe_src.replace("sn.dplayer74.site", "sn.hotlinger.com")
-                    
+
                     data = await self.extract(iframe_src)
                     if data:
                         return [data]
-            
+
             return []
 
         except Exception:

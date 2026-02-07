@@ -183,8 +183,8 @@ class SinemaCX(PluginBase):
 
                 elif span := secici.select_first("span.secili", li):
                     name = span.text(strip=True)
-                    sources.append((None, name, False)) 
-                
+                    sources.append((None, name, False))
+
                 # Pasif Tab
                 elif a_tag := secici.select_first("a", li):
                     href = a_tag.attrs.get("href")
@@ -203,7 +203,7 @@ class SinemaCX(PluginBase):
 
         # 2. Kaynakları İşle
         extract_tasks = []
-        
+
         async def process_task(source):
             src_url, src_name, needs_fetch = source
 
@@ -216,7 +216,7 @@ class SinemaCX(PluginBase):
                 with contextlib.suppress(Exception):
                     resp = await self.httpx.get(src_url)
                     iframe_url = await self._get_iframe_from_source(resp.text)
-            
+
             if iframe_url:
                 if "youtube.com" in iframe_url or "youtu.be" in iframe_url:
                     return []
@@ -230,7 +230,7 @@ class SinemaCX(PluginBase):
 
         final_results = []
         for group in results_groups:
-            if group: 
+            if group:
                 final_results.extend(group)
 
         # Duplicate Eliminasyonu

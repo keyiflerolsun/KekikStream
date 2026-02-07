@@ -20,8 +20,8 @@ class Zeus(ExtractorBase):
 
         # API'ye POST at
         resp = await self.httpx.post(
-            url     = "https://d2rs.com/zeus/api.php", 
-            data    = {"q": q_param}, 
+            url     = "https://d2rs.com/zeus/api.php",
+            data    = {"q": q_param},
             headers = {"Referer": url}
         )
 

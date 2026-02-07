@@ -168,10 +168,10 @@ class HTMLHelper:
         match = re.search(pattern, self._regex_source(target))
         if not match:
             return None
-            
+
         if group is None:
             return match.groups()
-            
+
         last_idx = match.lastindex or 0
         return match.group(group) if last_idx >= group else match.group(0)
 

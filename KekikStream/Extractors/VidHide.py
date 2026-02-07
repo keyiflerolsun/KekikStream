@@ -11,8 +11,8 @@ class VidHide(ExtractorBase):
 
     # Birden fazla domain destekle
     supported_domains = [
-        "vidhidepro.com", "vidhide.com", "rubyvidhub.com", 
-        "vidhidevip.com", "vidhideplus.com", "vidhidepre.com", 
+        "vidhidepro.com", "vidhide.com", "rubyvidhub.com",
+        "vidhidevip.com", "vidhideplus.com", "vidhidepre.com",
         "movearnpre.com", "oneupload.to",
         "filelions.live", "filelions.online", "filelions.to",
         "kinoger.be",
@@ -76,12 +76,12 @@ class VidHide(ExtractorBase):
                 unpacked = Packer.unpack(eval_match)
                 if "var links" in unpacked:
                      unpacked = unpacked.split("var links")[1]
-        
+
         content  = unpacked or text
-        
+
         # Kotlin Exact Regex: :\s*"(.*?m3u8.*?)"
         m3u8_matches = re.findall(r':\s*["\']([^"\']+\.m3u8[^"\']*)["\']', content)
-        
+
         results = []
         for m3u8_url in m3u8_matches:
             results.append(ExtractResult(

@@ -11,7 +11,7 @@ class Videostr(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         v_id = url.split("?")[0].split("/")[-1]
         headers = {"Referer": self.main_url, "X-Requested-With": "XMLHttpRequest"}
-        
+
         resp = await self.httpx.get(url, headers=headers)
         sel  = HTMLHelper(resp.text)
 
@@ -28,7 +28,7 @@ class Videostr(ExtractorBase):
         # Kaynakları Çek
         api_resp = await self.httpx.get(f"{self.main_url}/embed-1/v3/e-1/getSources?id={v_id}&_k={nonce}", headers=headers)
         data = api_resp.json()
-        
+
         enc_file = data.get("sources", [{}])[0].get("file")
         if not enc_file:
             raise ValueError("Videostr: Kaynak bulunamadı.")

@@ -15,7 +15,7 @@ class DzenRu(ExtractorBase):
 
         resp = await self.httpx.get(v_url)
         sel  = HTMLHelper(resp.text)
-        
+
         # Benzersiz okcdn.ru linklerini bul ve en yüksek kaliteyi (genelde sonuncu) seç
         links = sel.regex_all(r'https://vd\d+\.okcdn\.ru/\?[^"\'\\\s]+')
         if not links:

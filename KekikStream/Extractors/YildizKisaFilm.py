@@ -15,7 +15,7 @@ class YildizKisaFilm(ExtractorBase):
             data    = {"hash": v_id, "r": ref},
             headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
         )
-        
+
         m3u8_url = resp.json().get("securedLink")
         if not m3u8_url:
             raise ValueError(f"YildizKisaFilm: Video URL bulunamadı. {url}")

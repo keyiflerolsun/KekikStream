@@ -59,7 +59,7 @@ class Filmatek(PluginBase):
                 continue
 
             title  = title_el.text(strip=True)
-            href   = self.fix_url(title_el.attrs.get("href"))            
+            href   = self.fix_url(title_el.attrs.get("href"))
             poster = self.fix_url(secici.select_poster("div.image img", item))
 
             results.append(SearchResult(

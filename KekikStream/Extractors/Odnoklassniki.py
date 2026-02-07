@@ -19,7 +19,7 @@ class Odnoklassniki(ExtractorBase):
 
         resp = await self.httpx.get(url, follow_redirects=True)
         sel  = HTMLHelper(resp.text)
-        
+
         # Metadata içinden videos array'ini al (esnek regex)
         v_data = sel.regex_first(r'videos[^:]+:(\[.*?\])')
         if not v_data:
@@ -33,13 +33,13 @@ class Odnoklassniki(ExtractorBase):
         v_data = html.unescape(v_data)
         v_data = v_data.replace('\\"', '"').replace('\\/', '/')
         videos = json.loads(v_data)
-        
+
         best_url = None
         for q in order:
             best_url = next((v.get("url") for v in videos if v.get("name", "").upper() == q), None)
             if best_url:
                 break
-        
+
         if not best_url:
             best_url = videos[0].get("url") if videos else None
 

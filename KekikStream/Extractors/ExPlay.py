@@ -9,7 +9,7 @@ class ExPlay(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         self.httpx.headers.update({"Referer": referer or url})
-        
+
         # Clean URL from partKey for initial request
         clean_url = url.split("?")[0]
         resp = await self.httpx.get(clean_url)
@@ -22,7 +22,7 @@ class ExPlay(ExtractorBase):
 
         params   = parse_qs(urlparse(url).query)
         part_key = params.get("partKey", [""])[0]
-        
+
         suffix = part_key or "Bilinmiyor"
         if not part_key:
             title = sel.regex_first(r'title":"([^",]+)"')

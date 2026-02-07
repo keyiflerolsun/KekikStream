@@ -13,7 +13,7 @@ class PlayerFilmIzle(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         ref = referer or self.main_url
         self.httpx.headers.update({"Referer": ref})
-        
+
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
 
@@ -33,7 +33,7 @@ class PlayerFilmIzle(ExtractorBase):
             data    = {"hash": data_val, "r": ""},
             headers = {"X-Requested-With": "XMLHttpRequest"}
         )
-        
+
         m3u8_url = HTMLHelper(resp_vid.text).regex_first(r'"securedLink":"([^"]+)"')
         if not m3u8_url:
             raise ValueError(f"PlayerFilmIzle: Video URL bulunamadı. {url}")

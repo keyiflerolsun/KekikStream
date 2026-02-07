@@ -243,7 +243,7 @@ class KultFilmler(PluginBase):
             return []
 
         extract_tasks = [
-            self._extract_stream(iframe, title, subtitles) 
+            self._extract_stream(iframe, title, subtitles)
                 for iframe, title in sources
         ]
 

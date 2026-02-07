@@ -164,8 +164,8 @@ class HDFilmCehennemi(PluginBase):
                 istek = await self.httpx.post(
                     url     = "https://cehennempass.pw/process_quality_selection.php",
                     headers = {
-                        "Referer"          : f"https://cehennempass.pw/download/{video_id}", 
-                        "X-Requested-With" : "fetch", 
+                        "Referer"          : f"https://cehennempass.pw/download/{video_id}",
+                        "X-Requested-With" : "fetch",
                         "authority"        : "cehennempass.pw",
                         "Cookie"           : f"PHPSESSID={self.generate_random_cookie()}"
                     },
@@ -220,7 +220,7 @@ class HDFilmCehennemi(PluginBase):
                 for t in track_data:
                     if file_url := t.get("file"):
                         label = t.get("label") or t.get("language") or "TR"
-                        if t.get("kind", "captions") in ["captions", "subtitles"]: 
+                        if t.get("kind", "captions") in ["captions", "subtitles"]:
                             subtitles.append(Subtitle(name=label.upper(), url=self.fix_url(file_url)))
                 return subtitles # JSON başarılıysa dön
 
@@ -258,7 +258,7 @@ class HDFilmCehennemi(PluginBase):
             headers = {
                 "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "X-Requested-With" : "XMLHttpRequest",
-                "Referer"          : self.main_url + "/" 
+                "Referer"          : self.main_url + "/"
             }
         )
 

@@ -26,7 +26,7 @@ class SetPlay(ExtractorBase):
 
         params   = parse_qs(urlparse(url).query)
         part_key = params.get("partKey", [""])[0].lower()
-        
+
         suffix = "Bilinmiyor"
         if "turkcedublaj" in part_key:
             suffix = "Dublaj"

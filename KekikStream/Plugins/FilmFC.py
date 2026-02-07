@@ -89,10 +89,10 @@ class FilmFC(PluginBase):
         secici = HTMLHelper(istek.text)
 
         iframe = secici.select_attr("span#plyg iframe", "src")
-        
+
         if not iframe:
             return []
-            
+
         result = await self.extract(iframe, referer=url)
 
         return [result] if result else []

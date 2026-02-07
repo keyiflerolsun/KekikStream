@@ -140,7 +140,7 @@ class JetFilmizle(PluginBase):
 
             if container:
                 for iframe in secici.select("iframe", container):
-                    src = (iframe.attrs.get("src") or 
+                    src = (iframe.attrs.get("src") or
                            iframe.attrs.get("data-src") or
                            iframe.attrs.get("data-lazy-src"))
 

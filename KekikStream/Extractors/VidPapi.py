@@ -9,19 +9,19 @@ class VidPapi(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         ref = referer or self.main_url
-        
+
         # ID tespiti
         if "video/" in url:
             vid_id = url.split("video/")[-1]
         else:
             vid_id = url.split("?data=")[-1]
-            
+
         headers = {
             "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
             "X-Requested-With" : "XMLHttpRequest",
             "Referer"          : ref
         }
-        
+
         # 1. Altyazıları çek
         subtitles = []
         try:

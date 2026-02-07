@@ -49,7 +49,7 @@ class YabanciDizi(PluginBase):
                 "Referer"          : f"{self.main_url}/"
             }
         )
-        
+
         try:
             raw = istek.json()
             res_array = raw.get("data", {}).get("result", [])
@@ -198,7 +198,7 @@ class YabanciDizi(PluginBase):
                     try:
                         # API sayfasını çekip içindeki iframe'i bulalım
                         api_resp = await loop.run_in_executor(None, lambda: self.cloudscraper.get(
-                            src["api_url"], 
+                            src["api_url"],
                             headers={"Referer": f"{self.main_url}/"},
                             cookies={"udys": str(timestamp_ms)}
                         ))

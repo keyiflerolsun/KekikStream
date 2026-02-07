@@ -26,7 +26,7 @@ class CloseLoad(ExtractorBase):
                     if content_url.startswith("http"):
                         m3u8_url = content_url
                         break
-        
+
         # 2. Packed Script Fallback
         if not m3u8_url:
             if packed := sel.regex_first(r"(eval\(function\(p,a,c,k,e,d\).+?)\s*</script>"):

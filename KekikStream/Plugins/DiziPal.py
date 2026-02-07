@@ -77,7 +77,7 @@ class DiziPal(PluginBase):
         poster      = self.fix_url(secici.select_attr("meta[property='og:image']", "content"))
         description = secici.select_attr("meta[property='og:description']", "content")
         title       = secici.select_text("h1")
-        
+
         year         = secici.meta_value("Yapım Yılı")
         rating       = secici.meta_value("IMDB Puanı")
         duration_raw = secici.meta_value("Süre")

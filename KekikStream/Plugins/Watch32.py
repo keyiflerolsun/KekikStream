@@ -6,7 +6,7 @@ class Watch32(PluginBase):
     name        = "Watch32"
     language    = "en"
     main_url    = "https://watch32.sx"
-    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64" 
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Watch Your Favorite Movies &amp; TV Shows Online - Streaming For Free. With Movies &amp; TV Shows Full HD. Find Your Movies &amp; Watch NOW!"
 
     main_page = {
@@ -92,7 +92,7 @@ class Watch32(PluginBase):
 
         if "movie" in url:
             return MovieInfo(**common_info)
-        
+
         episodes = []
         seasons_resp = await self.httpx.get(f"{self.main_url}/ajax/season/list/{content_id}")
         sh = HTMLHelper(seasons_resp.text)

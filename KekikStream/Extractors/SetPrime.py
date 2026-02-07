@@ -13,25 +13,25 @@ class SetPrime(ExtractorBase):
         params = parse_qs(parsed.query)
         part_key = params.get("partKey", [""])[0].upper()
         clean_url = url.split("?partKey=")[0]
-        
+
         # POST URL: embed?i= -> embed/get?i=
         post_url = clean_url.replace("embed?i=", "embed/get?i=")
-        
+
         response = await self.httpx.post(
             url     = post_url,
             headers = {"Referer": clean_url}
         )
         response.raise_for_status()
-        
+
         # Links parse
         link_suffix = HTMLHelper(response.text).regex_first(r'Links":\["([^"\]]+)"')
         if not link_suffix:
             raise ValueError("Links not found in SetPrime response")
         if not link_suffix.startswith("/"):
             raise ValueError("Links not valid (must start with /)")
-            
+
         m3u_link = f"{self.main_url}{link_suffix}"
-        
+
         display_name = f"{self.name} - {part_key}" if part_key else self.name
 
         return ExtractResult(
