@@ -11,7 +11,7 @@ class KekikStream:
         self.plugin    = PluginManager(ex_manager=self.extractor)
         self.ui        = UIManager()
         self.media     = MediaManager()
-        
+
         self.current_plugin: PluginBase = None
         self.is_series                  = False
         self.series_info: SeriesInfo    = None
@@ -42,7 +42,7 @@ class KekikStream:
     async def start(self):
         """Uygulamayı başlat"""
         await self.show_header("[bold cyan]KekikStream[/bold cyan]")
-        
+
         if not self.plugin.get_plugin_names():
             konsol.print("[bold red]Eklenti bulunamadı![/bold red]")
             return
@@ -68,7 +68,7 @@ class KekikStream:
     async def search_in_plugin(self):
         """Seçili eklentide ara"""
         await self.show_header(f"[bold cyan]{self.current_plugin.name}[/bold cyan]")
-        
+
         query   = await self.ui.prompt_text("Arama sorgusu:")
         results = await self.current_plugin.search(query)
 
@@ -80,17 +80,17 @@ class KekikStream:
             message = "Sonuç seçin:",
             choices = [{"name": r.title, "value": r.url} for r in results]
         )
-        
+
         if choice:
             await self.show_media_details({"plugin": self.current_plugin.name, "url": choice})
 
     async def search_all_plugins(self):
         """Tüm eklentilerde ara"""
         await self.show_header("[bold cyan]Tüm Eklentilerde Ara[/bold cyan]")
-        
+
         query = await self.ui.prompt_text("Arama sorgusu:")
         all_results = []
-        
+
         # Maksimum 5 eşzamanlı arama için semaphore
         semaphore = Semaphore(5)
 
@@ -129,7 +129,7 @@ class KekikStream:
                     for r in all_results
             ]
         )
-        
+
         if choice:
             await self.show_media_details(choice)
 
@@ -274,7 +274,7 @@ class KekikStream:
 
         url = selected.url
         extractor: ExtractorBase = self.extractor.find_extractor(url)
-        
+
         if not extractor:
             konsol.print("[bold red]Extractor bulunamadı![/bold red]")
             return await self.handle_no_results()

@@ -14,7 +14,7 @@
 
 [![PyPI Yükle](https://github.com/keyiflerolsun/KekikStream/actions/workflows/pypiYukle.yml/badge.svg)](https://github.com/keyiflerolsun/KekikStream/actions/workflows/pypiYukle.yml)
 
-**Modüler ve genişletilebilir medya streaming kütüphanesi**  
+**Modüler ve genişletilebilir medya streaming kütüphanesi**
 Terminal üzerinden içerik arayın, VLC/MPV ile doğrudan izleyin veya kendi API’nizi kurun. 🚀
 
 [![Video](https://github.com/user-attachments/assets/63d31bb0-0b69-40b4-84aa-66623f2a253f)](https://github.com/user-attachments/assets/63d31bb0-0b69-40b4-84aa-66623f2a253f)
@@ -28,10 +28,10 @@ Terminal üzerinden içerik arayın, VLC/MPV ile doğrudan izleyin veya kendi AP
 
 KekikStream, Türkçe medya kaynaklarını tek CLI arayüzünde toplayarak hızlı arama ve oynatma sunar. Plugin mimarisi sayesinde yeni kaynaklar eklemek ve [KekikStreamAPI](https://github.com/keyiflerolsun/KekikStreamAPI) ile web/API üzerinden yayın yapmak kolaydır.
 
-- 🎥 Çoklu kaynak desteği: Onlarca Türkçe medya sitesi  
-- 🔌 Plugin mimarisi: Yeni kaynak eklemek dakikalar sürer  
-- 🎬 Çoklu oynatıcı: VLC, MPV, MX Player  
-- 🖥️ CLI & kütüphane: Terminalde veya kod içinde kullanın  
+- 🎥 Çoklu kaynak desteği: Onlarca Türkçe medya sitesi
+- 🔌 Plugin mimarisi: Yeni kaynak eklemek dakikalar sürer
+- 🎬 Çoklu oynatıcı: VLC, MPV, MX Player
+- 🖥️ CLI & kütüphane: Terminalde veya kod içinde kullanın
 - 🌐 API/Web UI: KekikStreamAPI üzerinden uzak erişim
 
 ---
@@ -50,7 +50,7 @@ pip install -U KekikStream
 
 ### Temel Kullanım
 
-**CLI:**  
+**CLI:**
 ```bash
 KekikStream
 ```
@@ -200,10 +200,10 @@ KekikStream/
 
 ### Yeni Plugin Ekleme
 
-1. `KekikStream/Plugins/` altına yeni dosya oluşturun.  
-2. `PluginBase` sınıfından türetin.  
-3. `get_main_page`, `search`, `load_item`, `load_links` metodlarını implemente edin.  
-4. Plugin'i test edin (örnek: `Tests/Single.py`).  
+1. `KekikStream/Plugins/` altına yeni dosya oluşturun.
+2. `PluginBase` sınıfından türetin.
+3. `get_main_page`, `search`, `load_item`, `load_links` metodlarını implemente edin.
+4. Plugin'i test edin (örnek: `Tests/Single.py`).
 
 ### 🔧 Geliştirme Modu
 
@@ -249,9 +249,9 @@ KekikStream
 
 Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
-1. Yeni plugin ekleyin  
-2. Bug raporu açın  
-3. Feature request gönderin  
+1. Yeni plugin ekleyin
+2. Bug raporu açın
+3. Feature request gönderin
 4. Dokümantasyon iyileştirin
 
 ### 🎁 Teşekkürler
@@ -260,7 +260,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 ### 💻 Genişletme Referansları
 
-- [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)  
+- [keyiflerolsun/Kekik-cloudstream](https://github.com/keyiflerolsun/Kekik-cloudstream)
 - [keyiflerolsun/seyirTurk-Parser](https://github.com/keyiflerolsun/seyirTurk-Parser)
 - [feroxx/Kekik-cloudstream](https://github.com/feroxx/Kekik-cloudstream)
 - [kerimmkirac/cs-kerim](https://github.com/kerimmkirac/cs-kerim)
@@ -269,7 +269,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 ## 🌐 Telif Hakkı ve Lisans
 
-*Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️  
+*Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
 [GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
 
 ---

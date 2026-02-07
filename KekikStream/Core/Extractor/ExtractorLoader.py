@@ -82,7 +82,7 @@ class ExtractorLoader:
                 if isinstance(obj, type) and issubclass(obj, ExtractorBase) and obj is not ExtractorBase and obj.__module__ == module_name:
                     # konsol.log(f"[green]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/green]")
                     extractors.append(obj)
-            
+
             return extractors
 
         except Exception as hata:

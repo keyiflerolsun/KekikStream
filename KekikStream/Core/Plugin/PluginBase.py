@@ -50,7 +50,7 @@ class PluginBase(ABC):
         })
 
         self.media_handler = MediaHandler()
-        
+
         # If an instance is passed, use it; otherwise create a new one
         if isinstance(ex_manager, ExtractorManager):
             self.ex_manager = ex_manager
@@ -112,10 +112,10 @@ class PluginBase(ABC):
         return url.replace("\\", "")
 
     async def extract(
-        self, 
-        url: str, 
-        referer: str = None, 
-        prefix: str | None = None, 
+        self,
+        url: str,
+        referer: str = None,
+        prefix: str | None = None,
         name_override: str | None = None
     ) -> ExtractResult | list[ExtractResult] | None:
         """
@@ -175,12 +175,12 @@ class PluginBase(ABC):
             return None
 
         suffixes = [
-            " izle", 
-            " full film", 
+            " izle",
+            " full film",
             " filmini full",
             " full türkçe",
-            " alt yazılı", 
-            " altyazılı", 
+            " alt yazılı",
+            " altyazılı",
             " tr dublaj",
             " hd türkçe",
             " türkçe dublaj",
