@@ -67,15 +67,38 @@ class ShowFlix(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
+        import asyncio
         results = []
-        for api_url, item_type in [(self.movie_api, "movie"), (self.tv_api, "tv")]:
-            payload = self.get_payload({
-                "where": {"name": {"$regex": query, "$options": "i"}},
-                "limit": 10
-            })
-            istek = await self.httpx.post(api_url, json=payload)
-            data  = istek.json().get("results", [])
+        headers = {
+            "X-Parse-Application-Id": self.app_id,
+            "X-Parse-Master-Key": self.js_key
+        }
 
+        # Determine search criteria
+        if query.isdigit() and 3 < len(query) < 8:
+            # Query looks like a TMDB ID
+            where = {"tmdbId": int(query)}
+        else:
+            where = {"name": {"$regex": query, "$options": "i"}}
+
+        tasks = []
+        api_mapping = [(self.movie_api, "movie"), (self.tv_api, "tv")]
+        for api_url, _ in api_mapping:
+            params = {
+                "where": json.dumps(where),
+                "limit": 25,
+                "order": "-updatedAt"
+            }
+            tasks.append(self.httpx.get(api_url, params=params, headers=headers))
+
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for i, resp in enumerate(responses):
+            if isinstance(resp, Exception) or resp.status_code != 200:
+                continue
+
+            item_type = api_mapping[i][1]
+            data = resp.json().get("results", [])
             for item in data:
                 results.append(SearchResult(
                     title  = self.clean_title(item.get("name")),
@@ -102,6 +125,8 @@ class ShowFlix(PluginBase):
         description = item.get("storyline") or item.get("description")
         year        = item.get("releaseYear") or item.get("year")
         rating      = item.get("rating")
+        genres      = item.get("genres", [])
+        tags        = ", ".join(genres) if isinstance(genres, list) else genres
 
         if item_type == "movie":
             return MovieInfo(
@@ -110,7 +135,8 @@ class ShowFlix(PluginBase):
                 title       = title,
                 description = description,
                 year        = str(year) if year else None,
-                rating      = str(rating) if rating else None
+                rating      = str(rating).strip() if rating else None,
+                tags        = tags
             )
         else:
             # Sezon ve bölümleri ayrı API çağrılarıyla alıyoruz
@@ -122,14 +148,15 @@ class ShowFlix(PluginBase):
                 title       = title,
                 description = description,
                 year        = str(year) if year else None,
-                rating      = str(rating) if rating else None,
+                rating      = str(rating).strip() if rating else None,
+                tags        = tags,
                 episodes    = episodes
             )
 
     async def get_seasons_with_episodes(self, series_id: str) -> list[Episode]:
         # Sezonları al
         season_url = "https://parse.showflix.sbs/parse/classes/seasonv2"
-        payload = self.get_payload({"where": {"seriesId": series_id}})
+        payload = self.get_payload({"where": json.dumps({"seriesId": series_id})})
         istek = await self.httpx.post(season_url, json=payload)
         seasons = istek.json().get("results", [])
 
@@ -140,7 +167,7 @@ class ShowFlix(PluginBase):
 
             # Bölümleri al
             episode_url = "https://parse.showflix.sbs/parse/classes/episodev2"
-            ep_payload = self.get_payload({"where": {"seasonId": season_id}})
+            ep_payload = self.get_payload({"where": json.dumps({"seasonId": season_id})})
             ep_istek = await self.httpx.post(episode_url, json=ep_payload)
             eps = ep_istek.json().get("results", [])
 

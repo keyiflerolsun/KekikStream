@@ -201,12 +201,33 @@ class HTMLHelper:
 
         return s_val, e_val
 
-    def extract_year(self, *selectors: str, pattern: str = r"(\d{4})") -> int | None:
-        """Birden fazla selector veya regex ile yıl bilgisini çıkar."""
+    def extract_year(self, *selectors: str, pattern: str = r"(?<!\&#)\b(19\d{2}|20\d{2})\b") -> int | None:
+        """
+        Birden fazla selector veya regex ile 1900-2099 arası bir yıl bilgisini çıkarır.
+        HTML entity'leri (&#8211; gibi) yakalamamak için negatif lookbehind kullanır.
+        """
         for selector in selectors:
             if text := self.select_text(selector):
-                if m := re.search(r"(\d{4})", text):
+                if m := re.search(r"\b(19\d{2}|20\d{2})\b", text):
                     return int(m.group(1))
 
+        # Eğer hala bulunamadıysa regex ile dökümanda ara (sadece selector ile belirtilmediyse veya bulunamadıysa)
         val = self.regex_first(pattern)
-        return int(val) if val and val.isdigit() else None
+        return int(val) if val and str(val).isdigit() else None
+
+    def extract_duration(self, label: str = "Süre", container_selector: str | None = None) -> int | None:
+        """Süreyi (dakika olarak) meta verilerden veya metinden çıkar."""
+        raw = self.meta_value(label, container_selector)
+        if not raw:
+            # Düz metinde "91 dakika" gibi ara
+            raw = self.regex_first(r"(\d+)\s*(?:dakika|dk|min|m)", self.html)
+            if not raw:
+                return None
+
+        # Sayıları ayıkla
+        nums = re.findall(r"(\d+)", str(raw))
+        if not nums:
+            return None
+
+        # Genellikle ilk sayı yeterlidir (örn: "90 dk" -> 90)
+        return int(nums[0])

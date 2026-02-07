@@ -1,211 +1,244 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
-import asyncio
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import json, re
+from urllib.parse import urlparse, parse_qs
 
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
     language    = "tr"
     main_url    = "https://jetfilmizle.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Film izle, Yerli, Yabancı film izle, Türkçe dublaj, alt yazılı seçenekleriyle ödül almış filmleri Full HD kalitesiyle ve jetfilmizle hızıyla donmadan ücretsizce izleyebilirsiniz."
+    description = "Filmler: En yeni yerli ve yabancı yapımları Full HD kalitede izle. Türkçe dublaj ve altyazı seçenekleriyle sunulan ödüllü sinema eserlerini JetFilmizle hızıyla keşfedin."
 
-    main_page   = {
-        f"{main_url}/page/"                                     : "Son Filmler",
-        f"{main_url}/netflix/page/"                             : "Netflix",
-        f"{main_url}/editorun-secimi/page/"                     : "Editörün Seçimi",
-        f"{main_url}/turk-film-izle/page/"                      : "Türk Filmleri",
-        f"{main_url}/cizgi-filmler-izle/page/"                  : "Çizgi Filmler",
-        f"{main_url}/kategoriler/yesilcam-filmleri-izlee/page/" : "Yeşilçam Filmleri",
-        f"{main_url}/film-turu/aile-filmleri-izle/page/"        : "Aile Filmleri",
-        f"{main_url}/film-turu/aksiyon-filmleri/page/"          : "Aksiyon Filmleri",
-        f"{main_url}/film-turu/animasyon-filmler-izle/page/"    : "Animasyon Filmleri",
-        f"{main_url}/film-turu/bilim-kurgu-filmler/page/"       : "Bilim Kurgu Filmleri",
-        f"{main_url}/film-turu/dram-filmleri-izle/page/"        : "Dram Filmleri",
-        f"{main_url}/film-turu/fantastik-filmleri-izle/page/"   : "Fantastik Filmler",
-        f"{main_url}/film-turu/gerilim-filmleri/page/"          : "Gerilim Filmleri",
-        f"{main_url}/film-turu/gizem-filmleri/page/"            : "Gizem Filmleri",
-        f"{main_url}/film-turu/komedi-film-full-izle/page/"     : "Komedi Filmleri",
-        f"{main_url}/film-turu/korku-filmleri-izle/page/"       : "Korku Filmleri",
-        f"{main_url}/film-turu/macera-filmleri/page/"           : "Macera Filmleri",
-        f"{main_url}/film-turu/muzikal/page/"                   : "Müzikal Filmler",
-        f"{main_url}/film-turu/polisiye/page/"                  : "Polisiye Filmler",
-        f"{main_url}/film-turu/romantik-film-izle/page/"        : "Romantik Filmler",
-        f"{main_url}/film-turu/savas-filmi-izle/page/"          : "Savaş Filmleri",
-        f"{main_url}/film-turu/spor/page/"                      : "Spor Filmleri",
-        f"{main_url}/film-turu/suc-filmleri/page/"              : "Suç Filmleri",
-        f"{main_url}/film-turu/tarihi-filmler/page/"            : "Tarihi Filmleri",
+    main_page = {
+        f"{main_url}/filmler/sayfa-"              : "Filmler",
+        f"{main_url}/diziler/sayfa-"              : "Diziler",
+        f"{main_url}/tur/aile/sayfa-"             : "Aile",
+        f"{main_url}/tur/aksiyon/sayfa-"          : "Aksiyon",
+        f"{main_url}/tur/animasyon/sayfa-"        : "Animasyon",
+        f"{main_url}/tur/anime/sayfa-"            : "Anime",
+        f"{main_url}/tur/belgesel/sayfa-"         : "Belgesel",
+        f"{main_url}/tur/bilim-kurgu/sayfa-"      : "Bilim Kurgu",
+        f"{main_url}/tur/biyografi/sayfa-"        : "Biyografi",
+        f"{main_url}/tur/casus/sayfa-"            : "Casus",
+        f"{main_url}/tur/dram/sayfa-"             : "Dram",
+        f"{main_url}/tur/fantastik/sayfa-"        : "Fantastik",
+        f"{main_url}/tur/fantezi/sayfa-"          : "Fantezi",
+        f"{main_url}/tur/felaket/sayfa-"          : "Felaket",
+        f"{main_url}/tur/gerilim/sayfa-"          : "Gerilim",
+        f"{main_url}/tur/gizem/sayfa-"            : "Gizem",
+        f"{main_url}/tur/komedi/sayfa-"           : "Komedi",
+        f"{main_url}/tur/korku/sayfa-"            : "Korku",
+        f"{main_url}/tur/macera/sayfa-"           : "Macera",
+        f"{main_url}/tur/muzik/sayfa-"            : "Müzik",
+        f"{main_url}/tur/muzikal/sayfa-"          : "Müzikal",
+        f"{main_url}/tur/reality/sayfa-"          : "Reality",
+        f"{main_url}/tur/romantik/sayfa-"         : "Romantik",
+        f"{main_url}/tur/savas/sayfa-"            : "Savaş",
+        f"{main_url}/tur/spor/sayfa-"             : "Spor",
+        f"{main_url}/tur/suc/sayfa-"              : "Suç",
+        f"{main_url}/tur/tarihi/sayfa-"           : "Tarihi",
+        f"{main_url}/tur/western/sayfa-"          : "Western"
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
+        istek  = await self.httpx.get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("article.movie"):
-            title_text = None
-            for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
-                title_text = secici.select_text(f"{h_tag} a", veri)
-                if title_text:
-                    break
+        for veri in secici.select("div.film-card"):
+            link_tag = secici.select_first("h2.card-title a", veri) or secici.select_first("a.text-decoration-none", veri)
+            if not link_tag:
+                continue
 
-            title  = self.clean_title(title_text) if title_text else None
-            href   = secici.select_attr("a", "href", veri)
-            poster = secici.select_poster("img", veri)
+            title = link_tag.attrs.get("title", "").replace(" Full HD Türkçe Dublaj İzle", "").replace(" izle", "").strip()
+            if not title:
+                title = link_tag.text(strip=True)
 
-            if title and href:
-                results.append(MainPageResult(
-                    category = category,
-                    title    = title,
-                    url      = self.fix_url(href),
-                    poster   = self.fix_url(poster),
-                ))
+            href = link_tag.attrs.get("href")
+
+            img_tag = secici.select_first("img.card-img-top", veri)
+            poster  = img_tag.attrs.get("src") or img_tag.attrs.get("data-src") if img_tag else None
+
+            results.append(MainPageResult(
+                category = category,
+                title    = self.clean_title(title),
+                url      = self.fix_url(href),
+                poster   = self.fix_url(poster)
+            ))
 
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.post(
-            url     = f"{self.main_url}/filmara.php",
-            data    = {"s": query},
-            headers = {"Referer": f"{self.main_url}/"}
+        istek = await self.httpx.get(
+            url     = f"{self.main_url}/arama-json",
+            params  = {"q": query},
+            headers = {
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": f"{self.main_url}/"
+            }
         )
-        secici = HTMLHelper(istek.text)
+
+        try:
+            data = istek.json()
+        except:
+            return []
 
         results = []
-        for article in secici.select("article.movie"):
-            title_text = None
-            for h_tag in ["h2", "h3", "h4", "h5", "h6"]:
-                title_text = secici.select_text(f"{h_tag} a", article)
-                if title_text:
-                    break
-
-            title  = self.clean_title(title_text) if title_text else None
-            href   = secici.select_attr("a", "href", article)
-            poster = secici.select_poster("img", article)
-
-            if title and href:
-                results.append(SearchResult(
-                    title  = title,
-                    url    = self.fix_url(href),
-                    poster = self.fix_url(poster),
-                ))
+        for item in data.get("results", []):
+            results.append(SearchResult(
+                title  = self.clean_title(item.get("title")),
+                url    = self.fix_url(item.get("url")),
+                poster = self.fix_url(item.get("poster"))
+            ))
 
         return results
 
-    async def load_item(self, url: str) -> MovieInfo:
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(secici.select_text("div.movie-exp-title"))
-        poster      = secici.select_poster("section.movie-exp img")
-        description = secici.select_text("section.movie-exp p.aciklama")
-        tags        = secici.select_texts("section.movie-exp div.catss a")
-        rating      = secici.select_text("section.movie-exp div.imdb_puan span")
-        year        = secici.meta_value("Yayın Yılı")
-        actors      = secici.select_texts("div[itemprop='actor'] a span") or [img.attrs.get("alt") for img in secici.select("div.oyuncular div.oyuncu img") if img.attrs.get("alt")]
-        duration    = secici.meta_value("Süre")
-        duration    = duration.split() if duration else None
+        title       = self.clean_title(secici.select_text("h1"))
+        poster      = secici.select_poster("div.film-poster-container img") or secici.select_poster("div.film-poster img")
 
-        total_minutes = 0
-        if duration:
-            for i, p in enumerate(duration):
-                if p == "saat":
-                    total_minutes += int(duration[i-1]) * 60
-                elif p == "dakika":
-                    total_minutes += int(duration[i-1])
+        # Metadata Extraction (Specific Selectors from Debug)
+        player_tag = secici.select_first("#active-player")
+        rating     = player_tag.attrs.get("data-film-rating") if player_tag else secici.meta_value("IMDb")
+        year       = player_tag.attrs.get("data-film-year") if player_tag else secici.meta_value("Yıl")
+        duration   = secici.extract_duration("Süre")
+
+        description = secici.select_text("div.description-text") or secici.select_text("div.film-description div.description-text") or secici.select_text("div.movie-description")
+
+        # Tags and Actors cleanup
+        tags_list   = secici.select_texts("div.categories-container-details a") or secici.meta_list("Kategoriler")
+        tags_list   = [t for t in tags_list if t not in ["Kategoriler", "Tür", "Türler"]]
+
+        actors_list = secici.select_texts("div.actors-grid .h6 a") or secici.meta_list("Oyuncular")
+        actors_list = [a for a in actors_list if a not in ["Oyuncular", "Oyuncular:"]]
+
+        # Film ID
+        film_id = secici.select_attr("input[name='film_id']", "value")
+
+        episodes = []
+        # Case 1: Episode buttons in player-sources (New Structure)
+        source_groups = secici.select("div.player-sources-group")
+        for group in source_groups:
+            p_group = group.attrs.get("data-player-group")
+            for btn in secici.select("button.player-source-btn", group):
+                label   = btn.text(strip=True)
+                s_index = btn.attrs.get("data-source-index")
+
+                # e.g. "1S3B" -> Season 1, Episode 3
+                match = re.search(r"(\d+)S(\d+)B", label)
+                if match:
+                    s, e = match.groups()
+                    episodes.append(Episode(
+                        season  = int(s),
+                        episode = int(e),
+                        title   = label,
+                        url     = f"{url}?film_id={film_id}&episode={s_index}&type={p_group}"
+                    ))
+                elif ("/dizi/" in url or "/bolum/" in url) and label.isdigit():
+                    episodes.append(Episode(
+                        season  = 1,
+                        episode = int(label),
+                        title   = f"{label}. Bölüm",
+                        url     = f"{url}?film_id={film_id}&episode={s_index}&type={p_group}"
+                    ))
+
+        # Case 2: Traditional season links fallback
+        if not episodes:
+            for link in secici.select("div.seasons-container a[href*='/bolum/']"):
+                href = link.attrs.get("href", "")
+                s, e = secici.extract_season_episode(href)
+                if s and e:
+                    episodes.append(Episode(
+                        season  = s,
+                        episode = e,
+                        title   = link.text(strip=True),
+                        url     = self.fix_url(href)
+                    ))
+
+        if episodes or "/dizi/" in url:
+            if episodes: episodes.sort(key=lambda x: (x.season, x.episode))
+            return SeriesInfo(
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = title,
+                description = description,
+                year        = year,
+                rating      = rating,
+                tags        = tags_list,
+                actors      = actors_list,
+                duration    = duration,
+                episodes    = episodes
+            )
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
             title       = title,
             description = description,
-            tags        = tags,
-            rating      = rating,
             year        = year,
-            actors      = actors,
-            duration    = total_minutes if total_minutes else None
+            rating      = rating,
+            tags        = tags_list,
+            actors      = actors_list,
+            duration    = duration,
+            data        = {"film_id": film_id} if film_id else None
         )
 
-    async def _process_source(self, url: str, name: str, html: str | None) -> list[ExtractResult]:
-        results = []
-        try:
-            if html:
-                secici = HTMLHelper(html)
-            else:
-                resp   = await self.httpx.get(url)
-                secici = HTMLHelper(resp.text)
-
-            # Iframe'leri bul
-            container = secici.select_first("div#movie") or secici.select_first("div.film-content")
-
-            if container:
-                for iframe in secici.select("iframe", container):
-                    src = (iframe.attrs.get("src") or
-                           iframe.attrs.get("data-src") or
-                           iframe.attrs.get("data-lazy-src"))
-
-                    if src and src != "about:blank":
-                        iframe_url = self.fix_url(src)
-                        # name_override KULLANMA, extractor kendi ismini versin
-                        # Sonra biz düzenleriz
-                        data = await self.extract(iframe_url)
-
-                        if data:
-                            items = data if isinstance(data, list) else [data]
-
-                            for item in items:
-                                # Sadece kalite bilgisi içeriyorsa ekle, yoksa sadece buton adını kullan
-                                # Özellikle Zeus için kalite önemli (1080p, 720p)
-                                # Diğerlerinde plugin adı (Apollo, JetPlay vb.) önemsiz
-
-                                # Kalite kontrolü (basitçe)
-                                quality_indicators = ["1080p", "720p", "480p", "360p", "240p", "144p", "4k", "2k"]
-                                has_quality = any(q in item.name.lower() for q in quality_indicators)
-
-                                if has_quality:
-                                    # Buton Adı | Extractor Adı (Kalite içerdiği için)
-                                    # Örn: Zeus | 1080p
-                                    # Eğer Extractor adı zaten Buton adını içeriyorsa (Zeus | 1080p -> Zeus) tekrar ekleme
-                                    if name.lower() not in item.name.lower():
-                                         item.name = f"{name} | {item.name}"
-                                else:
-                                    # Kalite yoksa sadece Buton adını kullan
-                                    # Örn: Apollo | JetTv -> JetTv
-                                    item.name = name
-
-                                results.append(item)
-            return results
-        except Exception:
-            return []
-
     async def load_links(self, url: str) -> list[ExtractResult]:
+        parsed = urlparse(url)
+        params = parse_qs(parsed.query)
+
+        target_id   = params.get("film_id", [None])[0]
+        target_epis = params.get("episode", [None])[0]
+        target_type = params.get("type", [None])[0]
+
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        sources = []
-        if film_part := secici.select_first("div.film_part"):
-            # Tüm spanları gez
-            for span in secici.select("span", film_part):
-                # Eğer bu span bir <a> etiketi içinde değilse, aktif kaynaktır
-                if span.parent.tag != "a":
-                    name = span.text(strip=True)
-                    if name:
-                        sources.append((url, name, istek.text)) # html content var
-                        break
+        film_id = target_id or secici.select_attr("input[name='film_id']", "value")
+        if not film_id:
+            return []
 
-            # Diğer kaynak linkleri
-            for link in secici.select("a.post-page-numbers", film_part):
-                name = secici.select_text("span", link) or link.text(strip=True)
-                href = link.attrs.get("href")
-                if name != "Fragman" and href:
-                    sources.append((self.fix_url(href), name, None)) # html yok, çekilecek
+        response = []
+        for btn in secici.select("button.player-source-btn"):
+            p_type  = btn.attrs.get("data-player-type") or btn.attrs.get("data-player-group")
+            s_index = btn.attrs.get("data-source-index")
+            label   = btn.text(strip=True)
 
-        # Eğer film_part yoksa, sadece mevcut sayfayı tara (Tek part olabilir)
-        if not sources:
-            sources.append((url, "JetFilmizle", istek.text))
+            # Episode filtering for series
+            if target_epis is not None and (s_index != target_epis or p_type != target_type):
+                continue
 
-        tasks = []
-        for page_url, source_name, html_content in sources:
-            tasks.append(self._process_source(page_url, source_name, html_content))
+            oyun_istek = await self.httpx.post(
+                url     = f"{self.main_url}/jetplayer",
+                data    = {
+                    "film_id": film_id,
+                    "source_index": s_index,
+                    "player_type": p_type
+                },
+                headers = {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": url
+                }
+            )
 
-        return [item for sublist in await asyncio.gather(*tasks) for item in sublist]
+            if oyun_istek.status_code == 200:
+                iframe_secici = HTMLHelper(oyun_istek.text)
+                src = iframe_secici.select_attr("iframe", "src")
+                if src:
+                    src = self.fix_url(src)
+                    prefix = f"[{p_type.upper()}] {label}"
+                    data = await self.extract(src, prefix=prefix)
+                    if data:
+                        if isinstance(data, list):
+                            response.extend(data)
+                        else:
+                            response.append(data)
+
+        return response

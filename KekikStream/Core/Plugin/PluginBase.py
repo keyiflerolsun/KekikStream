@@ -193,6 +193,9 @@ class PluginBase(ABC):
 
         cleaned_title = title.strip()
 
+        # Fix missing space before parenthesis: "Film(2024)" -> "Film (2024)"
+        cleaned_title = re.sub(r"(\S)\(", r"\1 (", cleaned_title)
+
         for suffix in suffixes:
             cleaned_title = re.sub(f"{re.escape(suffix)}.*$", "", cleaned_title, flags=re.IGNORECASE).strip()
 

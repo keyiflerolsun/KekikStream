@@ -40,15 +40,16 @@ class RealFilmIzle(PluginBase):
     async def get_articles(self, secici: HTMLHelper) -> list[dict]:
         articles = []
         for veri in secici.select("article.movie-box"):
-            title  = secici.select_text("div.name a", veri)
-            href   = secici.select_attr("div.name a", "href", veri)
+            title  = secici.select_text("div.name a", veri) or secici.select_attr("div.name a", "title", veri) or secici.select_attr("a", "title", veri)
+            href   = secici.select_attr("div.name a", "href", veri) or secici.select_attr("a", "href", veri)
             poster = secici.select_poster("img", veri)
 
-            articles.append({
-                "title" : self.clean_title(title),
-                "url"   : self.fix_url(href),
-                "poster": self.fix_url(poster),
-            })
+            if title and href:
+                articles.append({
+                    "title" : self.clean_title(title),
+                    "url"   : self.fix_url(href),
+                    "poster": self.fix_url(poster),
+                })
 
         return articles
 
@@ -70,18 +71,51 @@ class RealFilmIzle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = self.clean_title(secici.select_text("div.film h1"))
+        # Original title to extract year safely
+        raw_title   = secici.select_text("div.film h1")
+        title       = self.clean_title(raw_title)
         poster      = secici.select_poster("div.poster img")
-        description = secici.select_direct_text("div.description")
+        description = secici.select_text("div.description p") or secici.select_text("div.description")
+
+        # Tags from breadcrumbs or tags div
         tags        = secici.select_texts("ol.scheme-breadcrumbs li a")
         tags        = [tag.replace("✅ ", "").replace(" Filmleri", "") for tag in tags if tag != "Film izle"]
+
+        # Metadata extraction
+        rating = secici.meta_value("IMDb")
+        # 1080p gibi değerleri yıl sanmaması için regex'i daraltalım
+        year   = secici.extract_year("div.metadata span a[href*='/yapim/']")
+        actors = secici.meta_list("Oyuncular")
+
+        # Fallback: Eğer meta_value/list bulamadıysa sınıf listesine bak
+        meta_node = secici.select_first(".post")
+        classes   = meta_node.attrs.get("class", "").split() if meta_node else []
+
+        for cls in classes:
+            if cls.startswith("oyuncular-"):
+                actor_name = cls.replace("oyuncular-", "").replace("-", " ").title()
+                if actor_name not in actors:
+                    actors.append(actor_name)
+            elif not rating and cls.startswith("imdb-"):
+                rating = cls.replace("imdb-", "").replace("-", ".")
+            elif not year and cls.startswith("yapim-"):
+                y_val = cls.replace("yapim-", "").replace("yili-", "")
+                if y_val.isdigit() and 1900 < int(y_val) < 2100:
+                    year = y_val
+
+        # Hala yıl yoksa başlıktan çıkar (Orijinal başlıktan!)
+        if not year:
+            year = secici.regex_first(r"\((\d{4})\)", raw_title)
 
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
-            title       = self.clean_title(title),
+            title       = title,
             description = description,
-            tags        = tags
+            year        = str(year) if year else None,
+            rating      = str(rating) if rating else None,
+            tags        = tags,
+            actors      = actors
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
