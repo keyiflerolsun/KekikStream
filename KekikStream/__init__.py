@@ -5,10 +5,17 @@ from .Core      import PluginManager, ExtractorManager, UIManager, MediaManager,
 from asyncio    import run, TaskGroup, Semaphore
 from contextlib import suppress
 
+import os
+
 class KekikStream:
     def __init__(self):
-        self.extractor = ExtractorManager()
-        self.plugin    = PluginManager(ex_manager=self.extractor)
+        # Kendi paket yolunu bul
+        base_dir      = os.path.dirname(os.path.abspath(__file__))
+        extractor_dir = os.path.join(base_dir, "Extractors")
+        plugin_dir    = os.path.join(base_dir, "Plugins")
+
+        self.extractor = ExtractorManager(extractor_dir=extractor_dir)
+        self.plugin    = PluginManager(plugin_dir=plugin_dir, ex_manager=self.extractor)
         self.ui        = UIManager()
         self.media     = MediaManager()
 
