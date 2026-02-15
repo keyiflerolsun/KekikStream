@@ -266,6 +266,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 - [kerimmkirac/cs-kerim](https://github.com/kerimmkirac/cs-kerim)
 - [Phisher98/Extractors](https://github.com/phisher98/cloudstream-extensions-phisher/blob/master/StreamPlay/src/main/kotlin/com/Phisher98/Extractors.kt)
 - [cloudstream3/extractors](https://github.com/recloudstream/cloudstream/tree/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors)
+- [hexated/cloudstream-extensions-hexated](https://github.com/hexated/cloudstream-extensions-hexated)
 
 ## 🌐 Telif Hakkı ve Lisans
 

@@ -27,7 +27,15 @@ class ExtractorBase(ABC):
 
     def can_handle_url(self, url: str) -> bool:
         # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
-        return self.main_url in url
+        if self.main_url and self.main_url in url:
+            return True
+
+        if hasattr(self, "supported_domains"):
+            for domain in self.supported_domains:
+                if domain in url:
+                    return True
+
+        return False
 
     def get_base_url(self, url: str) -> str:
         """URL'den base URL'i çıkar (scheme + netloc)"""

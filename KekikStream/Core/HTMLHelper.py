@@ -33,22 +33,26 @@ class HTMLHelper:
             return element
         return self._root(element).css_first(selector)
 
-    def select_text(self, selector: str | None = None, element: Node | None = None) -> str | None:
+    def select_text(self, selector: str | None = None, element: Node | None = None) -> str:
         """CSS selector ile element bul ve text içeriğini döndür."""
         el = self.select_first(selector, element)
         if not el:
-            return None
+            return ""
         val = el.text(strip=True)
-        return val or None
+        if val:
+            import html
+            val = html.unescape(val)
+        return val or ""
 
-    def select_texts(self, selector: str, element: Node | None = None) -> list[str] | None:
+    def select_texts(self, selector: str, element: Node | None = None) -> list[str]:
         """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
+        import html
         out: list[str] = []
         for el in self.select(selector, element):
             txt = el.text(strip=True)
             if txt:
-                out.append(txt)
-        return out or None
+                out.append(html.unescape(txt))
+        return out
 
     def select_attr(self, selector: str | None, attr: str, element: Node | None = None) -> str | None:
         """CSS selector ile element bul ve attribute değerini döndür."""
@@ -101,8 +105,8 @@ class HTMLHelper:
             if not root:
                 continue
 
-            # Kalın/vurgulu elementlerde (span, strong, b, label, dt) label'ı ara
-            for label_el in self.select("span, strong, b, label, dt", root):
+            # Label belirtebilecek elementleri tara
+            for label_el in self.select("span, strong, b, label, dt, div.f-info-label, div.fi-label", root):
                 txt = (label_el.text(strip=True) or "").casefold()
                 if needle not in txt:
                     continue
@@ -140,7 +144,7 @@ class HTMLHelper:
         for root in targets:
             if not root:
                 continue
-            for label_el in self.select("span, strong, b, label, dt", root):
+            for label_el in self.select("span, strong, b, label, dt, div.f-info-label, div.fi-label", root):
                 if needle in (label_el.text(strip=True) or "").casefold():
                     # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
                     links = self.select_texts("a", label_el.parent)
@@ -163,9 +167,9 @@ class HTMLHelper:
         """Regex için kaynak metni döndürür."""
         return target if isinstance(target, str) else self.html
 
-    def regex_first(self, pattern: str, target: str | int | None = None, group: int | None = 1) -> str | tuple | None:
+    def regex_first(self, pattern: str, target: str | int | None = None, group: int | None = 1, flags: int = 0) -> str | tuple | None:
         """Regex ile arama yap, istenen grubu döndür (group=None ise tüm grupları tuple olarak döndür)."""
-        match = re.search(pattern, self._regex_source(target))
+        match = re.search(pattern, self._regex_source(target), flags=flags)
         if not match:
             return None
 
