@@ -68,7 +68,7 @@ class PluginLoader:
             # Yalnızca doğru modülden gelen PluginBase sınıflarını yükle
             for attr in dir(module):
                 obj = getattr(module, attr)
-                if isinstance(obj, type) and issubclass(obj, PluginBase) and obj is not PluginBase:
+                if isinstance(obj, type) and issubclass(obj, PluginBase) and obj is not PluginBase and obj.__module__ == module_name:
                     # konsol.log(f"[yellow]Yüklenen sınıf\t\t: {module_name}.{obj.__name__} ({obj.__module__}.{obj.__name__})[/yellow]")
                     return obj(proxy=self.proxy, ex_manager=self.ex_manager)
 

@@ -2,8 +2,108 @@
 
 from __future__ import annotations
 
-import re
 from selectolax.parser import HTMLParser, Node
+import html as _html
+import re
+
+
+class NodeHelper:
+    """
+    selectolax.Node wrapper — HTMLHelper'ın seçici metotlarını element seviyesinde kullanım için sağlar.
+
+    Kullanım:
+        for veri in secici.select("li.film"):
+            title  = veri.select_text("span.film-title")
+            url    = veri.select_attr("a", "href")
+            poster = veri.select_poster("img")
+    """
+
+    __slots__ = ("_node",)
+
+    def __init__(self, node: Node):
+        self._node = node
+
+    def __getattr__(self, name):
+        """Tanımsız attribute erişimlerini alttaki Node'a proxy eder."""
+        return getattr(self._node, name)
+
+    def __bool__(self):
+        return self._node is not None
+
+    def __repr__(self):
+        return f"NodeHelper(<{self._node.tag}>)" if self._node else "NodeHelper(None)"
+
+    # -- Temel Node proxy'leri --
+
+    @property
+    def attrs(self) -> dict:
+        return self._node.attrs
+
+    @property
+    def tag(self) -> str:
+        return self._node.tag
+
+    @property
+    def parent(self) -> NodeHelper | None:
+        p = self._node.parent
+        return NodeHelper(p) if p else None
+
+    @property
+    def next(self) -> NodeHelper | None:
+        n = self._node.next
+        return NodeHelper(n) if n else None
+
+    def text(self, *args, **kwargs) -> str:
+        return self._node.text(*args, **kwargs)
+
+    # -- CSS seçici metotları (HTMLHelper-uyumlu) --
+
+    def select(self, selector: str) -> list[NodeHelper]:
+        """CSS selector ile tüm eşleşen child elementleri döndür."""
+        return [NodeHelper(n) for n in self._node.css(selector)]
+
+    def select_first(self, selector: str | None = None) -> NodeHelper | None:
+        """CSS selector ile ilk eşleşen child elementi döndür."""
+        if not selector:
+            return self
+        result = self._node.css_first(selector)
+        return NodeHelper(result) if result else None
+
+    def select_text(self, selector: str | None = None) -> str:
+        """CSS selector ile element bul ve text içeriğini döndür."""
+        el = self._node.css_first(selector) if selector else self._node
+        if not el:
+            return ""
+        val = el.text(strip=True)
+        return _html.unescape(val) if val else ""
+
+    def select_texts(self, selector: str) -> list[str]:
+        """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
+        return [_html.unescape(t) for el in self._node.css(selector) if (t := el.text(strip=True))]
+
+    def select_attr(self, selector: str | None, attr: str) -> str | None:
+        """CSS selector ile element bul ve attribute değerini döndür."""
+        el = self._node.css_first(selector) if selector else self._node
+        return el.attrs.get(attr) if el else None
+
+    def select_attrs(self, selector: str, attr: str) -> list[str]:
+        """CSS selector ile tüm eşleşen elementlerin attribute değerlerini döndür."""
+        return [v for el in self._node.css(selector) if (v := el.attrs.get(attr))]
+
+    def select_poster(self, selector: str = "img") -> str | None:
+        """Poster URL'sini çıkar. Önce data-src, sonra src dener."""
+        el = self._node.css_first(selector) if selector else self._node
+        if not el:
+            return None
+        return el.attrs.get("data-src") or el.attrs.get("src")
+
+    def select_direct_text(self, selector: str | None = None) -> str | None:
+        """Elementin yalnızca kendi düz metnini döndürür."""
+        el = self._node.css_first(selector) if selector else self._node
+        if not el:
+            return None
+        val = el.text(strip=True, deep=False)
+        return val or None
 
 
 class HTMLHelper:
@@ -19,71 +119,50 @@ class HTMLHelper:
     # SELECTOR (CSS) İŞLEMLERİ
     # ========================
 
-    def _root(self, element: Node | None) -> Node | HTMLParser:
-        """İşlem yapılacak temel elementi döndürür."""
-        return element if element is not None else self.parser
-
-    def select(self, selector: str, element: Node | None = None) -> list[Node]:
+    def select(self, selector: str) -> list[NodeHelper]:
         """CSS selector ile tüm eşleşen elementleri döndür."""
-        return self._root(element).css(selector)
+        return [NodeHelper(n) for n in self.parser.css(selector)]
 
-    def select_first(self, selector: str | None, element: Node | None = None) -> Node | None:
+    def select_first(self, selector: str | None) -> NodeHelper | None:
         """CSS selector ile ilk eşleşen elementi döndür."""
         if not selector:
-            return element
-        return self._root(element).css_first(selector)
+            return None
+        result = self.parser.css_first(selector)
+        return NodeHelper(result) if result else None
 
-    def select_text(self, selector: str | None = None, element: Node | None = None) -> str:
+    def select_text(self, selector: str | None = None) -> str:
         """CSS selector ile element bul ve text içeriğini döndür."""
-        el = self.select_first(selector, element)
+        el = self.select_first(selector)
         if not el:
             return ""
         val = el.text(strip=True)
-        if val:
-            import html
-            val = html.unescape(val)
-        return val or ""
+        return _html.unescape(val) if val else ""
 
-    def select_texts(self, selector: str, element: Node | None = None) -> list[str]:
+    def select_texts(self, selector: str) -> list[str]:
         """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
-        import html
-        out: list[str] = []
-        for el in self.select(selector, element):
-            txt = el.text(strip=True)
-            if txt:
-                out.append(html.unescape(txt))
-        return out
+        return [_html.unescape(t) for el in self.select(selector) if (t := el.text(strip=True))]
 
-    def select_attr(self, selector: str | None, attr: str, element: Node | None = None) -> str | None:
+    def select_attr(self, selector: str | None, attr: str) -> str | None:
         """CSS selector ile element bul ve attribute değerini döndür."""
-        el = self.select_first(selector, element)
+        el = self.select_first(selector)
         return el.attrs.get(attr) if el else None
 
-    def select_attrs(self, selector: str, attr: str, element: Node | None = None) -> list[str]:
+    def select_attrs(self, selector: str, attr: str) -> list[str]:
         """CSS selector ile tüm eşleşen elementlerin attribute değerlerini döndür."""
-        out: list[str] = []
-        for el in self.select(selector, element):
-            val = el.attrs.get(attr)
-            if val:
-                out.append(val)
-        return out
+        return [v for el in self.select(selector) if (v := el.attrs.get(attr))]
 
-    def select_poster(self, selector: str = "img", element: Node | None = None) -> str | None:
+    def select_poster(self, selector: str = "img") -> str | None:
         """Poster URL'sini çıkar. Önce data-src, sonra src dener."""
-        el = self.select_first(selector, element)
+        el = self.select_first(selector)
         if not el:
             return None
         return el.attrs.get("data-src") or el.attrs.get("src")
 
-    def select_direct_text(self, selector: str, element: Node | None = None) -> str | None:
-        """
-        Elementin yalnızca "kendi" düz metnini döndürür (child elementlerin text'ini katmadan).
-        """
-        el = self.select_first(selector, element)
+    def select_direct_text(self, selector: str | None = None) -> str | None:
+        """Elementin yalnızca kendi düz metnini döndürür (child elementlerin text'ini katmadan)."""
+        el = self.select_first(selector)
         if not el:
             return None
-
-        # type: ignore[call-arg]
         val = el.text(strip=True, deep=False)
         return val or None
 
@@ -99,14 +178,18 @@ class HTMLHelper:
         needle = label.casefold()
 
         # Belirli bir container varsa içinde ara, yoksa tüm dökümanda
-        targets = self.select(container_selector) if container_selector else [self.parser.body]
+        if container_selector:
+            targets = self.select(container_selector)
+        else:
+            body = self.parser.body
+            targets = [NodeHelper(body)] if body else []
 
         for root in targets:
             if not root:
                 continue
 
             # Label belirtebilecek elementleri tara
-            for label_el in self.select("span, strong, b, label, dt, div.f-info-label, div.fi-label", root):
+            for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
                 txt = (label_el.text(strip=True) or "").casefold()
                 if needle not in txt:
                     continue
@@ -139,15 +222,21 @@ class HTMLHelper:
     def meta_list(self, label: str, container_selector: str | None = None, sep: str = ",") -> list[str]:
         """meta_value(...) çıktısını veya label'ın ebeveynindeki linkleri listeye döndürür."""
         needle = label.casefold()
-        targets = self.select(container_selector) if container_selector else [self.parser.body]
+
+        if container_selector:
+            targets = self.select(container_selector)
+        else:
+            body = self.parser.body
+            targets = [NodeHelper(body)] if body else []
 
         for root in targets:
             if not root:
                 continue
-            for label_el in self.select("span, strong, b, label, dt, div.f-info-label, div.fi-label", root):
+            for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
                 if needle in (label_el.text(strip=True) or "").casefold():
                     # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
-                    links = self.select_texts("a", label_el.parent)
+                    parent = label_el.parent
+                    links  = parent.select_texts("a") if parent else []
                     if links:
                         return links
 

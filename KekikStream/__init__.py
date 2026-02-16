@@ -166,6 +166,7 @@ class KekikStream:
         else:
             self.reset_series_state()
             links = await self.current_plugin.load_links(media_info.url)
+            links = PluginBase.sync_subtitles(links)
             await self.show_link_options(links)
 
     def reset_series_state(self):
@@ -199,6 +200,7 @@ class KekikStream:
                 break
 
         links = await self.current_plugin.load_links(selected)
+        links = PluginBase.sync_subtitles(links)
         await self.show_link_options(links)
 
     async def play_next_episode(self):
@@ -207,6 +209,7 @@ class KekikStream:
         next_ep = self.series_info.episodes[self.current_episode_index]
         self.episode_title = (f"{next_ep.season}. Sezon {next_ep.episode}. Bölüm" +  (f" - {next_ep.title}" if next_ep.title else ""))
         links = await self.current_plugin.load_links(next_ep.url)
+        links = PluginBase.sync_subtitles(links)
         await self.show_link_options(links)
 
     async def ask_next_episode(self):

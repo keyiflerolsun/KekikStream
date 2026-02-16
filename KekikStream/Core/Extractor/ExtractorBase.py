@@ -6,6 +6,7 @@ from httpx            import AsyncClient
 from typing           import Optional
 from .ExtractorModels import ExtractResult
 from urllib.parse     import urljoin, urlparse
+import asyncio
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -50,6 +51,16 @@ class ExtractorBase(ABC):
     async def close(self):
         """Close HTTP client."""
         await self.httpx.aclose()
+
+    async def async_cf_get(self, url: str, **kwargs):
+        """cloudscraper.get() için async wrapper. Event loop'u bloklamaz."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, lambda: self.cloudscraper.get(url, **kwargs))
+
+    async def async_cf_post(self, url: str, **kwargs):
+        """cloudscraper.post() için async wrapper. Event loop'u bloklamaz."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, lambda: self.cloudscraper.post(url, **kwargs))
 
     def fix_url(self, url: str) -> str:
         # Eksik URL'leri düzelt ve tam URL formatına çevir

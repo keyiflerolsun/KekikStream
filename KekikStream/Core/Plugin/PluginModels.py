@@ -1,6 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from pydantic import BaseModel, field_validator, model_validator
+from __future__ import annotations
+from pydantic   import BaseModel, field_validator, model_validator
+from ..Helpers  import clean_title, normalize_empty, normalize_rating
+
+
+# ========================
+# VERİ MODELLERİ
+# ========================
 
 class MainPageResult(BaseModel):
     """Ana sayfa sonucunda dönecek veri modeli."""
@@ -9,6 +16,10 @@ class MainPageResult(BaseModel):
     url      : str
     poster   : str | None = None
 
+    @model_validator(mode="after")
+    def auto_normalize(self) -> MainPageResult:
+        self.title  = clean_title(self.title) or self.title
+        return self
 
 class SearchResult(BaseModel):
     """Arama sonucunda dönecek veri modeli."""
@@ -16,6 +27,10 @@ class SearchResult(BaseModel):
     url    : str
     poster : str | None = None
 
+    @model_validator(mode="after")
+    def auto_normalize(self) -> SearchResult:
+        self.title  = clean_title(self.title) or self.title
+        return self
 
 class MovieInfo(BaseModel):
     """Bir medya öğesinin bilgilerini tutan model."""
@@ -39,6 +54,17 @@ class MovieInfo(BaseModel):
     def ensure_string(cls, value):
         return str(value) if value is not None else value
 
+    @model_validator(mode="after")
+    def auto_normalize(self) -> MovieInfo:
+        self.title = clean_title(self.title)
+
+        for field in ("actors", "tags", "description", "year"):
+            setattr(self, field, normalize_empty(getattr(self, field)))
+        self.rating = normalize_rating(self.rating)
+        if self.duration is not None and self.duration == 0:
+            self.duration = None
+        return self
+
 
 class Episode(BaseModel):
     season  : int | None = None
@@ -47,9 +73,11 @@ class Episode(BaseModel):
     url     : str | None = None
 
     @model_validator(mode="after")
-    def check_title(self) -> "Episode":
+    def auto_normalize(self) -> Episode:
         if not self.title:
             self.title = ""
+        else:
+            self.title = " ".join(self.title.split()).strip()
 
         return self
 
@@ -74,3 +102,14 @@ class SeriesInfo(BaseModel):
     @classmethod
     def ensure_string(cls, value):
         return str(value) if value is not None else value
+
+    @model_validator(mode="after")
+    def auto_normalize(self) -> SeriesInfo:
+        self.title  = clean_title(self.title)
+
+        for field in ("actors", "tags", "description", "year"):
+            setattr(self, field, normalize_empty(getattr(self, field)))
+        self.rating = normalize_rating(self.rating)
+        if self.duration is not None and self.duration == 0:
+            self.duration = None
+        return self

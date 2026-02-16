@@ -7,9 +7,9 @@ from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
-from ..Extractor.ExtractorModels  import ExtractResult
+from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
 from urllib.parse                 import urljoin
-import re
+import asyncio
 
 class PluginBase(ABC):
     name        = "Plugin"
@@ -97,6 +97,121 @@ class PluginBase(ABC):
         """
         pass
 
+    # ========================
+    # YARDIMCI METOTLAR
+    # ========================
+
+    def collect_results(self, results: list[ExtractResult], data: ExtractResult | list[ExtractResult] | None):
+        """
+        extract() dönüşünü (tekil, liste veya None) sonuç listesine ekler.
+        28+ plugin'de tekrar eden pattern'i ortadan kaldırır.
+
+        Kullanım:
+            data = await self.extract(url)
+            self.collect_results(results, data)
+        """
+        if data:
+            results.extend(data if isinstance(data, list) else [data])
+
+    @staticmethod
+    def deduplicate(results: list[ExtractResult], key: str = "url") -> list[ExtractResult]:
+        """
+        Sonuç listesinden tekrar eden URL'leri kaldırır.
+
+        Args:
+            results: ExtractResult listesi
+            key: Deduplicate anahtarı ("url" veya "url+name")
+        """
+        seen    = set()
+        uniques = []
+        for res in results:
+            k = (res.url, res.name) if key == "url+name" else res.url
+            if k and k not in seen:
+                uniques.append(res)
+                seen.add(k)
+        return uniques
+
+    @staticmethod
+    async def gather_with_limit(tasks: list, limit: int = 5):
+        """
+        Semaphore ile rate-limited paralel çalıştırma.
+
+        Kullanım:
+            tasks   = [self.extract(url) for url in urls]
+            results = await self.gather_with_limit(tasks, limit=5)
+        """
+        sem = asyncio.Semaphore(limit)
+        async def limited(coro):
+            async with sem:
+                return await coro
+        return await asyncio.gather(*(limited(t) for t in tasks))
+
+    async def async_cf_get(self, url: str, **kwargs):
+        """
+        cloudscraper.get() için async wrapper.
+        Cloudflare korumalı sitelerde kullanılır.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, lambda: self.cloudscraper.get(url, **kwargs))
+
+    async def async_cf_post(self, url: str, **kwargs):
+        """
+        cloudscraper.post() için async wrapper.
+        Cloudflare korumalı sitelerde kullanılır.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, lambda: self.cloudscraper.post(url, **kwargs))
+
+    @staticmethod
+    def new_subtitle(url: str, name: str = "Altyazı") -> Subtitle:
+        """Hızlı Subtitle nesnesi oluşturur."""
+        return Subtitle(name=name, url=url)
+
+    @staticmethod
+    def sync_subtitles(results: list[ExtractResult]) -> list[ExtractResult]:
+        """
+        Tüm ExtractResult'lardaki altyazıları birleştirir ve her sonuca dağıtır.
+
+        - Aynı URL'ye sahip altyazılar tekrarlanmaz.
+        - Aynı isme sahip farklı URL'ler "İsim", "İsim (2)" şeklinde numaralandırılır.
+        - Engine tarafından her load_links çağrısından sonra otomatik uygulanır.
+        """
+        if not results:
+            return results
+
+        # 1. Tüm altyazıları URL'ye göre topla (dedup)
+        seen_urls: dict[str, Subtitle] = {}
+        for res in results:
+            for sub in res.subtitles:
+                if sub.url not in seen_urls:
+                    seen_urls[sub.url] = sub
+
+        if not seen_urls:
+            return results
+
+        # 2. Aynı isimli farklı URL'leri numaralandır
+        merged     = list(seen_urls.values())
+        name_count: dict[str, int] = {}
+        for sub in merged:
+            name_count[sub.name] = name_count.get(sub.name, 0) + 1
+
+        name_idx: dict[str, int] = {}
+        final_subs: list[Subtitle] = []
+        for sub in merged:
+            if name_count[sub.name] > 1:
+                idx              = name_idx.get(sub.name, 0) + 1
+                name_idx[sub.name] = idx
+                label            = sub.name if idx == 1 else f"{sub.name} ({idx})"
+                final_subs.append(Subtitle(name=label, url=sub.url))
+            else:
+                final_subs.append(sub)
+
+        # 3. Birleşik listeyi tüm sonuçlara ata
+        for res in results:
+            res.subtitles = list(final_subs)
+
+        return results
+
     async def close(self):
         """Close HTTP client."""
         await self.httpx.aclose()
@@ -168,38 +283,6 @@ class PluginBase(ABC):
         except Exception as hata:
             konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
             return None
-
-    @staticmethod
-    def clean_title(title: str | None) -> str | None:
-        if not title:
-            return None
-
-        suffixes = [
-            " izle",
-            " full film",
-            " filmini full",
-            " full türkçe",
-            " alt yazılı",
-            " altyazılı",
-            " tr dublaj",
-            " hd türkçe",
-            " türkçe dublaj",
-            " yeşilçam ",
-            " erotik fil",
-            " türkçe",
-            " yerli",
-            " tüekçe dublaj",
-        ]
-
-        cleaned_title = title.strip()
-
-        # Fix missing space before parenthesis: "Film(2024)" -> "Film (2024)"
-        cleaned_title = re.sub(r"(\S)\(", r"\1 (", cleaned_title)
-
-        for suffix in suffixes:
-            cleaned_title = re.sub(f"{re.escape(suffix)}.*$", "", cleaned_title, flags=re.IGNORECASE).strip()
-
-        return cleaned_title
 
     async def play(self, **kwargs):
         """

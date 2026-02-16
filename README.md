@@ -67,7 +67,7 @@ KekikStream modüler bir plugin mimarisi kullanır; her medya kaynağı bağıms
 
 **Plugin Geliştirme:**
 ```python
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, ExtractResult
+from KekikStream.Core import HTMLHelper, PluginBase, MainPageResult, SearchResult, MovieInfo, Episode, SeriesInfo, Subtitle, ExtractResult
 
 class MyPlugin(PluginBase):
     name        = "MyPlugin"
@@ -90,6 +90,9 @@ class MyPlugin(PluginBase):
         return details
 
     async def load_links(self, url: str) -> list[ExtractResult]:
+        # self.collect_results(results, data)  — extract sonuçlarını topla
+        # self.deduplicate(results)             — URL bazlı tekrar kaldırma
+        # await self.async_cf_get(url)          — Cloudflare bypass (async)
         return links
 ```
 
@@ -270,7 +273,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 
 ## 🌐 Telif Hakkı ve Lisans
 
-*Copyright (C) 2024 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
+*Copyright (C) 2026 by* [keyiflerolsun](https://github.com/keyiflerolsun) ❤️️
 [GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/keyiflerolsun/KekikStream/blob/master/LICENSE) *Koşullarına göre lisanslanmıştır..*
 
 ---
