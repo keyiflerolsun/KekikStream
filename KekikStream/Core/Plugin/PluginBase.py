@@ -38,7 +38,7 @@ class PluginBase(ABC):
 
         # httpx - lightweight and safe for most HTTP requests
         self.httpx = AsyncClient(
-            timeout          = 3,
+            timeout          = 10,
             follow_redirects = True,
             proxy            = httpx_proxy
         )
