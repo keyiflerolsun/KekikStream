@@ -15,7 +15,7 @@ from .ExtractorBase   import ExtractorBase
 from .ExtractorModels import ExtractResult, Subtitle
 from ..Helpers        import HTMLHelper
 from Kekik.Sifreleme  import Packer, AESManager
-from urllib.parse     import quote
+from urllib.parse     import quote, urlparse
 import json, contextlib, re
 
 
@@ -52,12 +52,18 @@ class SecuredLinkExtractor(ExtractorBase):
         """URL'den video ID'sini çıkar."""
         return url.split("video/")[-1] if "video/" in url else url.split("?data=")[-1]
 
+    def _get_base_url(self, url: str) -> str:
+        """URL'den base URL'yi çıkar (scheme + domain)."""
+        parsed = urlparse(url)
+        return f"{parsed.scheme}://{parsed.netloc}"
+
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        ref  = referer or self.main_url
-        v_id = self._parse_video_id(url)
+        ref      = referer or self.main_url
+        v_id     = self._parse_video_id(url)
+        base_url = self._get_base_url(url)
 
         resp = await self.httpx.post(
-            url     = f"{self.main_url}/player/index.php?data={v_id}&do=getVideo",
+            url     = f"{base_url}/player/index.php?data={v_id}&do=getVideo",
             data    = {"hash": v_id, "r": ref},
             headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
         )

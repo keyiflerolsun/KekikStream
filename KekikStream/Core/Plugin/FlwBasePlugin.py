@@ -52,7 +52,7 @@ class FlwBasePlugin(PluginBase):
         secici = HTMLHelper(istek.text)
 
         content_id  = secici.select_attr("div.detail_page-watch", "data-id")
-        details     = secici.select_first("div.detail_page-infor")
+        details     = secici.select_first("div.detail_page-infor") or secici.select_first("div.m_i-detail")
         name        = details.select_text("h2.heading-name > a") if details else ""
         poster      = details.select_poster("div.film-poster > img") if details else None
         description = details.select_text("div.description") if details else ""
