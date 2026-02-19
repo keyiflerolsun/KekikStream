@@ -23,8 +23,11 @@ class MediaHandler:
             return self.play_with_ytdlp(extract_data)
 
         # İşletim sistemine göre oynatıcı seç (Android durumu)
-        if subprocess.check_output(['uname', '-o']).strip() == b'Android':
-            return self.play_with_android_mxplayer(extract_data)
+        try:
+            if subprocess.check_output(['uname', '-o']).strip() == b'Android':
+                return self.play_with_android_mxplayer(extract_data)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            pass  # Windows veya uname bulunamayan sistemlerde atla
 
         # Oynatıcı öncelik sırası (fallback zincirleme)
         players = [
