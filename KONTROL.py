@@ -103,17 +103,20 @@ class MainUrlGuncelleyici:
             self._setup_surum_guncelle()
 
     def _rectv_ver(self):
+        _id   = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcHBJZCI6IjE6NzkxNTgzMDMxMjc5OmFuZHJvaWQ6MjQ0YzNkNTA3YWIyOTlmY2FiYzAxYSIsImV4cCI6MTc3MjA5ODU3NywiZmlkIjoiY0lFU0hQZlBRVEdXOWJzS1VwbVRqdiIsInByb2plY3ROdW1iZXIiOjc5MTU4MzAzMTI3OX0.AB2LPV8wRQIhAOgZpWMhQkciiuQVAbiOz3BCkGH_5i6SNtGMem-_SzAFAiAF_4bZYb-tr3zmteGtwBCL8GABjWRcZj4SBY-EJI1Ecw"
         istek = self.oturum.post(
             url     = "https://firebaseremoteconfig.googleapis.com/v1/projects/791583031279/namespaces/firebase:fetch",
             headers = {
                 "X-Goog-Api-Key"    : "AIzaSyBbhpzG8Ecohu9yArfCO5tF13BQLhjLahc",
                 "X-Android-Package" : "com.rectv.shot",
-                "User-Agent"        : "Dalvik/2.1.0 (Linux; U; Android 12)",
+                "User-Agent"        : "Dalvik/2.1.0 (Linux; U; Android 15)",
+                "X-Goog-Firebase-Installations-Auth" : _id,
             },
             json    = {
-                "appBuild"      : "81",
-                "appInstanceId" : "evON8ZdeSr-0wUYxf0qs68",
-                "appId"         : "1:791583031279:android:1",
+                "appInstanceIdToken" : _id,
+                "appBuild"      : "108",
+                "appInstanceId" : "cIESHPfPQTGW9bsKUpmTjv",
+                "appId"         : "1:791583031279:android:244c3d507ab299fcabc01a",
             }
         )
         return istek.json().get("entries", {}).get("api_url", "").replace("/api/", "")
