@@ -88,7 +88,7 @@ class UgurFilm(PluginBase):
         title       = secici.select_text("div.bilgi h2")
         poster      = secici.select_poster("div.resim img")
         description = secici.select_text("div.slayt-aciklama")
-        rating      = secici.select_text("b#puandegistir")
+        rating      = secici.select_text("b  #puandegistir")
         tags        = secici.select_texts("p.tur a[href*='/category/']")
         year        = secici.extract_year("a[href*='/yil/']")
         actors      = secici.select_texts("li.oyuncu-k span")
@@ -157,7 +157,7 @@ class UgurFilm(PluginBase):
                     return results
 
                 # İç kaynaklı ise 3 alternatif için paralel istek at
-                vid = iframe.split("vid=")[-1]
+                vid   = iframe.split("vid=")[-1]
                 tasks = [
                     process_alt(vid, "vidmoly", "0"),
                     process_alt(vid, "ok.ru", "1"),

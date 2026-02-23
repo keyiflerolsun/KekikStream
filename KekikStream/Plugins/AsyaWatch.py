@@ -64,7 +64,7 @@ class AsyaWatch(PluginBase):
 
         # Kategori API
         api_url = f"{self.main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2026&imdbPointMin=1&imdbPointMax=10&categoryIdsComma={url}&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage={page}&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="
-        istek = await self.httpx.post(
+        istek   = await self.httpx.post(
             api_url,
             headers = {
                 "Accept"           : "application/json, text/plain, */*",
@@ -135,7 +135,7 @@ class AsyaWatch(PluginBase):
     def _parse_secure_data(self, html: str) -> dict:
         """__NEXT_DATA__ scriptinden secureData'yı çöz"""
         secici = HTMLHelper(html)
-        script = secici.select_first("script#__NEXT_DATA__")
+        script = secici.select_first("script  #__NEXT_DATA__")
         if not script:
             return {}
         try:
@@ -143,7 +143,7 @@ class AsyaWatch(PluginBase):
             secure_data = next_data["props"]["pageProps"]["secureData"]
             if isinstance(secure_data, str):
                 secure_data = secure_data.strip('"')
-            decoded = base64.b64decode(secure_data).decode("utf-8", errors="replace")
+            decoded     = base64.b64decode(secure_data).decode("utf-8", errors="replace")
             return json.loads(decoded)
         except Exception:
             return {}
@@ -152,7 +152,7 @@ class AsyaWatch(PluginBase):
         istek = await self.httpx.get(url)
         data  = self._parse_secure_data(istek.text)
 
-        item = data.get("contentItem", {})
+        item        = data.get("contentItem", {})
         title       = item.get("original_title", "")
         poster      = self._fix_poster(item.get("poster_url", ""))
         description = item.get("description", "")
@@ -163,7 +163,7 @@ class AsyaWatch(PluginBase):
 
         related = data.get("RelatedResults", {})
 
-        actors = []
+        actors    = []
         cast_data = related.get("getSerieCastsById", {}).get("result", [])
         if not cast_data:
             cast_data = related.get("getMovieCastsById", {}).get("result", [])
@@ -235,10 +235,10 @@ class AsyaWatch(PluginBase):
             if movie_parts.get("state"):
                 first_part = (movie_parts.get("result") or [None])[0]
                 if first_part:
-                    part_id = first_part.get("id")
-                    src_key = f"getMoviePartSourcesById_{part_id}"
+                    part_id      = first_part.get("id")
+                    src_key      = f"getMoviePartSourcesById_{part_id}"
                     part_sources = related.get(src_key, {})
-                    first_src = (part_sources.get("result") or [None])[0]
+                    first_src    = (part_sources.get("result") or [None])[0]
                     if first_src:
                         source_content = first_src.get("source_content", "")
 
@@ -256,7 +256,7 @@ class AsyaWatch(PluginBase):
         if "sn.dplayer74.site" in iframe_src:
             iframe_src = iframe_src.replace("sn.dplayer74.site", "sn.hotlinger.com")
 
-        response = []
+        response    = []
         data_result = await self.extract(iframe_src, referer=f"{self.main_url}/")
         self.collect_results(response, data_result)
 

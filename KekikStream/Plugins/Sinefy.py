@@ -15,21 +15,21 @@ class Sinefy(PluginBase):
         f"{main_url}/en-yenifilmler"             : "Yeni Filmler",
         f"{main_url}/netflix-filmleri-izle"      : "Netflix Filmleri",
         f"{main_url}/dizi-izle/netflix"          : "Netflix Dizileri",
-        f"{main_url}/gozat/filmler/animasyon" 	 : "Animasyon",
-        f"{main_url}/gozat/filmler/komedi" 		 : "Komedi",
-        f"{main_url}/gozat/filmler/suc" 		 : "Suç",
-        f"{main_url}/gozat/filmler/aile" 		 : "Aile",
-        f"{main_url}/gozat/filmler/aksiyon" 	 : "Aksiyon",
-        f"{main_url}/gozat/filmler/macera" 		 : "Macera",
-        f"{main_url}/gozat/filmler/fantastik" 	 : "Fantastik",
-        f"{main_url}/gozat/filmler/korku" 		 : "Korku",
-        f"{main_url}/gozat/filmler/romantik" 	 : "Romantik",
-        f"{main_url}/gozat/filmler/savas" 		 : "Savaş",
-        f"{main_url}/gozat/filmler/gerilim" 	 : "Gerilim",
+        f"{main_url}/gozat/filmler/animasyon"      : "Animasyon",
+        f"{main_url}/gozat/filmler/komedi"          : "Komedi",
+        f"{main_url}/gozat/filmler/suc"          : "Suç",
+        f"{main_url}/gozat/filmler/aile"          : "Aile",
+        f"{main_url}/gozat/filmler/aksiyon"      : "Aksiyon",
+        f"{main_url}/gozat/filmler/macera"          : "Macera",
+        f"{main_url}/gozat/filmler/fantastik"      : "Fantastik",
+        f"{main_url}/gozat/filmler/korku"          : "Korku",
+        f"{main_url}/gozat/filmler/romantik"      : "Romantik",
+        f"{main_url}/gozat/filmler/savas"          : "Savaş",
+        f"{main_url}/gozat/filmler/gerilim"      : "Gerilim",
         f"{main_url}/gozat/filmler/bilim-kurgu"  : "Bilim Kurgu",
-        f"{main_url}/gozat/filmler/dram" 		 : "Dram",
-        f"{main_url}/gozat/filmler/gizem" 		 : "Gizem",
-        f"{main_url}/gozat/filmler/western" 	 : "Western",
+        f"{main_url}/gozat/filmler/dram"          : "Dram",
+        f"{main_url}/gozat/filmler/gizem"          : "Gizem",
+        f"{main_url}/gozat/filmler/western"      : "Western",
         f"{main_url}/gozat/filmler/ulke/turkiye" : "Türk Filmleri",
         f"{main_url}/gozat/filmler/ulke/kore"    : "Kore Filmleri"
     }
@@ -47,10 +47,10 @@ class Sinefy(PluginBase):
 
         results = []
         for item in secici.select("div.poster-with-subject, div.dark-segment div.poster-md.poster"):
-            title  = item.select_text("h2")
-            href   = item.select_attr("a", "href")
+            title       = item.select_text("h2")
+            href        = item.select_attr("a", "href")
             poster_attr = item.select_attr("img", "data-srcset")
-            poster = poster_attr.split(",")[0].split(" ")[0] if poster_attr else None
+            poster      = poster_attr.split(",")[0].split(" ")[0] if poster_attr else None
 
             if title and href:
                 results.append(MainPageResult(
@@ -95,7 +95,7 @@ class Sinefy(PluginBase):
 
         with contextlib.suppress(Exception):
             # Extract JSON data from response (might contain garbage chars at start)
-            raw = response.text
+            raw        = response.text
             json_start = raw.find('{')
             if json_start != -1:
                 clean_json = raw[json_start:]
@@ -142,10 +142,10 @@ class Sinefy(PluginBase):
         description = secici.select_text("p#tv-series-desc")
         tags        = secici.select_texts("div.item.categories a")
         rating      = secici.select_text("span.color-imdb")
-        actors   = secici.select_texts("div.content h5")
-        year     = secici.extract_year("div.truncate")
-        duration = secici.regex_first(r"(\d+)", secici.select_text(".media-meta td:last-child"))
-        duration = None if (duration == year or (duration and int(duration) < 40)) else duration
+        actors      = secici.select_texts("div.content h5")
+        year        = secici.extract_year("div.truncate")
+        duration    = secici.regex_first(r"(\d+)", secici.select_text(".media-meta td:last-child"))
+        duration    = None if (duration == year or (duration and int(duration) < 40)) else duration
 
         common_info = {
             "url"         : url,

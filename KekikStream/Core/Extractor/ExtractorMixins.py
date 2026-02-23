@@ -62,7 +62,7 @@ class SecuredLinkExtractor(ExtractorBase):
         v_id     = self._parse_video_id(url)
         base_url = self._get_base_url(url)
 
-        resp = await self.httpx.post(
+        resp    = await self.httpx.post(
             url     = f"{base_url}/player/index.php?data={v_id}&do=getVideo",
             data    = {"hash": v_id, "r": ref},
             headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
@@ -277,20 +277,20 @@ class NonceDecryptExtractor(ExtractorBase):
 
     # ISO 639 kısa koddan dil adına dönüştürme
     _LANG_MAP = {
-        "ara": "Arabic",      "bul": "Bulgarian",  "cze": "Czech",      "dan": "Danish",
-        "dut": "Dutch",       "eng": "English",     "est": "Estonian",   "fin": "Finnish",
-        "fre": "French",      "ger": "German",      "gre": "Greek",     "heb": "Hebrew",
-        "hin": "Hindi",       "hrv": "Croatian",    "hun": "Hungarian", "ice": "Icelandic",
-        "ind": "Indonesian",  "ita": "Italian",     "jpn": "Japanese",  "kor": "Korean",
-        "lat": "Latvian",     "lit": "Lithuanian",  "may": "Malay",     "nob": "Norwegian",
-        "nor": "Norwegian",   "per": "Persian",     "pol": "Polish",    "por": "Portuguese",
-        "rum": "Romanian",    "rus": "Russian",     "slv": "Slovenian", "spa": "Spanish",
-        "swe": "Swedish",     "tha": "Thai",        "tur": "Turkish",   "ukr": "Ukrainian",
-        "vie": "Vietnamese",  "chi": "Chinese",     "zho": "Chinese",   "srp": "Serbian",
-        "scc": "Serbian",     "alb": "Albanian",    "bos": "Bosnian",   "cat": "Catalan",
-        "mac": "Macedonian",  "geo": "Georgian",    "arm": "Armenian",  "ben": "Bengali",
-        "tam": "Tamil",       "tel": "Telugu",      "mal": "Malayalam", "mar": "Marathi",
-        "pan": "Punjabi",     "urd": "Urdu",        "fil": "Filipino",  "msa": "Malay",
+        "ara" : "Arabic",      "bul": "Bulgarian",  "cze": "Czech",      "dan": "Danish",
+        "dut" : "Dutch",       "eng": "English",     "est": "Estonian",   "fin": "Finnish",
+        "fre" : "French",      "ger": "German",      "gre": "Greek",     "heb": "Hebrew",
+        "hin" : "Hindi",       "hrv": "Croatian",    "hun": "Hungarian", "ice": "Icelandic",
+        "ind" : "Indonesian",  "ita": "Italian",     "jpn": "Japanese",  "kor": "Korean",
+        "lat" : "Latvian",     "lit": "Lithuanian",  "may": "Malay",     "nob": "Norwegian",
+        "nor" : "Norwegian",   "per": "Persian",     "pol": "Polish",    "por": "Portuguese",
+        "rum" : "Romanian",    "rus": "Russian",     "slv": "Slovenian", "spa": "Spanish",
+        "swe" : "Swedish",     "tha": "Thai",        "tur": "Turkish",   "ukr": "Ukrainian",
+        "vie" : "Vietnamese",  "chi": "Chinese",     "zho": "Chinese",   "srp": "Serbian",
+        "scc" : "Serbian",     "alb": "Albanian",    "bos": "Bosnian",   "cat": "Catalan",
+        "mac" : "Macedonian",  "geo": "Georgian",    "arm": "Armenian",  "ben": "Bengali",
+        "tam" : "Tamil",       "tel": "Telugu",      "mal": "Malayalam", "mar": "Marathi",
+        "pan" : "Punjabi",     "urd": "Urdu",        "fil": "Filipino",  "msa": "Malay",
     }
 
     def _lang_from_url(self, url: str) -> str | None:
@@ -351,8 +351,8 @@ class NonceDecryptExtractor(ExtractorBase):
                 secret   = key_resp.json().get(self.key_name)
                 if secret:
                     dec_resp = await self.httpx.get(
-                        url    = self._decode_api,
-                        params = {
+                        url      = self._decode_api,
+                        params   = {
                             "encrypted_data" : enc_file,
                             "nonce"          : nonce,
                             "secret"         : secret

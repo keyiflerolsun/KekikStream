@@ -131,7 +131,7 @@ class TvDiziler(PluginBase):
                 actors.append(name.strip())
 
         episodes = []
-        szn = 1
+        szn      = 1
         for sezon in secici.select("div.series-profile-episode-list"):
             blm = 1
             for bolum in sezon.select("li"):
@@ -226,7 +226,7 @@ class TvDiziler(PluginBase):
             iframe_src = secici.select_attr("iframe", "src")
             if iframe_src:
                 iframe_src = self.fix_url(iframe_src)
-                data = await self.extract(iframe_src, referer=f"{self.main_url}/")
+                data       = await self.extract(iframe_src, referer=f"{self.main_url}/")
                 self.collect_results(response, data)
 
         return self.deduplicate(response)

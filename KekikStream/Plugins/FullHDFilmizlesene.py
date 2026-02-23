@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
-from Kekik.Sifreleme   import StringCodec
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from Kekik.Sifreleme  import StringCodec
 import json
 
 class FullHDFilmizlesene(PluginBase):
@@ -45,8 +45,8 @@ class FullHDFilmizlesene(PluginBase):
 
         results = []
         for veri in secici.select("li.film"):
-            title = veri.select_text("span.film-title")
-            href = veri.select_attr("a", "href")
+            title  = veri.select_text("span.film-title")
+            href   = veri.select_attr("a", "href")
             poster = veri.select_attr("img", "data-src")
 
             if title and href:

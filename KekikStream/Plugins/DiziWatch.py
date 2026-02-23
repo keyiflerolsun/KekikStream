@@ -32,7 +32,7 @@ class DiziWatch(PluginBase):
     async def _init_session(self):
         if self._session_cookies and self._c_key and self._c_value:
             return
-        resp = await self.httpx.get(f"{self.main_url}/anime-arsivi")
+        resp                  = await self.httpx.get(f"{self.main_url}/anime-arsivi")
         self._session_cookies = {k: unquote(v) for k, v in resp.cookies.items()}
 
         secici = HTMLHelper(resp.text)
@@ -159,7 +159,7 @@ class DiziWatch(PluginBase):
             if not b_href:
                 continue
 
-            b_name = bolum.select_text("span.hidden.sm\\:block") or bolum.select_text("span.hidden")
+            b_name  = bolum.select_text("span.hidden.sm\\:block") or bolum.select_text("span.hidden")
             se_text = bolum.select_text("span.text-sm") or ""
 
             b_season = None

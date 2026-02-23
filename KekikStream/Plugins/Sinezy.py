@@ -73,9 +73,9 @@ class Sinezy(PluginBase):
 
             if title and href:
                 results.append(SearchResult(
-                    title   = title,
-                    url     = self.fix_url(href),
-                    poster  = self.fix_url(poster)
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster)
                 ))
 
         return results
@@ -118,8 +118,8 @@ class Sinezy(PluginBase):
                 iframe      = decoded_sec.select_attr('iframe', 'src')
 
                 if iframe:
-                    iframe = self.fix_url(iframe)
-                    data = await self.extract(iframe, name_override=name)
+                    iframe  = self.fix_url(iframe)
+                    data    = await self.extract(iframe, name_override=name)
                     results = []
                     self.collect_results(results, data)
                     if results:

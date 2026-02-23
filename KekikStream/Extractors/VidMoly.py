@@ -1,4 +1,5 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
 from KekikStream.Core  import PackedJSExtractor, ExtractResult, Subtitle, HTMLHelper

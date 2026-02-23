@@ -61,7 +61,7 @@ class YabanciDizi(PluginBase):
                 title  = item.get("s_name")
                 image  = item.get("s_image")
                 slug   = item.get("s_link")
-                s_type = item.get("s_type") # 0: dizi, 1: film
+                s_type = item.get("s_type")  # 0: dizi, 1: film
 
                 poster = f"{self.main_url}/uploads/series/{image}" if image else None
 
@@ -85,13 +85,13 @@ class YabanciDizi(PluginBase):
         secici = HTMLHelper(istek.text)
 
         title       = (secici.select_attr("meta[property='og:title']", "content") or "").split("|")[0].strip() or secici.select_text("h1")
-        poster      = secici.select_poster("div#series-profile-wrapper img")
-        description = secici.select_text("p#tv-series-desc")
+        poster      = secici.select_poster("div  #series-profile-wrapper img")
+        description = secici.select_text("p  #tv-series-desc")
         year        = secici.extract_year("td div.truncate")
         tags        = secici.meta_list("Türü", container_selector="div.item")
         rating      = secici.meta_value("IMDb Puanı", container_selector="div.media-meta")
         duration    = secici.extract_duration("Süre", container_selector="div.media-meta")
-        actors      = secici.meta_list("Oyuncular", container_selector="div.item") or secici.select_texts("div#common-cast-list div.item h5")
+        actors      = secici.meta_list("Oyuncular", container_selector="div.item") or secici.select_texts("div  #common-cast-list div.item h5")
 
         common_info = {
             "url"         : url,
@@ -129,10 +129,10 @@ class YabanciDizi(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # 1. Ana sayfayı çek
-        istek = await self.async_cf_get(url, headers={"Referer": f"{self.main_url}/"})
+        istek  = await self.async_cf_get(url, headers={"Referer": f"{self.main_url}/"})
         secici = HTMLHelper(istek.text)
 
-        results = []
+        results      = []
         timestamp_ms = int(time.time() * 1000) - 50000
 
         # 2. Dil Tablarını Bul
@@ -140,7 +140,7 @@ class YabanciDizi(PluginBase):
 
         async def process_tab(tab_el):
             data_eid  = tab_el.attrs.get("data-eid")
-            data_type = tab_el.attrs.get("data-type") # 1: Altyazı, 2: Dublaj
+            data_type = tab_el.attrs.get("data-type")  # 1: Altyazı, 2: Dublaj
             if not data_eid or not data_type:
                 return []
 
@@ -199,26 +199,26 @@ class YabanciDizi(PluginBase):
                         # API sayfasını çekip içindeki iframe'i bulalım
                         api_resp = await self.async_cf_get(
                             src["api_url"],
-                            headers={"Referer": f"{self.main_url}/"},
-                            cookies={"udys": str(timestamp_ms)}
+                            headers = {"Referer": f"{self.main_url}/"},
+                            cookies = {"udys": str(timestamp_ms)}
                         )
 
                         api_sel = HTMLHelper(api_resp.text)
                         iframe  = api_sel.select_attr("iframe", "src")
 
                         if not iframe and "drive" in src["api_url"]:
-                            t_sec = int(time.time())
+                            t_sec      = int(time.time())
                             drives_url = f"{src['api_url'].replace('/api/drive/', '/api/drives/')}?t={t_sec}"
-                            api_resp = await self.async_cf_get(
+                            api_resp   = await self.async_cf_get(
                                 drives_url,
-                                headers={"Referer": src["api_url"]},
-                                cookies={"udys": str(timestamp_ms)}
+                                headers = {"Referer": src["api_url"]},
+                                cookies = {"udys": str(timestamp_ms)}
                             )
                             api_sel = HTMLHelper(api_resp.text)
                             iframe  = api_sel.select_attr("iframe", "src")
 
                         if iframe:
-                            prefix = f"{src['dil']} | {src['name']}"
+                            prefix    = f"{src['dil']} | {src['name']}"
                             extracted = await self.extract(self.fix_url(iframe), prefix=prefix)
                             if extracted:
                                 self.collect_results(tab_results, extracted)

@@ -27,9 +27,9 @@ class MolyStream(ExtractorBase):
             subtitles.append(Subtitle(name=s_name, url=self.fix_url(s_url)))
 
         return ExtractResult(
-            name      = self.name,
-            url       = v_url,
-            referer   = v_url.replace("/sheila", "") if v_url else None,
+            name       = self.name,
+            url        = v_url,
+            referer    = v_url.replace("/sheila", "") if v_url else None,
             user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0",
-            subtitles = subtitles
+            subtitles  = subtitles
         )

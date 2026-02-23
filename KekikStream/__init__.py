@@ -19,11 +19,11 @@ class KekikStream:
         self.ui        = UIManager()
         self.media     = MediaManager()
 
-        self.current_plugin: PluginBase = None
-        self.is_series                  = False
-        self.series_info: SeriesInfo    = None
-        self.current_episode_index      = -1
-        self.episode_title              = ""
+        self.current_plugin        : PluginBase = None
+        self.is_series                          = False
+        self.series_info           : SeriesInfo = None
+        self.current_episode_index              = -1
+        self.episode_title                      = ""
 
     async def show_header(self, title: str):
         """Konsolu temizle ve başlık göster"""
@@ -95,7 +95,7 @@ class KekikStream:
         """Tüm eklentilerde ara"""
         await self.show_header("[bold cyan]Tüm Eklentilerde Ara[/bold cyan]")
 
-        query = await self.ui.prompt_text("Arama sorgusu:")
+        query       = await self.ui.prompt_text("Arama sorgusu:")
         all_results = []
 
         # Maksimum 5 eşzamanlı arama için semaphore
@@ -196,7 +196,7 @@ class KekikStream:
         for idx, ep in enumerate(series_info.episodes):
             if ep.url == selected:
                 self.current_episode_index = idx
-                self.episode_title = (f"{ep.season}. Sezon {ep.episode}. Bölüm" +  (f" - {ep.title}" if ep.title else ""))
+                self.episode_title         = (f"{ep.season}. Sezon {ep.episode}. Bölüm" +  (f" - {ep.title}" if ep.title else ""))
                 break
 
         links = await self.current_plugin.load_links(selected)
@@ -282,8 +282,8 @@ class KekikStream:
         if not selected:
             return await self.content_finished()
 
-        url = selected.url
-        extractor: ExtractorBase = self.extractor.find_extractor(url)
+        url                       = selected.url
+        extractor : ExtractorBase = self.extractor.find_extractor(url)
 
         if not extractor:
             konsol.print("[bold red]Extractor bulunamadı![/bold red]")

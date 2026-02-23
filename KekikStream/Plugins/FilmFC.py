@@ -38,9 +38,9 @@ class FilmFC(PluginBase):
             poster = veri.select_poster("img")
 
             articles.append({
-                "title" : title,
-                "url"   : self.fix_url(href),
-                "poster": self.fix_url(poster),
+                "title"  : title,
+                "url"    : self.fix_url(href),
+                "poster" : self.fix_url(poster),
             })
 
         return articles

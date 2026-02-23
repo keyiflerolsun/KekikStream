@@ -9,8 +9,8 @@ from ..Extractor.ExtractorManager import ExtractorManager
 class PluginLoader:
     def __init__(self, plugins_dir: str, ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
         # Yerel ve global eklenti dizinlerini ayarla
-        self.ex_manager = ex_manager
-        self.proxy      = proxy
+        self.ex_manager         = ex_manager
+        self.proxy              = proxy
         self.local_plugins_dir  = Path(plugins_dir).resolve()
         self.global_plugins_dir = Path(__file__).parent.parent.parent / "Plugins"
 
@@ -20,7 +20,7 @@ class PluginLoader:
             cikis_yap(False)
 
     def load_all(self) -> dict[str, PluginBase]:
-        plugins         = {}
+        plugins          = {}
         local_dir_exists = self.local_plugins_dir.exists() and self.local_plugins_dir.resolve() != self.global_plugins_dir.resolve()
 
         # Eğer yerel dizin varsa, sadece oradan yükle (eklenti geliştirme/yayınlama modu)

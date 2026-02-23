@@ -11,7 +11,7 @@ class TurkeyPlayer(ExtractorBase):
         if referer:
             self.httpx.headers.update({"Referer": referer})
 
-        istek       = await self.httpx.get(url)
+        istek        = await self.httpx.get(url)
         page_content = istek.text
 
         video_json_str = HTMLHelper(page_content).regex_first(r'(?s)var\s+video\s*=\s*(\{.*?\});')

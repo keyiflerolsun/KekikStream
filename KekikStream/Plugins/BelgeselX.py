@@ -141,8 +141,8 @@ class BelgeselX(PluginBase):
 
         # Meta bilgilerinden yıl ve puanı çıkar
         meta_items = secici.select_texts("div.gen-single-meta-holder ul li")
-        year   = None
-        rating = None
+        year       = None
+        rating     = None
         for item in meta_items:
             if not year:
                 if y_match := secici.regex_first(r"\b((?:19|20)\d{2})\b", item):

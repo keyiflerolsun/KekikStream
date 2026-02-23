@@ -45,8 +45,8 @@ class SezonlukDizi(PluginBase):
         emb    = js.regex_first(r"dataEmbed(.*?)\.asp")
 
         return {
-            "alternatif": alt or "",
-            "embed":      emb or ""
+            "alternatif" : alt or "",
+            "embed"      : emb or ""
         }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -95,7 +95,7 @@ class SezonlukDizi(PluginBase):
         title       = secici.select_text("div.header") or ""
         poster      = secici.select_poster("div.image img")
         year        = secici.extract_year("div.extra span")
-        description = secici.select_text("span#tartismayorum-konu")
+        description = secici.select_text("span  #tartismayorum-konu")
         tags        = secici.select_texts("div.labels a[href*='tur']")
         rating      = secici.regex_first(r"[\d.,]+", secici.select_text("div.dizipuani a div"))
 

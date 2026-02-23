@@ -103,7 +103,7 @@ class DiziBox(PluginBase):
 
         episodes = []
         for link in secici.select_attrs("div#seasons-list a", "href"):
-            r = await self.httpx.get(self.fix_url(link))
+            r        = await self.httpx.get(self.fix_url(link))
             s_secici = HTMLHelper(r.text)
             for bolum in s_secici.select("article.grid-box"):
                 name = bolum.select_text("div.post-title a")
@@ -138,7 +138,7 @@ class DiziBox(PluginBase):
 
             istek  = await self.httpx.get(iframe_link)
             secici = HTMLHelper(istek.text)
-            iframe = secici.select_attr("div#Player iframe", "src")
+            iframe = secici.select_attr("div  #Player iframe", "src")
 
             if iframe:
                 self.httpx.headers.update({"Referer": self.main_url})
@@ -186,7 +186,7 @@ class DiziBox(PluginBase):
         current_source_name = secici.select_text("div.video-toolbar option[selected]") or self.name
 
         results     = []
-        main_iframe = secici.select_attr("div#video-area iframe", "src")
+        main_iframe = secici.select_attr("div  #video-area iframe", "src")
 
         if main_iframe:
             if decoded := await self._iframe_decode(self.name, main_iframe, url):
@@ -206,7 +206,7 @@ class DiziBox(PluginBase):
             alt_istek.raise_for_status()
 
             alt_secici = HTMLHelper(alt_istek.text)
-            alt_iframe = alt_secici.select_attr("div#video-area iframe", "src")
+            alt_iframe = alt_secici.select_attr("div  #video-area iframe", "src")
 
             if alt_iframe:
                 if decoded := await self._iframe_decode(alt_name, alt_iframe, url):

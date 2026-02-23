@@ -94,8 +94,8 @@ class DiziMag(PluginBase):
         istek  = await self.httpx.get(url, headers={"Referer": self.main_url})
         secici = HTMLHelper(istek.text)
 
-        title_el = secici.select_first("div.page-title h1 a")
-        title    = title_el.text(strip=True) if title_el else ""
+        title_el  = secici.select_first("div.page-title h1 a")
+        title     = title_el.text(strip=True) if title_el else ""
         org_title = secici.select_text("div.page-title p") or ""
         if org_title and org_title != title:
             title = f"{title} - {org_title}"
@@ -113,7 +113,7 @@ class DiziMag(PluginBase):
 
         if "/dizi/" in url:
             episodes = []
-            szn = 1
+            szn      = 1
             for sezon in secici.select("div.series-profile-episode-list"):
                 blm = 1
                 for bolum in sezon.select("li"):
@@ -170,7 +170,7 @@ class DiziMag(PluginBase):
         if not iframe_src:
             return []
 
-        iframe_src = self.fix_url(iframe_src)
+        iframe_src  = self.fix_url(iframe_src)
         iframe_resp = await self.httpx.get(iframe_src, headers={"Referer": f"{self.main_url}/"})
 
         response = []

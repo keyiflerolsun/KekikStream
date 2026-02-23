@@ -9,7 +9,7 @@ class Vidoza(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         self.httpx.headers.update({"Referer": referer or url})
 
-        resp = await self.httpx.get(url)
+        resp  = await self.httpx.get(url)
         v_url = HTMLHelper(resp.text).select_attr("source", "src")
 
         if not v_url:

@@ -48,7 +48,7 @@ class AnimeciX(PluginBase):
                 f"{url}{sep}page={page}&perPage=16",
                 headers={"x-e-h": self._XEH},
             )
-            data = resp.json()
+            data  = resp.json()
             items = data.get("pagination", {}).get("data", [])
 
             for item in items:

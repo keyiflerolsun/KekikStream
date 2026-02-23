@@ -15,17 +15,17 @@ class SelcukFlix(PluginBase):
         ""                         : "Yeni Diziler",
         ""                         : "Kore Dizileri",
         ""                         : "Yerli Diziler",
-        "15"                       : "Aile",
-        "17"                       : "Animasyon",
-        "9"                        : "Aksiyon",
-        "5"                        : "Bilim Kurgu",
-        "2"                        : "Dram",
-        "12"                       : "Fantastik",
-        "18"                       : "Gerilim",
-        "3"                        : "Gizem",
-        "8"                        : "Korku",
-        "4"                        : "Komedi",
-        "7"                        : "Romantik"
+        "15" : "Aile",
+        "17" : "Animasyon",
+        "9"  : "Aksiyon",
+        "5"  : "Bilim Kurgu",
+        "2"  : "Dram",
+        "12" : "Fantastik",
+        "18" : "Gerilim",
+        "3"  : "Gizem",
+        "8"  : "Korku",
+        "4"  : "Komedi",
+        "7"  : "Romantik"
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -207,14 +207,14 @@ class SelcukFlix(PluginBase):
             year        = str(item.get("release_year") or item.get("releaseYear") or "")
             duration    = item.get("total_minutes") or item.get("totalMinutes")
 
-            tags = []
+            tags     = []
             tags_raw = item.get("category_names") or item.get("categoryNames") or item.get("categories")
             if isinstance(tags_raw, str):
                 tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
             elif isinstance(tags_raw, list):
                 tags = [c.get("title") if isinstance(c, dict) else str(c) for c in tags_raw]
 
-            actors = []
+            actors     = []
             casts_data = related_results.get("getSerieCastsById") or related_results.get("getMovieCastsById")
             if casts_data and isinstance(casts_data, dict) and casts_data.get("result"):
                 actors = [cast.get("name") for cast in casts_data["result"] if cast.get("name")]
@@ -289,7 +289,7 @@ class SelcukFlix(PluginBase):
                     parts = movie_parts.get("result", [])
                     if parts:
                         first_part_id = parts[0].get("id")
-                        key = f"getMoviePartSourcesById_{first_part_id}"
+                        key           = f"getMoviePartSourcesById_{first_part_id}"
                         if key in related_results:
                             res = related_results[key].get("result", [])
                             if res:
@@ -304,7 +304,7 @@ class SelcukFlix(PluginBase):
                     if "sn.dplayer74.site" in iframe_src:
                         iframe_src = iframe_src.replace("sn.dplayer74.site", "sn.hotlinger.com")
 
-                    data = await self.extract(iframe_src)
+                    data    = await self.extract(iframe_src)
                     results = []
                     self.collect_results(results, data)
                     if results:

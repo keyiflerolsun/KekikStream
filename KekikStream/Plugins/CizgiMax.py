@@ -77,14 +77,14 @@ class CizgiMax(PluginBase):
 
         title       = secici.select_text("h1.page-title") or ""
         poster      = secici.select_attr("img.series-profile-thumb", "src")
-        description = secici.select_text("p#tv-series-desc")
+        description = secici.select_text("p  #tv-series-desc")
         tags        = secici.select_texts("div.genre-item a")
 
         episodes = []
         for veri in secici.select("div.asisotope div.ajax_post"):
-            ep_name    = veri.select_text("span.episode-names")
-            ep_href    = veri.select_attr("a", "href")
-            szn_name   = veri.select_text("span.season-name") or ""
+            ep_name  = veri.select_text("span.episode-names")
+            ep_href  = veri.select_attr("a", "href")
+            szn_name = veri.select_text("span.season-name") or ""
 
             if not ep_name or not ep_href:
                 continue

@@ -80,8 +80,8 @@ class FilmBip(PluginBase):
 
         results = []
         for veri in secici.select("li"):
-            title = veri.select_text("a.block.truncate")
-            href = veri.select_attr("a", "href")
+            title  = veri.select_text("a.block.truncate")
+            href   = veri.select_attr("a", "href")
             poster = veri.select_attr("img.lazy", "data-src")
 
             if title and href:
@@ -147,8 +147,8 @@ class FilmBip(PluginBase):
                 # Div yok veya boş, AJAX ile çek
                 with suppress(Exception):
                     hash_resp = await self.httpx.post(
-                        url     = f"{self.main_url}/get/video/group",
-                        headers = {
+                        url       = f"{self.main_url}/get/video/group",
+                        headers   = {
                             "X-Requested-With" : "XMLHttpRequest",
                             "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
                             "Referer"          : url
@@ -169,7 +169,7 @@ class FilmBip(PluginBase):
                                 html_content = json_data.get("content") or json_data.get("html") or json_data.get("theme")
                                 if html_content:
                                     sub_helper = HTMLHelper(html_content)
-                                    sub_btns = sub_helper.select("ul li button")
+                                    sub_btns   = sub_helper.select("ul li button")
                                     for btn in sub_btns:
                                         button_data.append((btn.text(strip=True), btn.attrs.get("data-hhs")))
 

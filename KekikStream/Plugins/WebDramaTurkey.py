@@ -37,13 +37,13 @@ class WebDramaTurkey(PluginBase):
                 if href:
                     href = re.sub(r"/\d+-sezon/\d+-bolum$", "/", href)
 
-                poster = None
+                poster   = None
                 media_el = veri.select_first("div.media.media-episode")
                 if media_el:
                     style = media_el.get("style") if hasattr(media_el, "get") else ""
                     if style:
                         style_decoded = style.replace("&quot;", '"')
-                        m = re.search(r'url\("([^"]+)"\)', style_decoded)
+                        m             = re.search(r'url\("([^"]+)"\)', style_decoded)
                         if m:
                             poster = m.group(1)
                     if not poster:
@@ -156,7 +156,7 @@ class WebDramaTurkey(PluginBase):
                 return results
 
             iframe_resp = await self.httpx.get(iframe_url, headers={"Referer": referer})
-            cookie = iframe_resp.cookies.get("fireplayer_player", "")
+            cookie      = iframe_resp.cookies.get("fireplayer_player", "")
 
             resp = await self.httpx.post(
                 f"https://dtpasn.asia/player/index.php?data={video_id}&do=getVideo",
@@ -213,7 +213,7 @@ class WebDramaTurkey(PluginBase):
                     return None
 
                 # İkinci iframe katmanı
-                if_resp = await self.httpx.get(iframe_src, headers={"Referer": url})
+                if_resp   = await self.httpx.get(iframe_src, headers={"Referer": url})
                 if_secici = HTMLHelper(if_resp.text)
                 final_src = if_secici.select_attr("iframe", "src")
                 if final_src:

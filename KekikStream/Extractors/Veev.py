@@ -17,7 +17,7 @@ class Veev(ExtractorBase):
         # Python dictionary key integer, value string
         # Başlangıçta 0-255 ascii karakterleri
         lut = {i: chr(i) for i in range(256)}
-        n = 256
+        n   = 256
 
         c = encoded[0]
         result.append(c)
@@ -69,7 +69,7 @@ class Veev(ExtractorBase):
             with suppress(Exception):
                 # remove optional whitespace just in case
                 clean_hex = "".join(text.split())
-                arr = bytes.fromhex(clean_hex)
+                arr       = bytes.fromhex(clean_hex)
                 # utf-8 decode, replace errors
                 text = arr.decode('utf-8', errors='replace')
 
@@ -85,8 +85,8 @@ class Veev(ExtractorBase):
         # Sayfayı al
         # Referer lazım mı? Genelde lazım olabilir.
         page_url = f"{self.main_url}/e/{video_id}"
-        resp = await self.httpx.get(page_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
-        html = resp.text
+        resp     = await self.httpx.get(page_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+        html     = resp.text
 
         # Regex ile şifreli stringleri bul
         # Regex: [.\s'](?:fc|_vvto\[[^]]*)(?:['\]]*)?\s*[:=]\s*['"]([^'"]+)

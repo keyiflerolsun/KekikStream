@@ -83,15 +83,15 @@ class HDrezka(PluginBase):
         tags     = [t.strip() for t in re.sub(r"<[^>]+>", "", tags_raw).split(",")] if tags_raw else []
         year     = secici.regex_first(r"Дата выхода</h2>:</td>\s*<td>.*?(\d{4})")
 
-        description = secici.select_text("div.b-post__description_text")
-        rating      = secici.regex_first(r"IMDb.*?([\d\.]+)")
-        actors      = [a.text().strip() for a in secici.select("table.b-post__info > tbody > tr:last-child span.item span[itemprop=name]")]
+        description  = secici.select_text("div.b-post__description_text")
+        rating       = secici.regex_first(r"IMDb.*?([\d\.]+)")
+        actors       = [a.text().strip() for a in secici.select("table.b-post__info > tbody > tr:last-child span.item span[itemprop=name]")]
         duration_raw = secici.regex_first(r"Время.*?<td.*?>(.*?)</td>", flags=re.S)
         duration     = int(re.search(r"(\d+)", duration_raw).group(1)) if duration_raw and re.search(r"(\d+)", duration_raw) else None
 
         # Extract translators
         translators = []
-        t_id = None
+        t_id        = None
 
         for li in secici.select("ul#translators-list li"):
             tid = li.attrs.get("data-translator_id")
@@ -99,11 +99,11 @@ class HDrezka(PluginBase):
                 continue
 
             translators.append({
-                "translator_name": li.text().strip(),
-                "translator_id": tid,
-                "camrip": li.attrs.get("data-camrip"),
-                "ads": li.attrs.get("data-ads"),
-                "director": li.attrs.get("data-director")
+                "translator_name" : li.text().strip(),
+                "translator_id"   : tid,
+                "camrip"          : li.attrs.get("data-camrip"),
+                "ads"             : li.attrs.get("data-ads"),
+                "director"        : li.attrs.get("data-director")
             })
 
             if not t_id or "active" in li.attrs.get("class", "").split():
@@ -116,11 +116,11 @@ class HDrezka(PluginBase):
             translators.append({"translator_name": "Default", "translator_id": t_id})
 
         data = {
-            "id": doc_id,
-            "favs": secici.select_attr("input#ctrl_favs", "value"),
-            "ref": url,
-            "action": "get_movie",
-            "server": translators
+            "id"     : doc_id,
+            "favs"   : secici.select_attr("input  #ctrl_favs", "value"),
+            "ref"    : url,
+            "action" : "get_movie",
+            "server" : translators
         }
 
         # Check if content is series or movie
@@ -128,23 +128,23 @@ class HDrezka(PluginBase):
 
         if is_series:
             episodes = []
-            seasons = secici.select("ul#simple-seasons-tabs li")
+            seasons  = secici.select("ul  #simple-seasons-tabs li")
             if seasons:
                 for s_li in seasons:
-                    s_id = s_li.attrs.get("data-season_id")
+                    s_id   = s_li.attrs.get("data-season_id")
                     s_name = s_li.text().strip()
 
                     # Extract season number from name if data attribute missing
                     if not s_id:
                         s_id_match = re.search(r"(\d+)", s_name)
-                        s_id = s_id_match.group(1) if s_id_match else "1"
+                        s_id       = s_id_match.group(1) if s_id_match else "1"
 
                     # Fetch episodes for this season
                     ep_ajax_url = f"{self.main_url}/ajax/get_cdn_series/?id={doc_id}&translator_id={t_id}&season={s_id}&episode=0&action=get_episodes"
-                    ep_istek = await self.httpx.post(
+                    ep_istek    = await self.httpx.post(
                         ep_ajax_url,
-                        data={"id": doc_id, "translator_id": t_id, "season": s_id, "episode": 0, "action": "get_episodes"},
-                        headers={"X-Requested-With": "XMLHttpRequest", "Referer": url}
+                        data    = {"id": doc_id, "translator_id": t_id, "season": s_id, "episode": 0, "action": "get_episodes"},
+                        headers = {"X-Requested-With": "XMLHttpRequest", "Referer": url}
                     )
 
                     try:
@@ -157,10 +157,10 @@ class HDrezka(PluginBase):
 
                                 ep_url_data = data.copy()
                                 ep_url_data.update({
-                                    "translator_id": t_id,
-                                    "season": s_id,
-                                    "episode": ep_id,
-                                    "action": "get_stream"
+                                    "translator_id" : t_id,
+                                    "season"        : s_id,
+                                    "episode"       : ep_id,
+                                    "action"        : "get_stream"
                                 })
 
                                 episodes.append(Episode(
@@ -253,10 +253,10 @@ class HDrezka(PluginBase):
                     t_id = res.get("translator_id") or secici.regex_first(r"data-translator_id=\"(\d+)\"")
                     if t_id:
                         payload = {
-                            "id": res["id"],
-                            "translator_id": t_id,
-                            "favs": res.get("favs"),
-                            "action": action
+                            "id"            : res["id"],
+                            "translator_id" : t_id,
+                            "favs"          : res.get("favs"),
+                            "action"        : action
                         }
                         if res.get("season"):
                             payload["season"] = res["season"]
@@ -273,11 +273,11 @@ class HDrezka(PluginBase):
                                     break
                             elif api_data.get("episodes") and action == "get_episodes":
                                 # If we got episodes list, try to get the first one's stream
-                                ep_secici = HTMLHelper(api_data["episodes"])
+                                ep_secici   = HTMLHelper(api_data["episodes"])
                                 first_ep_li = ep_secici.select_first("li")
                                 if first_ep_li:
                                     f_ep_id = first_ep_li.attrs.get("data-episode_id")
-                                    f_s_id = first_ep_li.attrs.get("data-season_id") or res.get("season") or "1"
+                                    f_s_id  = first_ep_li.attrs.get("data-season_id") or res.get("season") or "1"
                                     # Recursive-ish call for the first episode
                                     payload.update({"action": "get_stream", "season": f_s_id, "episode": f_ep_id})
                                     istek_f = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
@@ -292,13 +292,13 @@ class HDrezka(PluginBase):
             # Series or Translatable Movie
             for server in res["server"]:
                 payload = {
-                    "id": res["id"],
-                    "translator_id": server["translator_id"],
-                    "favs": res["favs"],
-                    "is_camrip": server.get("camrip", "0"),
-                    "is_ads": server.get("ads", "0"),
-                    "is_director": server.get("director", "0"),
-                    "action": res["action"]
+                    "id"            : res["id"],
+                    "translator_id" : server["translator_id"],
+                    "favs"          : res["favs"],
+                    "is_camrip"     : server.get("camrip", "0"),
+                    "is_ads"        : server.get("ads", "0"),
+                    "is_director"   : server.get("director", "0"),
+                    "action"        : res["action"]
                 }
 
                 if "season" in res:
@@ -310,8 +310,8 @@ class HDrezka(PluginBase):
                 payload = {k: v for k, v in payload.items() if v is not None}
 
                 timestamp = int(time.time() * 1000)
-                api_url = f"{self.main_url}/ajax/get_cdn_series/?t={timestamp}"
-                istek   = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
+                api_url   = f"{self.main_url}/ajax/get_cdn_series/?t={timestamp}"
+                istek     = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
 
                 try:
                     data = istek.json()

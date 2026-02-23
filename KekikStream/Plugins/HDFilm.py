@@ -212,7 +212,7 @@ class HDFilm(PluginBase):
         secici        = HTMLHelper(initial_text)
 
         base_url    = url.split("?")[0].rstrip("/")
-        unique_urls = {base_url} # ?page=1 varsa da base_url olarak sakla
+        unique_urls = {base_url}  # ?page=1 varsa da base_url olarak sakla
 
         if action_parts := secici.select_first("div#action-parts"):
             for link in action_parts.select("a[href]"):

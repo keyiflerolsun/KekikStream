@@ -104,7 +104,7 @@ class Dizilla(PluginBase):
         if "cdn.ampproject.org" in url:
             # /i/s/ veya /ii/s/ gibi AMP prefix'lerinden sonraki kısmı al
             helper = HTMLHelper(url)
-            match = helper.regex_first(r"cdn\.ampproject\.org/[^/]+/s/(.+)$")
+            match  = helper.regex_first(r"cdn\.ampproject\.org/[^/]+/s/(.+)$")
             if match:
                 return f"https://{match}"
         return url

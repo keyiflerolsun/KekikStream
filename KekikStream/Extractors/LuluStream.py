@@ -11,12 +11,12 @@ class LuluStream(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         domain = self.get_base_url(url)
         resp   = await self.httpx.post(
-            url     = f"{domain}/dl",
-            data    = {
-                "op": "embed",
-                "file_code": url.split("/")[-1],
-                "auto": "1",
-                "referer": referer or ""
+            url  = f"{domain}/dl",
+            data = {
+                "op"        : "embed",
+                "file_code" : url.split("/")[-1],
+                "auto"      : "1",
+                "referer"   : referer or ""
             },
             headers = {
                 "Referer"    : url,

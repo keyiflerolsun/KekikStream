@@ -90,8 +90,8 @@ class PluginBase(ABC):
         Example:
             [
                 ExtractResult(
-                    url="https://example.com/video.m3u8",
-                    name="HDFilmCehennemi | 1080p TR Dublaj"
+                    url  = "https://example.com/video.m3u8",
+                    name = "HDFilmCehennemi | 1080p TR Dublaj"
                 )
             ]
         """
@@ -190,13 +190,13 @@ class PluginBase(ABC):
             return results
 
         # 2. Aynı isimli farklı URL'leri numaralandır
-        merged     = list(seen_urls.values())
-        name_count: dict[str, int] = {}
+        merged                      = list(seen_urls.values())
+        name_count : dict[str, int] = {}
         for sub in merged:
             name_count[sub.name] = name_count.get(sub.name, 0) + 1
 
-        name_idx: dict[str, int] = {}
-        final_subs: list[Subtitle] = []
+        name_idx   : dict[str, int] = {}
+        final_subs : list[Subtitle] = []
         for sub in merged:
             if name_count[sub.name] > 1:
                 idx              = name_idx.get(sub.name, 0) + 1

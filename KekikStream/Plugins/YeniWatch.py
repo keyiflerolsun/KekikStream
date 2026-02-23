@@ -38,8 +38,8 @@ class YeniWatch(PluginBase):
                 if not poster_a:
                     continue
 
-                href = poster_a.select_attr(None, "href")
-                img  = poster_a.select_first("img")
+                href   = poster_a.select_attr(None, "href")
+                img    = poster_a.select_first("img")
                 poster = img.select_attr(None, "data-src") or img.select_attr(None, "src") if img else None
 
                 series_name = veri.select_text("div.serie-name a")
@@ -142,7 +142,7 @@ class YeniWatch(PluginBase):
         iframe_src = self.fix_url(iframe_src)
 
         response = []
-        data = await self.extract(iframe_src, referer=url)
+        data     = await self.extract(iframe_src, referer=url)
         self.collect_results(response, data)
 
         return self.deduplicate(response)

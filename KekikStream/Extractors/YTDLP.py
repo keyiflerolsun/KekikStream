@@ -65,7 +65,7 @@ class YTDLP(ExtractorBase):
         """Pattern 3: Alternation TLD domainlerini (pornhub.(?:com|net)) çıkarır."""
         domains = set()
         for m in cls._ALT_TLD_RE.finditer(valid_url):
-            tlds = m.group(1).split("|")
+            tlds  = m.group(1).split("|")
             start = m.start()
 
             # Geriye doğru git ve domain'i bul
@@ -98,7 +98,7 @@ class YTDLP(ExtractorBase):
         if cls._FAST_DOMAIN_RE is not None:
             return
 
-        domains = set()
+        domains    = set()
         extractors = get_ytdlp_extractors()
 
         for ie in extractors:
@@ -129,7 +129,7 @@ class YTDLP(ExtractorBase):
         # URL parse + host al
         try:
             parsed = urlparse(url)
-            host = (parsed.hostname or "").lower()
+            host   = (parsed.hostname or "").lower()
         except Exception:
             host = ""
 
@@ -137,7 +137,7 @@ class YTDLP(ExtractorBase):
         if not host and "://" not in url:
             try:
                 parsed = urlparse("https://" + url)
-                host = (parsed.hostname or "").lower()
+                host   = (parsed.hostname or "").lower()
             except Exception:
                 host = ""
 
@@ -152,7 +152,7 @@ class YTDLP(ExtractorBase):
         ydl_opts = {
             "quiet"                 : True,
             "no_warnings"           : True,
-            "extract_flat"          : False,       # Tam bilgi al
+            "extract_flat"          : False,  # Tam bilgi al
             "format"                : "best/all",  # En iyi kalite, yoksa herhangi biri
             "no_check_certificates" : True,
             "socket_timeout"        : 3,
@@ -188,13 +188,13 @@ class YTDLP(ExtractorBase):
                         if sub_url := sub.get("url"):
                             subtitles.append(
                                 Subtitle(
-                                    name=f"{lang} ({sub.get('ext', 'unknown')})",
-                                    url=sub_url
+                                    name = f"{lang} ({sub.get('ext', 'unknown')})",
+                                    url  = sub_url
                                 )
                             )
 
             # User-Agent al
-            user_agent = None
+            user_agent   = None
             http_headers = info.get("http_headers", {})
             if http_headers:
                 user_agent = http_headers.get("User-Agent")

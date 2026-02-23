@@ -1,4 +1,4 @@
-# ! Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from Kekik.cli    import konsol
 from cloudscraper import CloudScraper
@@ -107,16 +107,16 @@ class MainUrlGuncelleyici:
         istek = self.oturum.post(
             url     = "https://firebaseremoteconfig.googleapis.com/v1/projects/791583031279/namespaces/firebase:fetch",
             headers = {
-                "X-Goog-Api-Key"    : "AIzaSyBbhpzG8Ecohu9yArfCO5tF13BQLhjLahc",
-                "X-Android-Package" : "com.rectv.shot",
-                "User-Agent"        : "Dalvik/2.1.0 (Linux; U; Android 15)",
+                "X-Goog-Api-Key"                     : "AIzaSyBbhpzG8Ecohu9yArfCO5tF13BQLhjLahc",
+                "X-Android-Package"                  : "com.rectv.shot",
+                "User-Agent"                         : "Dalvik/2.1.0 (Linux; U; Android 15)",
                 "X-Goog-Firebase-Installations-Auth" : _id,
             },
             json    = {
                 "appInstanceIdToken" : _id,
-                "appBuild"      : "108",
-                "appInstanceId" : "cIESHPfPQTGW9bsKUpmTjv",
-                "appId"         : "1:791583031279:android:244c3d507ab299fcabc01a",
+                "appBuild"           : "108",
+                "appInstanceId"      : "cIESHPfPQTGW9bsKUpmTjv",
+                "appId"              : "1:791583031279:android:244c3d507ab299fcabc01a",
             }
         )
         return istek.json().get("entries", {}).get("api_url", "").replace("/api/", "")

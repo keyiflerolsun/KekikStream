@@ -124,15 +124,15 @@ class SetFilmIzle(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("h1") or secici.select_text(".titles h1") or secici.select_attr("meta[property='og:title']", "content")
-        poster      = secici.select_poster("div.poster img")
-        description = secici.select_text("div.wp-content p")
-        rating      = secici.select_text("b#repimdb strong") or secici.regex_first(r"([\d.]+)", secici.select_text("div.imdb"))
-        year        = secici.extract_year("div.extra span.valor")
-        tags        = secici.select_texts("div.sgeneros a")
+        title        = secici.select_text("h1") or secici.select_text(".titles h1") or secici.select_attr("meta[property='og:title']", "content")
+        poster       = secici.select_poster("div.poster img")
+        description  = secici.select_text("div.wp-content p")
+        rating       = secici.select_text("b  #repimdb strong") or secici.regex_first(r"([\d.]+)", secici.select_text("div.imdb"))
+        year         = secici.extract_year("div.extra span.valor")
+        tags         = secici.select_texts("div.sgeneros a")
         runtime_text = secici.regex_first(r"(\d+)", secici.select_text("span.runtime"))
-        duration    = int(runtime_text) if runtime_text else None
-        actors      = secici.select_texts("span.valor a[href*='/oyuncu/']")
+        duration     = int(runtime_text) if runtime_text else None
+        actors       = secici.select_texts("span.valor a[href*='/oyuncu/']")
 
         common_info = {
             "url"         : url,
@@ -217,7 +217,7 @@ class SetFilmIzle(PluginBase):
                 return []
 
             results = []
-            items = extracted if isinstance(extracted, list) else [extracted]
+            items   = extracted if isinstance(extracted, list) else [extracted]
             for item in items:
                 if final_name:
                     item.name = final_name

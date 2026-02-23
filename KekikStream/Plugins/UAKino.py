@@ -198,7 +198,7 @@ class UAKino(PluginBase):
             iframe_src = secici.select_attr("iframe#pre", "src") or secici.select_attr("iframe#pre", "data-src")
             if iframe_src:
                 iframe_src = self._fix_file_url(iframe_src)
-                ext = await self.extract(iframe_src, referer=url)
+                ext        = await self.extract(iframe_src, referer=url)
                 if ext:
                     self.collect_results(results, ext)
 

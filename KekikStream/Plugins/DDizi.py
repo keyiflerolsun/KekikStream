@@ -20,16 +20,16 @@ class DDizi(PluginBase):
     async def get_articles(self, secici: HTMLHelper) -> list[dict]:
         articles = []
         for veri in secici.select("div.dizi-boxpost-cat, div.dizi-boxpost"):
-            title = veri.select_text("a")
-            href  = veri.select_attr("a", "href")
-            img   = veri.select_first("img.img-back, img.img-back-cat")
+            title  = veri.select_text("a")
+            href   = veri.select_attr("a", "href")
+            img    = veri.select_first("img.img-back, img.img-back-cat")
             poster = img.attrs.get("data-src") or img.attrs.get("src") if img else None
 
             if title and href:
                 articles.append({
-                    "title" : title,
-                    "url"   : self.fix_url(href),
-                    "poster": self.fix_url(poster),
+                    "title"  : title,
+                    "url"    : self.fix_url(href),
+                    "poster" : self.fix_url(poster),
                 })
 
         return articles
@@ -41,9 +41,9 @@ class DDizi(PluginBase):
         else:
             target_url = url
 
-        istek      = await self.httpx.get(target_url, follow_redirects=True)
-        secici     = HTMLHelper(istek.text)
-        veriler    = await self.get_articles(secici)
+        istek   = await self.httpx.get(target_url, follow_redirects=True)
+        secici  = HTMLHelper(istek.text)
+        veriler = await self.get_articles(secici)
 
         return [MainPageResult(**veri, category=category) for veri in veriler if veri]
 
@@ -77,14 +77,14 @@ class DDizi(PluginBase):
         tags   = secici.select_texts("div.tag-cloud a") or secici.select_texts("p.etiket a") or secici.select_texts("div.etiketler a")
         actors = secici.select_texts("div.oyuncular a") or secici.select_attrs("div.oyuncular img", "alt") or secici.select_texts("ul.bilgi li a")
 
-        episodes = []
+        episodes     = []
         current_page = 1
-        has_next = True
+        has_next     = True
 
         while has_next:
             page_url = f"{url}/sayfa-{current_page}" if current_page > 1 else url
             if current_page > 1:
-                istek = await self.httpx.get(page_url)
+                istek  = await self.httpx.get(page_url)
                 secici = HTMLHelper(istek.text)
 
             page_eps = secici.select("div.bolumler a, div.sezonlar a, div.dizi-arsiv a, div.dizi-boxpost-cat a")
@@ -156,7 +156,7 @@ class DDizi(PluginBase):
                 player_secici = HTMLHelper(player_istek.text)
 
                 # file: '...' logic
-                sources = player_secici.regex_all(r'file:\s*["\']([^"\']+)["\']')
+                sources      = player_secici.regex_all(r'file:\s*["\']([^"\']+)["\']')
                 extract_urls = []
                 for src in sources:
                     src = self.fix_url(src)

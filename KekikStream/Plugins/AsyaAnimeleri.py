@@ -1,3 +1,5 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import asyncio
 import base64
@@ -20,7 +22,7 @@ class AsyaAnimeleri(PluginBase):
         if page == 1:
             full_url = url
         else:
-            
+
             if "/page/" in url:
                 full_url = re.sub(r"/page/\d+/?", f"/page/{page}/", url)
             else:
@@ -30,26 +32,26 @@ class AsyaAnimeleri(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         target_url = f"{self.main_url}/?s={query}"
-        results = []
-        
+        results    = []
+
         try:
             istek = await self.httpx.get(target_url)
             veri  = HTMLHelper(istek.text)
-            
+
             for item in veri.select("article.bs"):
-                title = item.select_text("h2[itemprop='headline']")
-                url_raw = item.select_attr("a[itemprop='url']", "href")
+                title      = item.select_text("h2[itemprop='headline']")
+                url_raw    = item.select_attr("a[itemprop='url']", "href")
                 poster_raw = item.select_poster("img.ts-post-image")
-                
+
                 if title and url_raw:
                     results.append(SearchResult(
-                        title    = title,
-                        url      = self.fix_url(url_raw),
-                        poster   = self.fix_url(poster_raw) if poster_raw else ""
+                        title  = title,
+                        url    = self.fix_url(url_raw),
+                        poster = self.fix_url(poster_raw) if poster_raw else ""
                     ))
         except Exception as e:
             print(f"AsyaAnimeleri Search Error: {e}")
-            
+
         return results
 
     async def search_helper(self, url: str, category: str) -> list[MainPageResult]:
@@ -58,12 +60,12 @@ class AsyaAnimeleri(PluginBase):
         try:
             istek = await self.httpx.get(url)
             veri  = HTMLHelper(istek.text)
-            
+
             for item in veri.select("article.bs"):
-                title = item.select_text("h2[itemprop='headline']")
-                url_raw = item.select_attr("a[itemprop='url']", "href")
+                title      = item.select_text("h2[itemprop='headline']")
+                url_raw    = item.select_attr("a[itemprop='url']", "href")
                 poster_raw = item.select_poster("img.ts-post-image")
-                
+
                 if title and url_raw:
                     results.append(MainPageResult(
                         category = category,
@@ -73,43 +75,43 @@ class AsyaAnimeleri(PluginBase):
                     ))
         except Exception as e:
             print(f"AsyaAnimeleri Helper Error: {e}")
-            
+
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek = await self.httpx.get(url)
         veri  = HTMLHelper(istek.text)
-        
-        
+
+
         title       = veri.select_text("h1.entry-title") or veri.select_text("h1")
         description = veri.select_text("div.entry-content") or veri.select_text("div.desc")
         poster      = veri.select_poster("img.ts-post-image") or veri.select_poster("div.thumb img")
-        
+
         # Tags/Genres
         tags = veri.select_texts("span.genres a")
-        
+
         episodes = []
-        
+
         for item in veri.select("div.eplister ul li"):
             try:
                 ep_url_raw = item.select_attr("a", "href")
                 if not ep_url_raw:
                     continue
-                    
-                ep_url = self.fix_url(ep_url_raw)
-                ep_num = item.select_text("div.epl-num")
+
+                ep_url   = self.fix_url(ep_url_raw)
+                ep_num   = item.select_text("div.epl-num")
                 ep_title = item.select_text("div.epl-title")
-                
+
                 full_title = f"{ep_num} - {ep_title}" if ep_num else ep_title
-                
-                
+
+
                 s_num, e_num = 1, 0
                 if ep_num:
                     try:
                         e_num = int(ep_num)
                     except:
                         pass
-                
+
                 episodes.append(Episode(
                     season  = s_num,
                     episode = e_num,
@@ -119,9 +121,9 @@ class AsyaAnimeleri(PluginBase):
             except Exception as e:
                 print(f"Error parsing episode: {e}")
                 continue
-                
-        
-        
+
+
+
         return SeriesInfo(
             url         = url,
             title       = title,
@@ -134,37 +136,37 @@ class AsyaAnimeleri(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek = await self.httpx.get(url)
         veri  = HTMLHelper(istek.text)
-        
+
         links = []
-        
-        
+
+
         options = veri.select("select.mirror option")
-        
+
         for opt in options:
-            val = opt.attrs.get('value')
+            val  = opt.attrs.get('value')
             name = opt.text(strip=True)
-            
+
             if not val:
                 continue
-                
+
             try:
-                
+
                 decoded_bytes = base64.b64decode(val)
-                decoded_str = decoded_bytes.decode('utf-8')
-                
-               
+                decoded_str   = decoded_bytes.decode('utf-8')
+
+
                 match = re.search(r'src=["\']([^"\']+)["\']', decoded_str)
                 if match:
                     src = match.group(1)
                     if src.startswith("//"):
                         src = "https:" + src
-                        
-                   
+
+
                     data = await self.extract(src, referer=self.main_url)
                     self.collect_results(links, data)
 
             except Exception as e:
                 print(f"Error decoding link {name}: {e}")
                 continue
-                
+
         return self.deduplicate(links)

@@ -30,7 +30,7 @@ class VidBiz(ExtractorBase):
 
         # API POST
         # Content-Type: text/plain önemli olabilir
-        resp = await self.httpx.post(
+        resp    = await self.httpx.post(
             url     = "https://s2.videolar.biz/api/",
             content = kaken, # data yerine content=raw string
             headers = {"Content-Type": "text/plain", "Referer": url}

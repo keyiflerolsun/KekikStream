@@ -14,8 +14,8 @@ class PlayerX(ExtractorBase):
             "Origin"  : referer or "https://jetfilmizle.net",
         })
 
-        resp = await self.httpx.get(url)
-        html = resp.text
+        resp   = await self.httpx.get(url)
+        html   = resp.text
         origin = f"{resp.url.scheme}://{resp.url.host}"
 
         # sources: [{file: "watch/187/...", type: "hls"}]

@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-from urllib.parse import urlparse, parse_qs
+from urllib.parse     import urlparse, parse_qs
 
 class SetPrime(ExtractorBase):
     name     = "SetPrime"
@@ -9,9 +9,9 @@ class SetPrime(ExtractorBase):
 
     async def extract(self, url, referer=None) -> ExtractResult:
         # URL parsing
-        parsed = urlparse(url)
-        params = parse_qs(parsed.query)
-        part_key = params.get("partKey", [""])[0].upper()
+        parsed    = urlparse(url)
+        params    = parse_qs(parsed.query)
+        part_key  = params.get("partKey", [""])[0].upper()
         clean_url = url.split("?partKey=")[0]
 
         # POST URL: embed?i= -> embed/get?i=

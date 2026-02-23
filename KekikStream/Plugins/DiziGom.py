@@ -31,7 +31,7 @@ class DiziGom(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}#p={page}")
+        istek  = await self.httpx.get(f"{url}  #p={page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -77,7 +77,7 @@ class DiziGom(PluginBase):
         title       = secici.select_text("div.serieTitle h1")
         if title:
             poster_style = secici.select_attr("div.seriePoster", "style") or ""
-            poster      = re.search(r"url\(([^)]+)\)", poster_style)
+            poster       = re.search(r"url\(([^)]+)\)", poster_style)
             poster      = poster.group(1) if poster else ""
             description = secici.select_text("div.serieDescription p")
             year        = secici.select_text("div.airDateYear a")

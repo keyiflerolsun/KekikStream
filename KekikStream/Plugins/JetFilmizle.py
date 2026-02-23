@@ -75,9 +75,9 @@ class JetFilmizle(PluginBase):
             url     = f"{self.main_url}/arama-json",
             params  = {"q": query},
             headers = {
-                "Accept": "application/json",
-                "X-Requested-With": "XMLHttpRequest",
-                "Referer": f"{self.main_url}/"
+                "Accept"           : "application/json",
+                "X-Requested-With" : "XMLHttpRequest",
+                "Referer"          : f"{self.main_url}/"
             }
         )
 
@@ -100,11 +100,11 @@ class JetFilmizle(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("h1")
-        poster      = secici.select_poster("div.film-poster-container img") or secici.select_poster("div.film-poster img")
+        title  = secici.select_text("h1")
+        poster = secici.select_poster("div.film-poster-container img") or secici.select_poster("div.film-poster img")
 
         # Metadata Extraction (Specific Selectors from Debug)
-        player_tag = secici.select_first("#active-player")
+        player_tag = secici.select_first("  #active-player")
         rating     = player_tag.attrs.get("data-film-rating") if player_tag else secici.meta_value("IMDb")
         year       = player_tag.attrs.get("data-film-year") if player_tag else secici.meta_value("Yıl")
         duration   = secici.extract_duration("Süre")
@@ -112,8 +112,8 @@ class JetFilmizle(PluginBase):
         description = secici.select_text("div.description-text") or secici.select_text("div.film-description div.description-text") or secici.select_text("div.movie-description")
 
         # Tags and Actors cleanup
-        tags_list   = secici.select_texts("div.categories-container-details a") or secici.meta_list("Kategoriler")
-        tags_list   = [t for t in tags_list if t not in ["Kategoriler", "Tür", "Türler"]]
+        tags_list = secici.select_texts("div.categories-container-details a") or secici.meta_list("Kategoriler")
+        tags_list = [t for t in tags_list if t not in ["Kategoriler", "Tür", "Türler"]]
 
         actors_list = secici.select_texts("div.actors-grid .h6 a") or secici.meta_list("Oyuncular")
         actors_list = [a for a in actors_list if a not in ["Oyuncular", "Oyuncular:"]]

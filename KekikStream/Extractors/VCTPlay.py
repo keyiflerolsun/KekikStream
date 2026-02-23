@@ -8,8 +8,8 @@ class VCTPlay(ExtractorBase):
     main_url = "https://vctplay.site"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        v_id = url.split("/")[-1].split("?")[0]
-        params = parse_qs(urlparse(url).query)
+        v_id     = url.split("/")[-1].split("?")[0]
+        params   = parse_qs(urlparse(url).query)
         part_key = params.get("partKey", [""])[0].lower()
 
         suffix = ""

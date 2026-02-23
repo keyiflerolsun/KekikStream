@@ -11,7 +11,7 @@ class JetTv(ExtractorBase):
         resp = await self.httpx.get(url)
         sel  = HTMLHelper(resp.text)
 
-        m3u8_url = None
+        m3u8_url  = None
         final_ref = self.main_url
 
         if "id=" in url:

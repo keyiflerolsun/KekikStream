@@ -60,12 +60,12 @@ class RapidVid(ExtractorBase):
         decoded_once = base64.b64decode(reversed_input).decode("utf-8")
 
         decrypted_chars = []
-        key = "K9L"
+        key             = "K9L"
 
         # 3. Key'e göre karakter kaydırma geri alınıyor
         for index, encoded_char in enumerate(decoded_once):
             key_char = key[index % len(key)]
-            offset = (ord(key_char) % 5) + 1  # Her karakter için dinamik offset
+            offset   = (ord(key_char) % 5) + 1  # Her karakter için dinamik offset
 
             original_char_code = ord(encoded_char) - offset
             decrypted_chars.append(chr(original_char_code))

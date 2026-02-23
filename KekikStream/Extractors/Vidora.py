@@ -15,9 +15,9 @@ class Vidora(PackedJSExtractor):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         embed_url = url.replace("/download/", "/e/")
         headers   = {
-            "Referer"          : referer or self.main_url,
-            "Accept-Language"  : "en-US,en;q=0.5",
-            "Sec-Fetch-Dest"   : "iframe",
+            "Referer"         : referer or self.main_url,
+            "Accept-Language" : "en-US,en;q=0.5",
+            "Sec-Fetch-Dest"  : "iframe",
         }
 
         istek  = await self.httpx.get(embed_url, headers=headers, follow_redirects=True)

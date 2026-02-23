@@ -129,7 +129,7 @@ class WFilmIzle(PluginBase):
             return []
 
         response = []
-        data = await self.extract(iframe_src, referer=f"{self.main_url}/")
+        data     = await self.extract(iframe_src, referer=f"{self.main_url}/")
         self.collect_results(response, data)
 
         return response

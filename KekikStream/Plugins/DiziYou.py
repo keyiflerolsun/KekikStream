@@ -33,8 +33,8 @@ class DiziYou(PluginBase):
 
         results = []
         for veri in secici.select("div.single-item"):
-            title  = veri.select_text("div#categorytitle a")
-            href   = veri.select_attr("div#categorytitle a", "href")
+            title  = veri.select_text("div  #categorytitle a")
+            href   = veri.select_attr("div  #categorytitle a", "href")
             poster = veri.select_attr("img", "src")
 
             if title and href:
@@ -53,8 +53,8 @@ class DiziYou(PluginBase):
 
         results = []
         for afis in secici.select("div.incontent div#list-series"):
-            title  = afis.select_text("div#categorytitle a")
-            href   = afis.select_attr("div#categorytitle a", "href")
+            title  = afis.select_text("div  #categorytitle a")
+            href   = afis.select_attr("div  #categorytitle a", "href")
             poster = (afis.select_attr("img", "src") or afis.select_attr("img", "data-src"))
 
             if title and href:
@@ -72,11 +72,11 @@ class DiziYou(PluginBase):
 
         poster      = secici.select_poster("div.category_image img")
         title       = secici.select_text("h1.title-border")
-        description = secici.select_direct_text("div#icerikcatright")
+        description = secici.select_direct_text("div  #icerikcatright")
         tags        = secici.select_texts("div.genres a")
         rating      = secici.regex_first(r"(?is)IMDB\s*:\s*</span>([0-9.]+)", secici.html)
-        year        = secici.extract_year("div#icerikcat2")
-        raw_actors  = secici.meta_value("Oyuncular", container_selector="div#icerikcat2")
+        year        = secici.extract_year("div  #icerikcat2")
+        raw_actors  = secici.meta_value("Oyuncular", container_selector="div  #icerikcat2")
         actors      = [x.strip() for x in raw_actors.split(",")] if raw_actors else None
 
         episodes = []

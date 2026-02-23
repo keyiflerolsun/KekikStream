@@ -150,7 +150,7 @@ class PluginValidator:
 
             # Terminal kirliliğini önlemek için SeriesInfo ise tek bölüm göster
             if isinstance(item, SeriesInfo) and item.episodes:
-                item_copy = copy(item)
+                item_copy          = copy(item)
                 item_copy.episodes = item.episodes[:1]
                 konsol.print(item_copy)
                 konsol.print(f"[dim italic]... ({len(item.episodes) - 1} bölüm daha var)[/]")
@@ -236,14 +236,14 @@ class PluginValidator:
         """Bir eklentinin tüm metotlarını doğrular."""
         konsol.rule(f"[bold cyan]{plugin_name}")
 
-        plugin = self.plugins.select_plugin(plugin_name)
+        plugin             = self.plugins.select_plugin(plugin_name)
         validation_results = {
-            "plugin_name": plugin_name,
-            "get_main_page": None,
-            "search": None,
-            "load_item": None,
-            "load_links": None,
-            "overall_status": "✅"
+            "plugin_name"    : plugin_name,
+            "get_main_page"  : None,
+            "search"         : None,
+            "load_item"      : None,
+            "load_links"     : None,
+            "overall_status" : "✅"
         }
 
         # 1. get_main_page testi
@@ -348,12 +348,12 @@ async def main():
         except Exception as e:
             konsol.log(f"[red]✗ {plugin_name} genel hata: {e}")
             validator.results[plugin_name] = {
-                "plugin_name": plugin_name,
-                "overall_status": "❌",
-                "get_main_page": {"status": "❌", "message": str(e)},
-                "search": None,
-                "load_item": None,
-                "load_links": None
+                "plugin_name"    : plugin_name,
+                "overall_status" : "❌",
+                "get_main_page"  : {"status": "❌", "message": str(e)},
+                "search"         : None,
+                "load_item"      : None,
+                "load_links"     : None
             }
 
     validator.print_summary()

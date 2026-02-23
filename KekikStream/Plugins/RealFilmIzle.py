@@ -46,9 +46,9 @@ class RealFilmIzle(PluginBase):
 
             if title and href:
                 articles.append({
-                    "title" : title,
-                    "url"   : self.fix_url(href),
-                    "poster": self.fix_url(poster),
+                    "title"  : title,
+                    "url"    : self.fix_url(href),
+                    "poster" : self.fix_url(poster),
                 })
 
         return articles
@@ -78,8 +78,8 @@ class RealFilmIzle(PluginBase):
         description = secici.select_text("div.description p") or secici.select_text("div.description")
 
         # Tags from breadcrumbs or tags div
-        tags        = secici.select_texts("ol.scheme-breadcrumbs li a")
-        tags        = [tag.replace("✅ ", "").replace(" Filmleri", "") for tag in tags if tag != "Film izle"]
+        tags = secici.select_texts("ol.scheme-breadcrumbs li a")
+        tags = [tag.replace("✅ ", "").replace(" Filmleri", "") for tag in tags if tag != "Film izle"]
 
         # Metadata extraction
         rating = secici.meta_value("IMDb")

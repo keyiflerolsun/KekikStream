@@ -8,7 +8,7 @@ class JetCDN(ExtractorBase):
     main_url = "https://jetcdn.org"
 
     async def extract(self, url: str, referer: str = None) -> list[ExtractResult]:
-        resp = await self.httpx.get(url)
+        resp    = await self.httpx.get(url)
         content = resp.text
 
         results = []
@@ -23,7 +23,7 @@ class JetCDN(ExtractorBase):
         if sub_match:
             try:
                 # Clean up JS list to be more JSON-like (quotes for keys)
-                json_str = re.sub(r'(\w+):', r'"\1":', sub_match.group(1))
+                json_str  = re.sub(r'(\w+):', r'"\1":', sub_match.group(1))
                 subs_data = json.loads(json_str)
                 for sub in subs_data:
                     if s_url := sub.get("file"):

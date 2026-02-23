@@ -166,7 +166,7 @@ class DiziPal(PluginBase):
         if m3u_link:
 
             # Altyazıları çıkar
-            sub_text = secici.regex_first(r'"subtitle":"([^"]+)"', target=i_text)
+            sub_text  = secici.regex_first(r'"subtitle":"([^"]+)"', target=i_text)
             subtitles = []
             if sub_text:
                 if "," in sub_text:
@@ -175,7 +175,7 @@ class DiziPal(PluginBase):
                         sub_url = sub.replace(f"[{lang}]", "")
                         subtitles.append(self.new_subtitle(self.fix_url(sub_url), lang))
                 else:
-                    lang = sub_text.split("[")[1].split("]")[0] if "[" in sub_text else "Türkçe"
+                    lang    = sub_text.split("[")[1].split("]")[0] if "[" in sub_text else "Türkçe"
                     sub_url = sub_text.replace(f"[{lang}]", "")
                     subtitles.append(self.new_subtitle(self.fix_url(sub_url), lang))
 

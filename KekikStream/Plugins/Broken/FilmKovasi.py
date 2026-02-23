@@ -75,8 +75,8 @@ class FilmKovasi(PluginBase):
 
         title       = (secici.select_text("h1.title-border") or "").replace(" izle", "").strip()
         poster      = secici.select_attr("div.film-afis img", "src")
-        description = secici.select_text("div#film-aciklama")
-        tags        = secici.select_texts("div#listelements a")
+        description = secici.select_text("div  #film-aciklama")
+        tags        = secici.select_texts("div  #listelements a")
         actors      = secici.select_texts("div.actor a")
 
         year   = None
@@ -150,7 +150,7 @@ class FilmKovasi(PluginBase):
             son_link = base_url + file_path
 
             # tracks: [{file: "...", label: "...", kind: "..."}]
-            subtitle = None
+            subtitle   = None
             tracks_raw = script.split("tracks: [", 1)[-1].split("]", 1)[0].strip() if "tracks: [" in script else ""
             if tracks_raw:
                 tracks_raw = self._add_marks(tracks_raw, "file")

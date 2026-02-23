@@ -100,7 +100,7 @@ class FilmMakinesi(PluginBase):
 
         # Tekrar edenleri temizle ve sırala
         if episodes:
-            seen = set()
+            seen   = set()
             unique = []
             for ep in episodes:
                 if (ep.season, ep.episode) not in seen:

@@ -27,8 +27,8 @@ class Coflix(PluginBase):
         "series&genres=comedia"              : "Comedia",
         "series&genres=misterio"             : "Misterio",
         "series&genres=reality"              : "Reality",
-        "doramas"                            : "Doramas",
-        "animes"                             : "Animes",
+        "doramas" : "Doramas",
+        "animes"  : "Animes",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -44,7 +44,7 @@ class Coflix(PluginBase):
 
                 # Poster from HTML path usually contains img tag
                 poster_html = item.get("path", "")
-                poster = self._extract_img_src(poster_html)
+                poster      = self._extract_img_src(poster_html)
 
                 results.append(MainPageResult(
                     category = category,
@@ -73,7 +73,7 @@ class Coflix(PluginBase):
             # Re-format broken JSON if any, Kotlin says .toString().toJson() which implies some cleanup
             text = istek.text
             # Sometimes suggest.php returns raw list or needs parsing
-            data = json.loads(text)
+            data    = json.loads(text)
             results = []
             for item in data:
                 title  = self.clean_title(item.get("title", "Unknown"))
@@ -105,11 +105,11 @@ class Coflix(PluginBase):
 
         desc = secici.select_text("div.summary.link-co p") or secici.select_text("div.summary article p") or secici.regex_first(r'<meta name="description" content="([^"]+)"')
 
-        tags    = [a.text().strip() for a in secici.select("div.meta.df.aic.fww a")]
-        rating  = secici.regex_first(r"IMDb.*?([\d\.]+)") or "0"
-        pres_el = secici.select_first("p#pres")
-        year    = secici.regex_first(r"(\d{4})", target=pres_el.text()) if pres_el else secici.regex_first(r"(\d{4})")
-        actors  = ", ".join([a.text().strip() for a in secici.select("p.cast a") or secici.select("div.dtls a[href*='/actors/']") or secici.select("div.cast a") or secici.select("div.f-info-desc a")])
+        tags     = [a.text().strip() for a in secici.select("div.meta.df.aic.fww a")]
+        rating   = secici.regex_first(r"IMDb.*?([\d\.]+)") or "0"
+        pres_el  = secici.select_first("p  #pres")
+        year     = secici.regex_first(r"(\d{4})", target=pres_el.text()) if pres_el else secici.regex_first(r"(\d{4})")
+        actors   = ", ".join([a.text().strip() for a in secici.select("p.cast a") or secici.select("div.dtls a[href*='/actors/']") or secici.select("div.cast a") or secici.select("div.f-info-desc a")])
         duration = secici.regex_first(r"(\d+)\s+min")
 
         is_series = "film" not in url
@@ -131,7 +131,7 @@ class Coflix(PluginBase):
                         e_num    = ep.get("number")
                         e_title  = ep.get("title") or f"Episode {e_num}"
                         e_poster = self._extract_img_src(ep.get("image", ""))
-                        e_url    = ep.get("links") # This is often the iframe or detail URL
+                        e_url    = ep.get("links")  # This is often the iframe or detail URL
 
                         episodes.append(Episode(
                             season  = int(s_num) if s_num.isdigit() else 1,

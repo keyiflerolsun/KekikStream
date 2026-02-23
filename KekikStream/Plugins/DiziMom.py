@@ -79,7 +79,7 @@ class DiziMom(PluginBase):
         tags        = secici.select_texts("div.genres a")
         rating      = secici.regex_first(r"(?s)IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", secici.html)
         year        = secici.extract_year("div.category_text")
-        actors      = secici.meta_list("Oyuncular", container_selector="div#icerikcat2")
+        actors      = secici.meta_list("Oyuncular", container_selector="div  #icerikcat2")
 
         episodes = []
         for item in secici.select("div.bolumust"):

@@ -105,15 +105,15 @@ class RoketDizi(PluginBase):
             year        = str(content_item.get("release_year") or "")
             tags        = content_item.get("categories", "").split(",")
 
-            actors = []
+            actors     = []
             casts_data = related_results.get("getSerieCastsById") or related_results.get("getMovieCastsById") or related_results.get("getMovieSeriesPopularCasts")
             if casts_data and isinstance(casts_data, dict) and casts_data.get("result"):
                 actors = [cast.get("name") for cast in casts_data["result"] if cast.get("name")]
 
             content_result = secure_data.get("content", {}).get("result", {})
-            episodes = []
+            episodes       = []
             if "Series" in str(content_result.get("FindedType")):
-                all_urls = HTMLHelper(resp.text).regex_all(r'"url":"([^"]*)"')
+                all_urls      = HTMLHelper(resp.text).regex_all(r'"url":"([^"]*)"')
                 episodes_dict = {}
                 for u in all_urls:
                     if "bolum" in u and u not in episodes_dict:

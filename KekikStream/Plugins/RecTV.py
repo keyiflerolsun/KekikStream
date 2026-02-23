@@ -91,7 +91,7 @@ class RecTV(PluginBase):
 
         # Süreyi dakikaya çevir (Örn: "1h 59min")
         duration_raw = veri.get("duration")
-        duration = None
+        duration     = None
         if duration_raw:
             with contextlib.suppress(Exception):
                 h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
@@ -121,7 +121,7 @@ class RecTV(PluginBase):
                     e_title = ep.get("title", "").strip()
                     _, e    = HTMLHelper.extract_season_episode(e_title)
                     for source in ep.get("sources"):
-                        tag = ""
+                        tag     = ""
                         clean_s = s_title
                         if "dublaj" in s_title.lower():
                             tag = " (Dublaj)"; clean_s = re.sub(r"\s*dublaj\s*", "", s_title, flags=re.I).strip()

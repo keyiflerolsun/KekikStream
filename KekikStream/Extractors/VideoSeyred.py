@@ -13,7 +13,7 @@ class VideoSeyred(ExtractorBase):
             v_id = HTMLHelper(resp.text).regex_first(r"playlist\/(.*)\.json")
 
         json_resp = await self.httpx.get(f"{self.main_url}/playlist/{v_id}.json")
-        data = json_resp.json()[0]
+        data      = json_resp.json()[0]
 
         subtitles = [
             Subtitle(name=t["label"], url=self.fix_url(t["file"]))

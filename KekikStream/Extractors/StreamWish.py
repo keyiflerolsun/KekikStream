@@ -28,7 +28,7 @@ class StreamWish(PackedJSExtractor):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         base_url  = self.get_base_url(url)
         embed_url = self.resolve_embed_url(url)
-        istek = await self.httpx.get(
+        istek     = await self.httpx.get(
             url     = embed_url,
             headers = {
                 "Accept"     : "*/*",

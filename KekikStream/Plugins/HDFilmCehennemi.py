@@ -107,9 +107,9 @@ class HDFilmCehennemi(PluginBase):
         tags        = secici.select_texts("div.post-info-genres a")
         rating      = secici.select_text("div.post-info-imdb-rating span")
         rating      = rating.split("(")[0] if rating else None
-        year        = secici.select_text("div.post-info-year-country a")
-        actors      = secici.select_texts("div.post-info-cast a > strong")
-        duration    = int(secici.regex_first(r"(\d+)", secici.select_text("div.post-info-duration")) or 0)
+        year     = secici.select_text("div.post-info-year-country a")
+        actors   = secici.select_texts("div.post-info-cast a > strong")
+        duration = int(secici.regex_first(r"(\d+)", secici.select_text("div.post-info-duration")) or 0)
 
         # Dizi mi film mi kontrol et
         ep_links = secici.select("div.seasons-tab-content a")
@@ -161,7 +161,7 @@ class HDFilmCehennemi(PluginBase):
 
         for quality, label in [("low", "Düşük Kalite"), ("high", "Yüksek Kalite")]:
             with contextlib.suppress(Exception):
-                istek = await self.httpx.post(
+                istek   = await self.httpx.post(
                     url     = "https://cehennempass.pw/process_quality_selection.php",
                     headers = {
                         "Referer"          : f"https://cehennempass.pw/download/{video_id}",
@@ -253,7 +253,7 @@ class HDFilmCehennemi(PluginBase):
         return subtitles
 
     async def invoke_local_source(self, iframe: str, source: str, url: str) -> list[ExtractResult]:
-        istek = await self.httpx.get(
+        istek   = await self.httpx.get(
             url     = iframe,
             headers = {
                 "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

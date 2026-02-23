@@ -15,16 +15,16 @@ class ShowFlix(PluginBase):
     tv_api    = "https://parse.showflix.sbs/parse/classes/seriesv2"
 
     # Parse API ayarları (Kotlin'den uyarlandı) - Bu placeholder'lar çalışıyor!
-    app_id   = "SHOWFLIXAPPID"
-    js_key   = "SHOWFLIXMASTERKEY"
+    app_id = "SHOWFLIXAPPID"
+    js_key = "SHOWFLIXMASTERKEY"
 
     def get_payload(self, extra: dict) -> dict:
         base = {
-            "_method": "GET",
-            "_ApplicationId": self.app_id,
-            "_JavaScriptKey": self.js_key,
-            "_ClientVersion": "js3.4.1",
-            "_InstallationId": "60f6b1a7-8860-4edf-b255-6bc465b6c704"
+            "_method"         : "GET",
+            "_ApplicationId"  : self.app_id,
+            "_JavaScriptKey"  : self.js_key,
+            "_ClientVersion"  : "js3.4.1",
+            "_InstallationId" : "60f6b1a7-8860-4edf-b255-6bc465b6c704"
         }
         base.update(extra)
         return base
@@ -39,9 +39,9 @@ class ShowFlix(PluginBase):
         skip    = (page - 1) * 20
 
         payload = self.get_payload({
-            "limit": 20,
-            "skip": skip,
-            "order": "-updatedAt"
+            "limit" : 20,
+            "skip"  : skip,
+            "order" : "-updatedAt"
         })
 
         istek = await self.httpx.post(api_url, json=payload)
@@ -54,7 +54,7 @@ class ShowFlix(PluginBase):
             # Detay sayfasına gitmek için ID'yi kullanacağız, ancak Plugin yapısına uygun bir URL uydurmalıyız
             # load_item içinde bu URL'den ID'yi geri alacağız
             item_type = "movie" if url == "movie" else "tv"
-            href = f"{self.main_url}/detail/{item_type}/{item.get('objectId')}"
+            href      = f"{self.main_url}/detail/{item_type}/{item.get('objectId')}"
 
             if title:
                 results.append(MainPageResult(
@@ -69,8 +69,8 @@ class ShowFlix(PluginBase):
     async def search(self, query: str) -> list[SearchResult]:
         results = []
         headers = {
-            "X-Parse-Application-Id": self.app_id,
-            "X-Parse-JavaScript-Key": self.js_key
+            "X-Parse-Application-Id" : self.app_id,
+            "X-Parse-JavaScript-Key" : self.js_key
         }
 
         # Determine search criteria
@@ -81,9 +81,9 @@ class ShowFlix(PluginBase):
             where = {"name": {"$regex": query, "$options": "i"}}
 
         params = {
-            "where": json.dumps(where),
-            "limit": 25,
-            "order": "-updatedAt"
+            "where" : json.dumps(where),
+            "limit" : 25,
+            "order" : "-updatedAt"
         }
 
         async def _safe_search(api_url):
@@ -93,15 +93,15 @@ class ShowFlix(PluginBase):
                 return e
 
         api_mapping = [(self.movie_api, "movie"), (self.tv_api, "tv")]
-        tasks = [_safe_search(api_url) for api_url, _ in api_mapping]
-        responses = await self.gather_with_limit(tasks)
+        tasks       = [_safe_search(api_url) for api_url, _ in api_mapping]
+        responses   = await self.gather_with_limit(tasks)
 
         for i, resp in enumerate(responses):
             if isinstance(resp, Exception) or resp.status_code != 200:
                 continue
 
             item_type = api_mapping[i][1]
-            data = resp.json().get("results", [])
+            data      = resp.json().get("results", [])
             for item in data:
                 results.append(SearchResult(
                     title  = item.get("name"),
@@ -159,30 +159,30 @@ class ShowFlix(PluginBase):
     async def get_seasons_with_episodes(self, series_id: str) -> list[Episode]:
         # Sezonları al
         season_url = "https://parse.showflix.sbs/parse/classes/seasonv2"
-        payload = self.get_payload({"where": json.dumps({"seriesId": series_id})})
-        istek = await self.httpx.post(season_url, json=payload)
-        seasons = istek.json().get("results", [])
+        payload    = self.get_payload({"where": json.dumps({"seriesId": series_id})})
+        istek      = await self.httpx.post(season_url, json=payload)
+        seasons    = istek.json().get("results", [])
 
         all_episodes = []
         for season in seasons:
-            season_id = season.get("objectId")
+            season_id  = season.get("objectId")
             season_num = int("".join(filter(str.isdigit, season.get("name", "1"))) or "1")
 
             # Bölümleri al
             episode_url = "https://parse.showflix.sbs/parse/classes/episodev2"
-            ep_payload = self.get_payload({"where": json.dumps({"seasonId": season_id})})
-            ep_istek = await self.httpx.post(episode_url, json=ep_payload)
-            eps = ep_istek.json().get("results", [])
+            ep_payload  = self.get_payload({"where": json.dumps({"seasonId": season_id})})
+            ep_istek    = await self.httpx.post(episode_url, json=ep_payload)
+            eps         = ep_istek.json().get("results", [])
 
             for ep in eps:
                 # Gömülü linkleri 'data' alanında saklayabiliriz
                 embeds = ep.get("embedLinks", {})
-                data = {
-                    "streamwish": embeds.get("streamwish"),
-                    "streamruby": embeds.get("streamruby"),
-                    "upnshare": embeds.get("upnshare"),
-                    "vihide": embeds.get("vihide"),
-                    "original": ep.get("originalURL")
+                data   = {
+                    "streamwish" : embeds.get("streamwish"),
+                    "streamruby" : embeds.get("streamruby"),
+                    "upnshare"   : embeds.get("upnshare"),
+                    "vihide"     : embeds.get("vihide"),
+                    "original"   : ep.get("originalURL")
                 }
 
                 all_episodes.append(Episode(
@@ -196,14 +196,14 @@ class ShowFlix(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         if url.startswith("showflix://"):
-            data = json.loads(url.replace("showflix://", ""))
+            data    = json.loads(url.replace("showflix://", ""))
             results = []
 
             mapping = {
-                "streamwish": "https://embedwish.com/e/{}",
-                "streamruby": "https://rubyvidhub.com/embed-{}.html",
-                "upnshare": "https://showflix.upns.one/#{}",
-                "vihide": "https://smoothpre.com/v/{}.html"
+                "streamwish" : "https://embedwish.com/e/{}",
+                "streamruby" : "https://rubyvidhub.com/embed-{}.html",
+                "upnshare"   : "https://showflix.upns.one/  #{}",
+                "vihide"     : "https://smoothpre.com/v/{}.html"
             }
 
             tasks = [self.extract(template.format(val)) for key, template in mapping.items() if (val := data.get(key))]
@@ -216,19 +216,19 @@ class ShowFlix(PluginBase):
             return results
 
         # Movie Fallback
-        parts     = url.split("/")
-        obj_id    = parts[-1]
-        payload   = self.get_payload({})
-        istek     = await self.httpx.post(f"{self.movie_api}/{obj_id}", json=payload)
-        item      = istek.json()
-        embeds    = item.get("embedLinks", {})
+        parts   = url.split("/")
+        obj_id  = parts[-1]
+        payload = self.get_payload({})
+        istek   = await self.httpx.post(f"{self.movie_api}/{obj_id}", json=payload)
+        item    = istek.json()
+        embeds  = item.get("embedLinks", {})
 
         results = []
         mapping = {
-            "streamwish": "https://embedwish.com/e/{}",
-            "streamruby": "https://rubyvidhub.com/embed-{}.html",
-            "upnshare": "https://showflix.upns.one/#{}",
-            "vihide": "https://smoothpre.com/v/{}.html"
+            "streamwish" : "https://embedwish.com/e/{}",
+            "streamruby" : "https://rubyvidhub.com/embed-{}.html",
+            "upnshare"   : "https://showflix.upns.one/  #{}",
+            "vihide"     : "https://smoothpre.com/v/{}.html"
         }
 
         tasks = [self.extract(template.format(val)) for key, template in mapping.items() if (val := embeds.get(key))]

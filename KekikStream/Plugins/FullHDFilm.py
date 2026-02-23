@@ -124,7 +124,7 @@ class FullHDFilm(PluginBase):
                 if "sezon" in key:
                     sz_match = re.search(r"(\d+)sezon", key)
                     if sz_match:
-                        sz_num = int(sz_match.group(1))
+                        sz_num   = int(sz_match.group(1))
                 ep_match = re.match(r"(\d+)", part_name)
                 if ep_match:
                     ep_num = int(ep_match.group(1))

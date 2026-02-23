@@ -97,14 +97,14 @@ class DiziKorea(PluginBase):
             episodes = []
             for ep_list in secici.select("div.series-profile-episode-list"):
                 parent_id = ep_list.parent.attrs.get("id", "") if ep_list.parent else ""
-                szn = 1
+                szn       = 1
                 szn_match = re.search(r"(\d+)$", parent_id)
                 if szn_match:
                     szn = int(szn_match.group(1))
 
                 for bolum in ep_list.select("li"):
-                    ep_href  = bolum.select_attr("h6 a", "href")
-                    ep_num   = bolum.select_text("a.truncate data")
+                    ep_href    = bolum.select_attr("h6 a", "href")
+                    ep_num     = bolum.select_text("a.truncate data")
                     ep_episode = int(ep_num) if ep_num and ep_num.isdigit() else None
                     if not ep_href:
                         continue

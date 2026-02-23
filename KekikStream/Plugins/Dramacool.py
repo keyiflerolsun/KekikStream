@@ -27,7 +27,7 @@ class Dramacool(PluginBase):
 
     def _convert_to_series_url(self, original_url: str) -> str:
         if "episode-" in original_url:
-            parts = original_url.split("/")
+            parts   = original_url.split("/")
             ep_part = ""
             for p in parts:
                 if "episode-" in p:
