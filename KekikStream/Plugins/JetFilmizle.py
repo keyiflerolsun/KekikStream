@@ -104,7 +104,7 @@ class JetFilmizle(PluginBase):
         poster = secici.select_poster("div.film-poster-container img") or secici.select_poster("div.film-poster img")
 
         # Metadata Extraction (Specific Selectors from Debug)
-        player_tag = secici.select_first("  #active-player")
+        player_tag = secici.select_first("#active-player")
         rating     = player_tag.attrs.get("data-film-rating") if player_tag else secici.meta_value("IMDb")
         year       = player_tag.attrs.get("data-film-year") if player_tag else secici.meta_value("Yıl")
         duration   = secici.extract_duration("Süre")

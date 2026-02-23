@@ -29,7 +29,7 @@ class VidStack(ExtractorBase):
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0"}
 
         # Hash ve Base URL çıkarma
-        hash_val = url.split("  #")[-1].split("/")[-1]
+        hash_val = url.split("#")[-1].split("/")[-1]
         base_url = self.get_base_url(url)
 
         # API İsteği
@@ -70,7 +70,7 @@ class VidStack(ExtractorBase):
             matches = re.finditer(r'["\']([^"\']+)["\']\s*:\s*["\']([^"\']+)["\']', section)
             for match in matches:
                 lang     = match.group(1)
-                raw_path = match.group(2).split("  #")[0]
+                raw_path = match.group(2).split("#")[0]
                 if raw_path:
                     path = raw_path.replace("\\/", "/")
                     sub_url = f"{self.main_url}{path}"
