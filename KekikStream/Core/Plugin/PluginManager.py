@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from .PluginLoader import PluginLoader
-from .PluginBase   import PluginBase
+from .PluginLoader                import PluginLoader
+from .PluginBase                  import PluginBase
 from ..Extractor.ExtractorManager import ExtractorManager
 
 class PluginManager:

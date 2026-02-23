@@ -82,16 +82,16 @@ class Episode(BaseModel):
         return self
 
 class SeriesInfo(BaseModel):
-    url          : str | None           = None
-    poster       : str | None           = None
-    title        : str | None           = None
-    description  : str | None           = None
-    tags         : str | None           = None
-    rating       : str | None           = None
-    year         : str | None           = None
-    actors       : str | None           = None
-    duration     : int | None           = None
-    episodes     : list[Episode] | None = None
+    url         : str | None           = None
+    poster      : str | None           = None
+    title       : str | None           = None
+    description : str | None           = None
+    tags        : str | None           = None
+    rating      : str | None           = None
+    year        : str | None           = None
+    actors      : str | None           = None
+    duration    : int | None           = None
+    episodes    : list[Episode] | None = None
 
     @field_validator("tags", "actors", mode="before")
     @classmethod

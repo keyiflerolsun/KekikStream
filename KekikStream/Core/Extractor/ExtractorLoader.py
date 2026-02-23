@@ -32,7 +32,7 @@ class ExtractorLoader:
 
         # Benzersizliği sağlama (modül adı + sınıf adı bazında)
         unique_extractors = []
-        seen_names = set()
+        seen_names        = set()
         for ext in extractors:
             identifier = f"{ext.__module__}.{ext.__name__}"
             if identifier not in seen_names:

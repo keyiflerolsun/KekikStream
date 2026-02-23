@@ -5,17 +5,17 @@ from io         import open
 
 setup(
     # ? Genel Bilgiler
-    name         = "KekikStream",
-    version      = "2.7.11",
-    url          = "https://github.com/keyiflerolsun/KekikStream",
-    description  = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir bıdı bıdı",
-    keywords     = ["KekikStream", "KekikAkademi", "keyiflerolsun"],
+    name        = "KekikStream",
+    version     = "2.7.11",
+    url         = "https://github.com/keyiflerolsun/KekikStream",
+    description = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir bıdı bıdı",
+    keywords    = ["KekikStream", "KekikAkademi", "keyiflerolsun"],
 
     author       = "keyiflerolsun",
     author_email = "keyiflerolsun@gmail.com",
 
-    license      = "GPLv3+",
-    classifiers  = [
+    license     = "GPLv3+",
+    classifiers = [
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Programming Language :: Python :: 3"

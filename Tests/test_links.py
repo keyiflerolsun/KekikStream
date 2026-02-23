@@ -1,3 +1,5 @@
+# Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
+
 import asyncio
 import os
 import sys
@@ -6,7 +8,7 @@ import sys
 sys.path.append(os.getcwd())
 
 from KekikStream.Plugins.Watch32 import Watch32
-from rich.console import Console
+from rich.console                import Console
 
 console = Console()
 

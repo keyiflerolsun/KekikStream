@@ -27,8 +27,8 @@ class VideoPlayerExtractor(ExtractorBase):
         lower_key   : bool  — partKey'i lowercase'e çevir (default: False)
     """
 
-    strip_query: bool = False
-    lower_key:   bool = False
+    strip_query : bool = False
+    lower_key   : bool = False
 
     def _resolve_suffix(self, sel: HTMLHelper, part_key: str) -> str:
         """partKey veya title'dan dil/suffix bilgisini çıkar."""
@@ -52,8 +52,8 @@ class VideoPlayerExtractor(ExtractorBase):
         self.httpx.headers.update({"Referer": referer or url})
 
         request_url = url.split("?")[0] if self.strip_query else url
-        resp = await self.httpx.get(request_url)
-        sel  = HTMLHelper(resp.text)
+        resp        = await self.httpx.get(request_url)
+        sel         = HTMLHelper(resp.text)
 
         v_url = sel.regex_first(r'videoUrl":"([^",]+)"')
         v_srv = sel.regex_first(r'videoServer":"([^",]+)"')
