@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class SuperFilmIzle(PluginBase):
     name        = "SuperFilmIzle"
     language    = "tr"
-    main_url    = "https://superfilmizle.com"
+    main_url    = "https://superfilmizle.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Superfilmizle ile HD Kalite film izle türkçe altyazılı olarak super kalitede donmadan izleyin."
 
