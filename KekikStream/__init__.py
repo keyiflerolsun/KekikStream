@@ -10,18 +10,18 @@ import re
 import unicodedata
 
 _TR_CHAR_MAP = str.maketrans({
-    "ı": "i",
-    "İ": "i",
-    "ş": "s",
-    "Ş": "s",
-    "ğ": "g",
-    "Ğ": "g",
-    "ü": "u",
-    "Ü": "u",
-    "ö": "o",
-    "Ö": "o",
-    "ç": "c",
-    "Ç": "c",
+    "ı" : "i",
+    "İ" : "i",
+    "ş" : "s",
+    "Ş" : "s",
+    "ğ" : "g",
+    "Ğ" : "g",
+    "ü" : "u",
+    "Ü" : "u",
+    "ö" : "o",
+    "Ö" : "o",
+    "ç" : "c",
+    "Ç" : "c",
 })
 
 def _normalize_search_text(value: str) -> str:
@@ -57,7 +57,7 @@ def _calculate_similarity_score(title: str, query: str) -> int:
     q_tokens = _tokenize_search_text(q)
     t_tokens = _tokenize_search_text(t)
     if q_tokens and t_tokens:
-        common = sum(1 for token in q_tokens if token in t_tokens)
+        common         = sum(1 for token in q_tokens if token in t_tokens)
         coverage_score = int((common / len(q_tokens)) * 520)
         if t.startswith(q_tokens[0]):
             coverage_score += 80
