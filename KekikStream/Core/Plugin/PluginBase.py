@@ -2,7 +2,7 @@
 
 from ...CLI                       import konsol
 from abc                          import ABC, abstractmethod
-from cloudscraper                 import CloudScraper
+from cloudscraper                 import create_scraper
 from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
 from ..Media.MediaHandler         import MediaHandler
@@ -27,11 +27,11 @@ class PluginBase(ABC):
 
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # cloudscraper - for bypassing Cloudflare
-        self.cloudscraper = CloudScraper()
+        self.cloudscraper = create_scraper()
 
         # Apply proxy ONLY if language is "tr"
-        if self.language != "tr":
-            proxy = None
+        # if self.language != "tr":
+        #     proxy = None
 
         if proxy:
             self.cloudscraper.proxies = proxy if isinstance(proxy, dict) else {"http": proxy, "https": proxy}
