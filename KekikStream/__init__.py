@@ -6,6 +6,64 @@ from asyncio    import run, TaskGroup, Semaphore
 from contextlib import suppress
 
 import os
+import re
+import unicodedata
+
+_TR_CHAR_MAP = str.maketrans({
+    "ı": "i",
+    "İ": "i",
+    "ş": "s",
+    "Ş": "s",
+    "ğ": "g",
+    "Ğ": "g",
+    "ü": "u",
+    "Ü": "u",
+    "ö": "o",
+    "Ö": "o",
+    "ç": "c",
+    "Ç": "c",
+})
+
+def _normalize_search_text(value: str) -> str:
+    if not value:
+        return ""
+    text = str(value).translate(_TR_CHAR_MAP)
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+def _tokenize_search_text(value: str) -> list[str]:
+    return [token for token in re.split(r"[^a-z0-9]+", _normalize_search_text(value)) if token]
+
+def _calculate_similarity_score(title: str, query: str) -> int:
+    t = _normalize_search_text(title)
+    q = _normalize_search_text(query)
+    if not t or not q:
+        return 0
+
+    if t == q:
+        return 1000
+
+    score = 0
+
+    if t.startswith(q):
+        score = max(score, 850 - min(200, len(t) - len(q)))
+
+    idx = t.find(q)
+    if idx != -1:
+        score = max(score, 700 - min(250, idx * 4) - min(100, max(0, len(t) - len(q))))
+
+    q_tokens = _tokenize_search_text(q)
+    t_tokens = _tokenize_search_text(t)
+    if q_tokens and t_tokens:
+        common = sum(1 for token in q_tokens if token in t_tokens)
+        coverage_score = int((common / len(q_tokens)) * 520)
+        if t.startswith(q_tokens[0]):
+            coverage_score += 80
+        score = max(score, coverage_score)
+
+    return score
 
 class KekikStream:
     def __init__(self):
@@ -24,6 +82,7 @@ class KekikStream:
         self.series_info           : SeriesInfo = None
         self.current_episode_index              = -1
         self.episode_title                      = ""
+        self.base_media_title                   = ""
 
     async def show_header(self, title: str):
         """Konsolu temizle ve başlık göster"""
@@ -34,9 +93,14 @@ class KekikStream:
         """Medya başlığına yeni bilgi ekle"""
         if not new_info:
             return
-        current = self.media.get_title()
+        current = self.media.get_title() or ""
         if new_info not in current:
             self.media.set_title(f"{current} | {new_info}")
+
+    def reset_media_title(self):
+        """Oynatma başlığını temel içeriğe sıfırla"""
+        if self.base_media_title:
+            self.media.set_title(self.base_media_title)
 
     async def load_media_info(self, url: str, retries=3):
         """Medya bilgilerini yükle"""
@@ -78,6 +142,13 @@ class KekikStream:
 
         query   = await self.ui.prompt_text("Arama sorgusu:")
         results = await self.current_plugin.search(query)
+        results = sorted(
+            results,
+            key=lambda item: (
+                -_calculate_similarity_score(getattr(item, "title", ""), query),
+                _normalize_search_text(getattr(item, "title", "")),
+            )
+        )
 
         if not results:
             konsol.print("[bold red]Sonuç bulunamadı![/bold red]")
@@ -126,6 +197,14 @@ class KekikStream:
         for task in tasks:
             all_results.extend(task.result())
 
+        all_results.sort(
+            key=lambda item: (
+                -_calculate_similarity_score(item.get("title", ""), query),
+                _normalize_search_text(item.get("title", "")),
+                _normalize_search_text(item.get("plugin", "")),
+            )
+        )
+
         if not all_results:
             return await self.handle_no_results()
 
@@ -156,8 +235,9 @@ class KekikStream:
         except Exception as e:
             return hata_yakala(e)
 
-        self.media.set_title(f"{self.current_plugin.name} | {media_info.title}")
-        self.ui.display_media_info(f"{self.current_plugin.name} | {media_info.title}", media_info)
+        self.base_media_title = f"{self.current_plugin.name} | {media_info.title}"
+        self.media.set_title(self.base_media_title)
+        self.ui.display_media_info(self.base_media_title, media_info)
 
         if isinstance(media_info, SeriesInfo):
             self.is_series   = True
@@ -255,6 +335,7 @@ class KekikStream:
         if not selected:
             return await self.content_finished()
 
+        self.reset_media_title()
         self.update_title(self.episode_title)
         self.update_title(selected.name)
 
@@ -307,6 +388,7 @@ class KekikStream:
             return await self.content_finished()
 
         # Başlıkları güncelle ve oynat
+        self.reset_media_title()
         self.update_title(self.episode_title)
         self.update_title(selected.name)
         self.update_title(extract_data.name)
