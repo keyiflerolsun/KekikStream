@@ -163,90 +163,156 @@ class Kinogo(PluginBase):
             req    = await self.async_cf_get(iframe_url, headers={"Referer": referer})
             i_text = req.text
 
-            match  = re.search(r'\"file\"\:\"(.*?)\"', i_text)
-            if not match:
-                return []
+            data = None
 
-            encoded = match.group(1).replace('//_//', '')
-
-            if encoded.startswith('#2'):
-                e  = encoded[2:]
-                dm = e[0:2]
-                try:
-                    delim = chr(int(dm))
-                except Exception:
-                    delim = '#'
-
-                parts  = e[2:].split(delim)
-                result = []
-                ml     = 32
-
-                for p in parts:
-                    if not p:
-                        continue
+            # 1. Try Base64 JSON blobs directly
+            b64_matches = re.findall(r'[\'\"](ey[a-zA-Z0-9\+\/]{50,}=*)[\'\"]', i_text)
+            if b64_matches:
+                for b64 in b64_matches:
                     try:
-                        t = int(p[-1])
-                        if len(p) > ml:
-                            result.append(p[2*t : 2*t + len(p) - 3*t - 1] + p[0:t])
-                        else:
-                            result.append(p)
+                        b_clean = re.sub(r'[^A-Za-z0-9+/=_\-]', '', b64)
+                        b_clean += '=' * ((4 - len(b_clean) % 4) % 4)
+                        raw = base64.b64decode(b_clean).decode('utf-8', errors='ignore')
+                        if '"file"' in raw or '"folder"' in raw:
+                            data = json.loads(raw)
+                            if data:
+                                break
                     except Exception:
-                        result.append(p)
-                encoded = "".join(result)
+                        pass
 
-            idx = encoded.find('W3s')
-            if idx == -1:
-                idx = encoded.find('eyJ')
-            if idx == -1:
-                return []
+            # 2. Try playerConfigs (Alloha v2)
+            if not data:
+                p_configs = re.search(r'playerConfigs\s*=\s*({.*?});', i_text, re.DOTALL)
+                if p_configs:
+                    try:
+                        conf  = json.loads(p_configs.group(1))
+                        f_val = conf.get("file", "").replace("\\/", "/")
+                        f_key = conf.get("key", "")
 
-            b64 = encoded[idx:]
-            b64 = re.sub(r'[^A-Za-z0-9+/=_\-]', '', b64)
-            b64 += '=' * ((4 - len(b64) % 4) % 4)
+                        if f_val and f_key:
+                            from urllib.parse import urlparse
+                            p_url       = urlparse(iframe_url)
+                            base_domain = ".".join(p_url.netloc.split(".")[-2:])
 
-            raw = base64.b64decode(b64).decode('utf-8', errors='ignore')
+                            if f_val.startswith("~"):
+                                token   = re.sub(r'^~|!!$', '', f_val)
+                                txt_url = f"https://vid11.{base_domain}/playlist/{token}.txt"
+                            elif "/playlist/" in f_val:
+                                txt_url = f"https://vid11.{base_domain}{f_val}"
+                            else:
+                                txt_url = ""
 
-            try:
-                data = json.loads(raw)
-            except Exception:
+                            if txt_url:
+                                headers = {
+                                    "X-CSRF-TOKEN" : f_key,
+                                    "Referer"      : iframe_url
+                                }
+                                txt_resp = await self.async_cf_post(txt_url, headers=headers)
+                                if txt_resp.status_code == 200:
+                                    try:
+                                        data = json.loads(txt_resp.text)
+                                    except Exception:
+                                        if txt_resp.text.startswith("http"):
+                                            return [{"type": "movie", "link": txt_resp.text, "title": "Alloha (v2)"}]
+
+                        elif '"' in f_val or "[" in f_val:
+                            data = json.loads(f_val)
+                    except Exception:
+                        pass
+
+            # 3. Try old encrypted file strings
+            if not data:
+                match = re.search(r'\"file\"\:\"(.*?)\"', i_text)
+                if match:
+                    encoded = match.group(1).replace('//_//', '')
+                    if encoded.startswith('#2'):
+                        e  = encoded[2:]
+                        dm = e[0:2]
+                        try:
+                            delim = chr(int(dm))
+                        except Exception:
+                            delim = '#'
+
+                        parts  = e[2:].split(delim)
+                        result = []
+                        ml     = 32
+
+                        for p in parts:
+                            if not p:
+                                continue
+                            try:
+                                t = int(p[-1])
+                                if len(p) > ml:
+                                    result.append(p[2*t : 2*t + len(p) - 3*t - 1] + p[0:t])
+                                else:
+                                    result.append(p)
+                            except Exception:
+                                result.append(p)
+                        encoded = "".join(result)
+
+            if not data or not isinstance(data, list):
                 return []
 
             playlist = []
 
             # Handle parsing differently based on whether it is a Series or a Movie
             for item in data:
-                if "folder" in item:
+                if isinstance(item, dict) and "folder" in item:
                     # It's a Series Season
-                    s_match = re.search(r's(\d+)', item.get("id", ""))
+                    s_id    = item.get("id", "1")
+                    s_match = re.search(r'(\d+)', str(s_id))
                     s_num   = int(s_match.group(1)) if s_match else 1
+
                     for ep in item["folder"]:
-                        e_match = re.search(r'e(\d+)', ep.get("id", ""))
+                        if not isinstance(ep, dict):
+                            continue
+
+                        e_id    = ep.get("id", ep.get("episode", ep.get("title", "1")))
+                        e_match = re.search(r'(\d+)', str(e_id))
                         e_num   = int(e_match.group(1)) if e_match else 1
 
                         voices = []
-                        if "folder" in ep:
-                            # Sometimes voices are nested in folders
+                        if "folder" in ep and isinstance(ep["folder"], list):
+                            # Multiple voices/qualities
                             for v in ep["folder"]:
-                                voices.append({"title": v.get("title", "Unknown"), "link": self.fix_url(v.get("file", ""))})
+                                if isinstance(v, dict):
+                                    voices.append({
+                                        "title" : v.get("title", "Unknown"),
+                                        "link"  : self.fix_url(v.get("file") or v.get("link") or "")
+                                    })
+                                elif isinstance(v, list) and len(v) >= 2:
+                                    # Fallback for [title, link] format
+                                    voices.append({
+                                        "title" : str(v[0]),
+                                        "link"  : self.fix_url(str(v[1]))
+                                    })
                         else:
-                            voices.append({"title": item.get("title", ""), "link": self.fix_url(ep.get("file", ""))})
+                            # Single voice
+                            v_link = ep.get("file") or ep.get("link") or ""
+                            if v_link:
+                                voices.append({
+                                    "title" : item.get("title", ""),
+                                    "link"  : self.fix_url(v_link)
+                                })
 
                         playlist.append({
                             "type"    : "series",
                             "season"  : s_num,
                             "episode" : e_num,
+                            "title"   : ep.get("title", "Kinogo"),
                             "voices"  : voices
                         })
-                elif "file" in item:
-                    # It's a Movie
-                    playlist.append({
-                        "type"  : "movie",
-                        "title" : item.get("title", ""),
-                        "link"  : self.fix_url(item.get("file", ""))
-                    })
-
+                elif isinstance(item, dict):
+                    # Movie?
+                    m_link = item.get("file") or item.get("link") or ""
+                    if m_link and isinstance(m_link, str) and m_link.startswith("http"):
+                        playlist.append({
+                            "type"  : "movie",
+                            "title" : item.get("title", "Kinogo"),
+                            "link"  : m_link
+                        })
             return playlist
-        except Exception as e:
+        except Exception:
             return []
 
     async def _get_kodik_links(self, iframe_url: str, referer: str) -> list[dict]:
@@ -384,11 +450,23 @@ class Kinogo(PluginBase):
                     if ep_data.get("type") == "series" and ep_data["season"] == target_season and ep_data["episode"] == target_episode:
                         for v in ep_data["voices"]:
                             clean_title = re.sub(r'<[^>]+>', '', v['title']).strip()
-                            results.append(ExtractResult(
-                                name    = clean_title if clean_title else "Kinogo",
-                                url     = self.fix_url(v['link']),
-                                referer = self.main_url
-                            ))
+                            c_name      = clean_title if clean_title else "Kinogo"
+
+                            link_str = v.get("link", "")
+                            for l in link_str.split(','):
+                                m = re.search(r'\[(.*?)\](.*)', l)
+                                if m:
+                                    results.append(ExtractResult(
+                                        name    = f"{c_name} {m.group(1)}",
+                                        url     = self.fix_url(m.group(2)),
+                                        referer = self.main_url
+                                    ))
+                                else:
+                                    results.append(ExtractResult(
+                                        name    = c_name,
+                                        url     = self.fix_url(l),
+                                        referer = self.main_url
+                                    ))
                 if results:
                     break
             return results
@@ -405,17 +483,41 @@ class Kinogo(PluginBase):
                     if item.get("type") == "movie":
                         clean_title = re.sub(r'<[^>]+>', '', item.get('title', '')).strip()
                         m_name      = clean_title if clean_title else "Kinogo"
-                        results.append(ExtractResult(
-                            name    = m_name,
-                            url     = self.fix_url(item['link']),
-                            referer = self.main_url
-                        ))
+
+                        link_str = item.get("link", "")
+                        for l in link_str.split(','):
+                            m = re.search(r'\[(.*?)\](.*)', l)
+                            if m:
+                                results.append(ExtractResult(
+                                    name    = f"{m_name} {m.group(1)}",
+                                    url     = self.fix_url(m.group(2)),
+                                    referer = self.main_url
+                                ))
+                            else:
+                                results.append(ExtractResult(
+                                    name    = m_name,
+                                    url     = self.fix_url(l),
+                                    referer = self.main_url
+                                ))
             elif "api.variyt.ws" in iframe:
                 v_req = await self.async_cf_get(iframe, headers={"Referer": url})
-                v_match = re.search(r'source\:\s*\{\s*hls\:\s*\"(.*?)\"', v_req.text)
+                # Prioritize HLS over DASH/DASHA
+                v_match = re.search(r'hls[\'\"]?\s*:\s*[\'\"](.*?)[\'\"]', v_req.text) or \
+                          re.search(r'(?:dash|dasha)[\'\"]?\s*:\s*[\'\"](.*?)[\'\"]', v_req.text)
                 if v_match:
                     results.append(ExtractResult(
                         name    = "Variyt",
+                        url     = self.fix_url(v_match.group(1).replace('\\/', '/')),
+                        referer = self.main_url
+                    ))
+            elif "stloadi.live" in iframe:
+                v_req   = await self.async_cf_get(iframe, headers={"Referer": url})
+                # Prioritize HLS/FILE over DASH/DASHA
+                v_match = re.search(r'(?:hls|file)[\'\"]?\s*:\s*[\'\"](.*?)[\'\"]', v_req.text) or \
+                          re.search(r'(?:dash|dasha)[\'\"]?\s*:\s*[\'\"](.*?)[\'\"]', v_req.text)
+                if v_match:
+                    results.append(ExtractResult(
+                        name    = "Kinogo Player",
                         url     = self.fix_url(v_match.group(1).replace('\\/', '/')),
                         referer = self.main_url
                     ))

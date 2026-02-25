@@ -28,6 +28,11 @@ class PluginBase(ABC):
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # cloudscraper - for bypassing Cloudflare
         self.cloudscraper = CloudScraper()
+
+        # Apply proxy ONLY if language is "tr"
+        if self.language != "tr":
+            proxy = None
+
         if proxy:
             self.cloudscraper.proxies = proxy if isinstance(proxy, dict) else {"http": proxy, "https": proxy}
 

@@ -11,9 +11,9 @@ class DDizi(PluginBase):
     description = "Ddizi, dizi izle, dizi seyret, yerli dizi izle, canlı dizi, türk dizi izle, dizi izle full, diziizle, eski diziler"
 
     main_page   = {
-        f"{main_url}/yeni-eklenenler7" : "Son Eklenen Bölümler",
+        f"{main_url}/yeni-eklenenler7"  : "Son Eklenen Bölümler",
         f"{main_url}/yabanci-dizi-izle" : "Yabancı Diziler",
-        f"{main_url}/eski.diziler"       : "Eski Diziler",
+        f"{main_url}/eski.diziler"      : "Eski Diziler",
         f"{main_url}/yerli-diziler"     : "Yerli Diziler"
     }
 
