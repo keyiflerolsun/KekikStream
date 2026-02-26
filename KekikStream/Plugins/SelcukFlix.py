@@ -5,7 +5,7 @@ import base64, json, urllib.parse
 
 class SelcukFlix(PluginBase):
     name        = "SelcukFlix"
-    lang        = "tr"
+    language    = "tr"
     main_url    = "https://selcukflix.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Selcukflix'te her türden en yeni ve en popüler dizi ve filmleri izlemenin keyfini çıkarın. Aksiyondan romantiğe, bilim kurgudan dramaya, geniş kütüphanemizde herkes için bir şey var."

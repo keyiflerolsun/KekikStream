@@ -156,7 +156,9 @@ class YTDLP(ExtractorBase):
             "format"                : "best/all",  # En iyi kalite, yoksa herhangi biri
             "no_check_certificates" : True,
             "socket_timeout"        : 3,
-            "retries"               : 1
+            "retries"               : 1,
+            "noplaylist"            : True,
+            "skip_download"         : True
         }
 
         # Referer varsa header olarak ekle
@@ -164,7 +166,17 @@ class YTDLP(ExtractorBase):
             ydl_opts["http_headers"] = {"Referer": referer}
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            try:
+                info = ydl.extract_info(url, download=False)
+            except Exception as first_error:
+                # Bazı sitelerde format seçici kaynaklı patlamalarda daha gevşek fallback dene
+                fallback_opts = dict(ydl_opts)
+                fallback_opts["format"] = "best"
+                with yt_dlp.YoutubeDL(fallback_opts) as ydl_fallback:
+                    try:
+                        info = ydl_fallback.extract_info(url, download=False)
+                    except Exception as second_error:
+                        raise ValueError(f"yt-dlp extraction failed: {second_error}") from first_error
 
             if not info:
                 raise ValueError("yt-dlp video bilgisi döndürmedi")

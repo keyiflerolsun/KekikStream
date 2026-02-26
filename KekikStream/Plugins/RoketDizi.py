@@ -5,7 +5,7 @@ import base64, json
 
 class RoketDizi(PluginBase):
     name        = "RoketDizi"
-    lang        = "tr"
+    language    = "tr"
     main_url    = "https://roketdizi.to"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Türkiye'nin en tatlış yabancı dizi izleme sitesi. Türkçe dublaj, altyazılı, eski ve yeni yabancı dizilerin yanı sıra kore (asya) dizileri izleyebilirsiniz."

@@ -80,7 +80,7 @@ class MainUrlGuncelleyici:
                 yeni_url = self._rectv_ver()
             else:
                 try:
-                    istek    = self.oturum.get(eski_url, allow_redirects=True)
+                    istek    = self.oturum.get(eski_url, allow_redirects=True, timeout=3)
                     yeni_url = istek.url.rstrip("/")
                     # konsol.log(f"[+] Kontrol edildi   : {eski_url} -> {yeni_url}")
                 except Exception as hata:
