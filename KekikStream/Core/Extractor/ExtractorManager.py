@@ -1,5 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
+from urllib.parse     import urlparse
 from .ExtractorLoader import ExtractorLoader
 from .ExtractorBase   import ExtractorBase
 
@@ -13,6 +14,8 @@ class ExtractorManager:
         self._extractor_instances = None  # None = henüz oluşturulmadı
         self._ytdlp_extractor     = None
         self._initialized         = False
+
+        self._netloc_index: dict[str, ExtractorBase] = {}
 
     def _ensure_initialized(self):
         """
@@ -41,16 +44,37 @@ class ExtractorManager:
         if self._ytdlp_extractor:
             self._extractor_instances.insert(0, self._ytdlp_extractor)
 
+        # URL netloc index'i oluştur (O(1) arama için)
+        self._netloc_index = {}
+        for instance in self._extractor_instances:
+            if instance.main_url:
+                try:
+                    netloc = urlparse(instance.main_url).netloc
+                    if netloc and netloc not in self._netloc_index:
+                        self._netloc_index[netloc] = instance
+                except Exception:
+                    pass
+
         self._initialized = True
 
     def find_extractor(self, link) -> ExtractorBase:
         """
-        Verilen bağlantıyı işleyebilecek çıkarıcıyı bul
+        Verilen bağlantıyı işleyebilecek çıkarıcıyı bul.
         """
         # Lazy loading: İlk kullanımda extractorları initialize et
         self._ensure_initialized()
 
-        # Cached instance'ları kullan
+        # O(1): URL'nin netloc'una göre direkt eşleşme
+        try:
+            netloc = urlparse(link).netloc
+            if netloc and netloc in self._netloc_index:
+                candidate = self._netloc_index[netloc]
+                if candidate.can_handle_url(link):
+                    return candidate
+        except Exception:
+            pass
+
+        # Fallback O(n): Tüm extractorları dene (yt-dlp veya unusual patterns)
         for extractor in self._extractor_instances:
             if extractor.can_handle_url(link):
                 return extractor
@@ -66,10 +90,8 @@ class ExtractorManager:
 
         mapping = {}
         for link in links:
-            # Cached instance'ları kullan
-            for extractor in self._extractor_instances:
-                if extractor.can_handle_url(link):
-                    mapping[link] = f"{extractor.name:<30} » {link.replace(extractor.main_url, '')}"
-                    break  # İlk eşleşmede dur
+            extractor = self.find_extractor(link)
+            if extractor:
+                mapping[link] = f"{extractor.name:<30} » {link.replace(extractor.main_url, '')}"
 
         return mapping

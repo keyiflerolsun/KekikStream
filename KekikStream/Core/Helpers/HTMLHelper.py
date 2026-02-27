@@ -6,6 +6,13 @@ from selectolax.parser import HTMLParser, Node
 import html as _html
 import re
 
+# #88: Modül seviyesinde derlenmiş regex sabitleri (her çağrıda yeniden derlenmez)
+_RE_SE            = re.compile(r"[Ss](\d+)[Ee](\d+)")
+_RE_SEASON        = re.compile(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", re.I)
+_RE_EPISODE       = re.compile(r"(\d+)\.\s*[Bb][\u00f6o]l[\u00fcu]m|[Bb][\u00f6o]l[\u00fcu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", re.I)
+_RE_YEAR_SIMPLE   = re.compile(r"\b(19\d{2}|20\d{2})\b")
+_RE_DURATION_NUMS = re.compile(r"(\d+)")
+
 
 class NodeHelper:
     """
@@ -190,15 +197,16 @@ class HTMLHelper:
 
             # Label belirtebilecek elementleri tara
             for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
-                txt = (label_el.text(strip=True) or "").casefold()
+                # #89: tek .text() çağrısı + tek casefold — raw_txt orijinali, txt normalized
+                raw_txt = label_el.text(strip=True) or ""
+                txt     = raw_txt.casefold()
                 if needle not in txt:
                     continue
 
                 # 1) Elementin kendi içindeki text'te LABEL: VALUE formatı olabilir
                 # "Oyuncular: Brad Pitt" gibi. LABEL: sonrasını al.
-                full_txt = label_el.text(strip=True)
-                if ":" in full_txt and needle in full_txt.split(":")[0].casefold():
-                    val = full_txt.split(":", 1)[1].strip()
+                if ":" in raw_txt and needle in txt.split(":")[0]:  # txt zaten casefold
+                    val = raw_txt.split(":", 1)[1].strip()
                     if val:
                         return val
 
@@ -283,11 +291,12 @@ class HTMLHelper:
     @staticmethod
     def extract_season_episode(text: str) -> tuple[int | None, int | None]:
         """Metin içinden sezon ve bölüm numarasını çıkar."""
-        if m := re.search(r"[Ss](\d+)[Ee](\d+)", text):
+        # #88: Modül seviyesi derlenmiş regex kullan
+        if m := _RE_SE.search(text):
             return int(m.group(1)), int(m.group(2))
 
-        s = re.search(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", text, re.I)
-        e = re.search(r"(\d+)\.\s*[Bb][öo]l[üu]m|[Bb][öo]l[üu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", text, re.I)
+        s = _RE_SEASON.search(text)
+        e = _RE_EPISODE.search(text)
 
         s_val = next((int(g) for g in s.groups() if g), None) if s else None
         e_val = next((int(g) for g in e.groups() if g), None) if e else None
@@ -301,7 +310,8 @@ class HTMLHelper:
         """
         for selector in selectors:
             if text := self.select_text(selector):
-                if m := re.search(r"\b(19\d{2}|20\d{2})\b", text):
+                # #88: Modül seviyesi derlenmiş _RE_YEAR_SIMPLE kullan
+                if m := _RE_YEAR_SIMPLE.search(text):
                     return int(m.group(1))
 
         # Eğer hala bulunamadıysa regex ile dökümanda ara (sadece selector ile belirtilmediyse veya bulunamadıysa)
@@ -317,8 +327,8 @@ class HTMLHelper:
             if not raw:
                 return None
 
-        # Sayıları ayıkla
-        nums = re.findall(r"(\d+)", str(raw))
+        # Sayıları ayıkla (#88: _RE_DURATION_NUMS kullan)
+        nums = _RE_DURATION_NUMS.findall(str(raw))
         if not nums:
             return None
 

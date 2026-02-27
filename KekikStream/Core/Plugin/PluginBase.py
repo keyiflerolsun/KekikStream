@@ -70,7 +70,7 @@ class PluginBase(ABC):
         else:
             self.ex_manager = ExtractorManager(extractor_dir=ex_manager)
 
-        self._cache_namespace = f"{self.__class__.__module__}.{self.__class__.__name__}:{id(self)}"
+        self._cache_namespace = f"{self.__class__.__module__}.{self.__class__.__name__}"
         self._setup_default_method_caches()
 
     def _setup_default_method_caches(self):
