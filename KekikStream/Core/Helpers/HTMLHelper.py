@@ -327,7 +327,7 @@ class HTMLHelper:
             if not raw:
                 return None
 
-        # Sayıları ayıkla (#88: _RE_DURATION_NUMS kullan)
+        # Sayıları ayıkla
         nums = _RE_DURATION_NUMS.findall(str(raw))
         if not nums:
             return None
