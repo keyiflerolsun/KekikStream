@@ -6,7 +6,7 @@ from selectolax.parser import HTMLParser, Node
 import html as _html
 import re
 
-# #88: Modül seviyesinde derlenmiş regex sabitleri (her çağrıda yeniden derlenmez)
+# Modül seviyesinde derlenmiş regex sabitleri (her çağrıda yeniden derlenmez)
 _RE_SE            = re.compile(r"[Ss](\d+)[Ee](\d+)")
 _RE_SEASON        = re.compile(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", re.I)
 _RE_EPISODE       = re.compile(r"(\d+)\.\s*[Bb][\u00f6o]l[\u00fcu]m|[Bb][\u00f6o]l[\u00fcu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", re.I)
@@ -197,7 +197,7 @@ class HTMLHelper:
 
             # Label belirtebilecek elementleri tara
             for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
-                # #89: tek .text() çağrısı + tek casefold — raw_txt orijinali, txt normalized
+                # tek .text() çağrısı + tek casefold — raw_txt orijinali, txt normalized
                 raw_txt = label_el.text(strip=True) or ""
                 txt     = raw_txt.casefold()
                 if needle not in txt:
@@ -291,7 +291,7 @@ class HTMLHelper:
     @staticmethod
     def extract_season_episode(text: str) -> tuple[int | None, int | None]:
         """Metin içinden sezon ve bölüm numarasını çıkar."""
-        # #88: Modül seviyesi derlenmiş regex kullan
+        # Modül seviyesi derlenmiş regex kullan
         if m := _RE_SE.search(text):
             return int(m.group(1)), int(m.group(2))
 
@@ -310,7 +310,7 @@ class HTMLHelper:
         """
         for selector in selectors:
             if text := self.select_text(selector):
-                # #88: Modül seviyesi derlenmiş _RE_YEAR_SIMPLE kullan
+                # Modül seviyesi derlenmiş _RE_YEAR_SIMPLE kullan
                 if m := _RE_YEAR_SIMPLE.search(text):
                     return int(m.group(1))
 
