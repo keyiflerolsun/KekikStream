@@ -3,7 +3,7 @@
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
 
 class YesilcamTV(PluginBase):
-    name        = "YeşilçamTV"
+    name        = "YesilcamTV"
     language    = "tr"
     main_url    = "https://yesilcamtv.com.tr"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
