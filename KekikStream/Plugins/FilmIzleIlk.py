@@ -6,7 +6,7 @@ import base64, re
 class FilmIzleIlk(PluginBase):
     name        = "FilmIzleIlk"
     language    = "tr"
-    main_url    = "https://www.filmizleilk.club"
+    main_url    = "https://www.filmizleilk.fit"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "filmizleilk.biz Yerli ve Yabancı en son Film ve Dizileri Full HD 1080p Bluray Tek Part Full izle"
 
