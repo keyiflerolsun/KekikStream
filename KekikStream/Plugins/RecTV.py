@@ -50,9 +50,25 @@ class RecTV(PluginBase):
         f"{main_url}/api/movie/by/filtres/34/created/SAYFA/{sw_key}/" : "Çocuklar",
     }
 
+    async def _make_headers(self, method: str, path: str, body: bytes = b"") -> dict:
+        try:
+            response = await self.httpx.get(f"http://10.0.0.2:2585/api/v1/rectv?method={method}&path={path}&body={body.decode() if body else ''}")
+            veriler  = response.json()
+            if veriler.get("success"):
+                headers = veriler.get("headers")
+                headers.update({"User-Agent": "okhttp/4.12.0"})
+                return headers
+        except Exception:
+            pass
+
+        return {"User-Agent": "okhttp/4.12.0"}
+
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
-        istek   = await self.httpx.get(f"{url.replace('SAYFA', str(int(page) - 1))}")
+        target_url = url.replace('SAYFA', str(int(page) - 1))
+        path       = target_url.replace(self.main_url, "")
+
+        headers = await self._make_headers("GET", path)
+        istek   = await self.httpx.get(target_url, headers=headers)
         veriler = istek.json()
 
         return [
@@ -66,8 +82,10 @@ class RecTV(PluginBase):
         ]
 
     async def search(self, query: str) -> list[SearchResult]:
-        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
-        istek     = await self.httpx.get(f"{self.main_url}/api/search/{query}/{self.sw_key}/")
+        path = f"/api/search/{query}/{self.sw_key}/"
+
+        headers = await self._make_headers("GET", path)
+        istek   = await self.httpx.get(f"{self.main_url}{path}", headers=headers)
 
         kanallar  = istek.json().get("channels")
         icerikler = istek.json().get("posters")
@@ -86,7 +104,6 @@ class RecTV(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        self.httpx.headers.update({"user-agent": "okhttp/4.12.0"})
         veri = loads(url)
 
         # Süreyi dakikaya çevir (Örn: "1h 59min")
@@ -110,7 +127,10 @@ class RecTV(PluginBase):
         }
 
         if veri.get("type") == "serie":
-            dizi_istek = await self.httpx.get(f"{self.main_url}/api/season/by/serie/{veri.get('id')}/{self.sw_key}/")
+            path = f"/api/season/by/serie/{veri.get('id')}/{self.sw_key}/"
+
+            headers    = await self._make_headers("GET", path)
+            dizi_istek = await self.httpx.get(f"{self.main_url}{path}", headers=headers)
             dizi_veri  = dizi_istek.json()
 
             episodes = []
@@ -128,7 +148,7 @@ class RecTV(PluginBase):
                         elif "altyaz" in s_title.lower():
                             tag = " (Altyazı)"; clean_s = re.sub(r"\s*altyaz[ıi]\s*", "", s_title, flags=re.I).strip()
 
-                        ep_data = {"url": self.fix_url(source.get("url")), "title": f"{veri.get('title')} | {s_title} {e_title} - {source.get('title')}", "is_episode": True}
+                        ep_data = {"url": self.fix_url(source.get("url")), "title": source.get("title"), "is_episode": True}
                         episodes.append(Episode(
                             season  = s or 1,
                             episode = e or 1,
@@ -151,7 +171,7 @@ class RecTV(PluginBase):
         if veri.get("is_episode"):
             return [ExtractResult(
                 url        = veri.get("url"),
-                name       = _decode_unicode(veri.get("title", "Bölüm")),
+                name       = _decode_unicode(veri.get("title", "Video")),
                 user_agent = "googleusercontent",
                 referer    = "https://twitter.com/"
             )]
@@ -166,7 +186,7 @@ class RecTV(PluginBase):
 
                 results.append(ExtractResult(
                     url        = video_link,
-                    name       = _decode_unicode(f"{veri.get('title')} - {kaynak.get('title')}"),
+                    name       = _decode_unicode(kaynak.get("title", "Video")),
                     user_agent = "googleusercontent",
                     referer    = "https://twitter.com/"
                 ))
