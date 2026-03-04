@@ -196,7 +196,7 @@ class HTMLHelper:
                 continue
 
             # Label belirtebilecek elementleri tara
-            for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
+            for label_el in root.select("span, strong, b, label, dt, td, div.f-info-label, div.fi-label"):
                 # tek .text() çağrısı + tek casefold — raw_txt orijinali, txt normalized
                 raw_txt = label_el.text(strip=True) or ""
                 txt     = raw_txt.casefold()
@@ -240,7 +240,7 @@ class HTMLHelper:
         for root in targets:
             if not root:
                 continue
-            for label_el in root.select("span, strong, b, label, dt, div.f-info-label, div.fi-label"):
+            for label_el in root.select("span, strong, b, label, dt, td, div.f-info-label, div.fi-label"):
                 if needle in (label_el.text(strip=True) or "").casefold():
                     # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
                     parent = label_el.parent
