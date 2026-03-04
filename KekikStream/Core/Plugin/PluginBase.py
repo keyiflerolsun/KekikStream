@@ -2,7 +2,7 @@
 
 from ...CLI                       import konsol
 from abc                          import ABC, abstractmethod
-from cloudscraper                 import CloudScraper
+from curl_cffi.requests           import AsyncSession
 from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
 from ..Media.MediaHandler         import MediaHandler
@@ -30,19 +30,16 @@ class PluginBase(ABC):
         self.main_url  = new_url
 
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
-        # cloudscraper - for bypassing Cloudflare
-        self.cloudscraper = CloudScraper()
-        self.cloudscraper.headers.update({
+        # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
+        self._cf_session = AsyncSession(impersonate="chrome")
+        self._cf_session.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         })
 
-        # Apply proxy ONLY if language is "tr"
-        # if self.language != "tr":
-        #     proxy = None
-
         if proxy:
-            self.cloudscraper.proxies = proxy if isinstance(proxy, dict) else {"http": proxy, "https": proxy}
+            proxy_str                = proxy if isinstance(proxy, str) else (proxy.get("https") or proxy.get("http"))
+            self._cf_session.proxies = {"http": proxy_str, "https": proxy_str}
 
         # Convert dict proxy to string for httpx if necessary
         httpx_proxy = proxy
@@ -55,8 +52,7 @@ class PluginBase(ABC):
             follow_redirects = True,
             proxy            = httpx_proxy
         )
-        self.httpx.headers.update(self.cloudscraper.headers)
-        self.httpx.cookies.update(self.cloudscraper.cookies)
+        self.httpx.headers.update(self._cf_session.headers)
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -255,19 +251,17 @@ class PluginBase(ABC):
 
     async def async_cf_get(self, url: str, **kwargs):
         """
-        cloudscraper.get() için async wrapper.
+        curl_cffi.AsyncSession ile Cloudflare bypasslı GET isteği.
         Cloudflare korumalı sitelerde kullanılır.
         """
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: self.cloudscraper.get(url, **kwargs))
+        return await self._cf_session.get(url, **kwargs)
 
     async def async_cf_post(self, url: str, **kwargs):
         """
-        cloudscraper.post() için async wrapper.
+        curl_cffi.AsyncSession ile Cloudflare bypasslı POST isteği.
         Cloudflare korumalı sitelerde kullanılır.
         """
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: self.cloudscraper.post(url, **kwargs))
+        return await self._cf_session.post(url, **kwargs)
 
     @staticmethod
     def new_subtitle(url: str, name: str = "Altyazı") -> Subtitle:
@@ -322,6 +316,7 @@ class PluginBase(ABC):
     async def close(self):
         """Close HTTP client."""
         await self.httpx.aclose()
+        await self._cf_session.close()
 
     def fix_url(self, url: str) -> str:
         if not url:
