@@ -8,8 +8,8 @@ import re
 
 # Modül seviyesinde derlenmiş regex sabitleri (her çağrıda yeniden derlenmez)
 _RE_SE            = re.compile(r"[Ss](\d+)[Ee](\d+)")
-_RE_SEASON        = re.compile(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", re.I)
-_RE_EPISODE       = re.compile(r"(\d+)\.\s*[Bb][\u00f6o]l[\u00fcu]m|[Bb][\u00f6o]l[\u00fcu]m[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", re.I)
+_RE_SEASON        = re.compile(r"(\d+)\.\s*[Ss]ezon|[Ss]ezon[- ]?(\d+)|[Ss]eason[- ]?(\d+)|-(\d+)-sezon|S(\d+)|(\d+)\.[Ss]", re.I)
+_RE_EPISODE       = re.compile(r"(\d+)\.\s*[Bb][\u00f6o]l[\u00fcu]m|[Bb][\u00f6o]l[\u00fcu]m[- ]?(\d+)|[Ee]pisode[- ]?(\d+)|[Ee]ps[- ]?(\d+)|-(\d+)-bolum|[Ee](\d+)", re.I)
 _RE_YEAR_SIMPLE   = re.compile(r"\b(19\d{2}|20\d{2})\b")
 _RE_DURATION_NUMS = re.compile(r"(\d+)")
 
@@ -302,6 +302,17 @@ class HTMLHelper:
         e_val = next((int(g) for g in e.groups() if g), None) if e else None
 
         return s_val, e_val
+
+    @staticmethod
+    def clean_episode_title(text: str) -> str:
+        """Episode başlığından 'Eps 1: ' gibi kalıpları temizler."""
+        # Sezon/Bölüm belirteçlerini ve sonrasındaki ayraçları temizle
+        cleaned = _RE_SE.sub("", text)
+        cleaned = _RE_SEASON.sub("", cleaned)
+        cleaned = _RE_EPISODE.sub("", cleaned)
+
+        # Başta kalan ayraç ve boşlukları temizle
+        return cleaned.strip(" :-").strip()
 
     def extract_year(self, *selectors: str, pattern: str = r"(?<!\&#)\b(19\d{2}|20\d{2})\b") -> int | None:
         """
