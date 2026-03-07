@@ -95,7 +95,7 @@ class FlwBasePlugin(PluginBase):
                 episodes.append(Episode(
                     season  = s_val or 1,
                     episode = e_val or 1,
-                    title   = ep_title,
+                    title   = eh.clean_episode_title(ep_title) or ep_title,
                     url     = f"servers/{ep_id}"
                 ))
 
