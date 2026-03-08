@@ -93,6 +93,9 @@ class WebteIzle(PluginBase):
         urls = []
         for src in re.findall(r'<iframe[^>]+src=["\']([^"\']+)["\']', embed_html, re.I):
             src = f"https:{src}" if src.startswith("//") else src
+            # Relative URL (örn. /ajax/reCAPTCHADATA.asp) → atla
+            if src.startswith("/") or not src.startswith("http"):
+                continue
             urls.append(src.replace("bysezoxexe.com", "filemoon.sx").replace("vidmoly.me", "vidmoly.net").replace("hqq.to", "hqq.tv"))
 
         pts = {

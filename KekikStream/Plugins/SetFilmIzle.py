@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import re as _re
 import contextlib
 
 class SetFilmIzle(PluginBase):
@@ -159,10 +160,12 @@ class SetFilmIzle(PluginBase):
         return MovieInfo(**common_info)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        nonce = secici.select_attr("div#playex", "data-nonce") or ""
+        # nonce artık STMOVIE_AJAX.nonces.video JS objesinde
+        nonce = _re.search(r'nonces:\s*\{[^}]*video:\s*["\']([^"\']+)["\']', istek.text)
+        nonce = nonce.group(1) if nonce else (secici.select_attr("div#playex", "data-nonce") or "")
 
         # partKey to dil label mapping
         part_key_labels = {

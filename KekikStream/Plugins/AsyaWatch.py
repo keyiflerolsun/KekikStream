@@ -149,7 +149,7 @@ class AsyaWatch(PluginBase):
             return {}
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek = await self.httpx.get(url)
+        istek = await self.async_cf_get(url)
         data  = self._parse_secure_data(istek.text)
 
         item        = data.get("contentItem", {})
@@ -214,7 +214,7 @@ class AsyaWatch(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek = await self.httpx.get(url)
+        istek = await self.async_cf_get(url)
         data  = self._parse_secure_data(istek.text)
 
         related = data.get("RelatedResults", {})
