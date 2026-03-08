@@ -114,9 +114,9 @@ class AsyaWatch(PluginBase):
             search  = json.loads(decoded)
 
             for item in search.get("result", []):
-                title  = item.get("title", "")
-                href   = item.get("slug", "")
-                poster = self._fix_poster(item.get("poster", ""))
+                title  = item.get("title") or item.get("object_name", "")
+                href   = item.get("slug") or item.get("used_slug", "")
+                poster = self._fix_poster(item.get("poster") or item.get("object_poster_url", ""))
 
                 if href and "/seri-filmler/" in href:
                     continue
@@ -135,7 +135,7 @@ class AsyaWatch(PluginBase):
     def _parse_secure_data(self, html: str) -> dict:
         """__NEXT_DATA__ scriptinden secureData'yı çöz"""
         secici = HTMLHelper(html)
-        script = secici.select_first("script  #__NEXT_DATA__")
+        script = secici.select_first("script#__NEXT_DATA__")
         if not script:
             return {}
         try:

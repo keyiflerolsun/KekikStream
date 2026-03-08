@@ -77,7 +77,7 @@ class HDFilmCehennemi(PluginBase):
             headers = {
                 "Referer"          : f"{self.main_url}/",
                 "X-Requested-With" : "fetch",
-                "authority"        : f"{self.main_url}"
+                "authority"        : "www.hdfilmcehennemi.pro"
             }
         )
 

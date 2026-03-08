@@ -70,30 +70,34 @@ class TvDiziler(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.post(
-            f"{self.main_url}/search?qr={query}",
-            headers = {
-                "X-Requested-With" : "XMLHttpRequest",
-                "Accept"           : "application/json, text/javascript, */*; q=0.01",
-            },
-        )
+        headers = {
+            "X-Requested-With" : "XMLHttpRequest",
+            "Accept"           : "application/json, text/javascript, */*; q=0.01",
+        }
+        istek = await self.httpx.post(f"{self.main_url}/search?qr={query}", headers=headers)
 
         results = []
         try:
             data = istek.json()
-            if data.get("success") != 1:
-                return results
+            # Bazı durumlarda direkt html listesi dönebilir
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                items = data.get("data", [])
+                if isinstance(items, str):
+                    secici = HTMLHelper(items)
+                    items  = secici.select("li.col, a.search-result-item")
+            else:
+                items = []
 
-            html   = data.get("data", "")
-            secici = HTMLHelper(html)
+            for item in items:
+                if isinstance(item, str):
+                     # HTML string ise tekrar işle
+                     pass
 
-            for li in secici.select("ul li"):
-                href = li.select_attr("a", "href")
-                if not href or ("/dizi/" not in href and "/film/" not in href):
-                    continue
-
-                title  = li.select_text("h3.truncate")
-                poster = li.select_attr("img", "data-src")
+                href   = item.select_attr("a", "href") or item.select_attr(None, "href")
+                title  = item.select_text("h3") or item.select_text("span.title") or item.select_attr("img", "alt") or item.text(strip=True)
+                poster = item.select_attr("img", "data-src") or item.select_attr("img", "src")
 
                 if title and href:
                     results.append(SearchResult(
@@ -102,6 +106,7 @@ class TvDiziler(PluginBase):
                         poster = self.fix_url(poster),
                     ))
         except Exception:
+            # Fallback to direct search if AJAX fails
             pass
 
         return results
@@ -174,59 +179,102 @@ class TvDiziler(PluginBase):
         istek   = await self.httpx.get(url, headers=headers)
         secici  = HTMLHelper(istek.text)
 
-        response = []
-
-        # Tüm butonlardan data-hhs topla (aktif + alternatifler)
+        response  = []
         seen_srcs = set()
-        src_list  = []
-        for btn in secici.select("button[data-hhs]"):
-            src = btn.select_attr(None, "data-hhs")
-            if not src or src in seen_srcs:
-                continue
-            seen_srcs.add(src)
-            src = self.fix_url(src)
-            if "youtube.com" in src:
-                continue
-            src_list.append(src)
 
-        async def _process_src(src):
-            part_results = []
-            try:
-                if_resp = await self.httpx.get(src, headers=headers)
-                script_match = re.search(r"sources:\s*\[(\{[^]]+)\]", if_resp.text)
-                if script_match:
-                    raw = script_match.group(1)
-                    raw = re.sub(r'(?<!["\w])(\w+)(?=\s*:)', r'"\1"', raw)
-                    raw = raw.replace("'", '"')
-                    try:
-                        source   = json.loads(raw)
-                        file_url = source.get("file", "")
-                        if file_url:
-                            part_results.append(ExtractResult(
-                                name    = self.name,
-                                url     = file_url,
-                                referer = f"{self.main_url}/",
-                            ))
-                    except json.JSONDecodeError:
-                        pass
-            except Exception:
-                pass
+        # Altyazılı / Dublaj gruplarını bul
+        panes = secici.select("div.tab-pane, div.series-watch-alternatives")
+        if panes:
+            for group in panes:
+                group_id = group.id if hasattr(group, "id") and isinstance(group.id, str) else ""
+                prefix   = "Altyazı" if "altyazi" in group_id else "Dublaj" if "dublaj" in group_id else ""
 
-            # Fallback: extractor
-            data = await self.extract(src, referer=f"{self.main_url}/")
-            self.collect_results(part_results, data)
-            return part_results
+                for btn in group.select("button[data-hhs]"):
+                    data_hhs_raw = btn.select_attr(None, "data-hhs")
+                    if not data_hhs_raw: continue
+                    for src in data_hhs_raw.split(","):
+                        if not src or "404.html" in src or src in seen_srcs:
+                            continue
+                        seen_srcs.add(src)
 
-        tasks = [_process_src(src) for src in src_list]
-        for result_list in await self.gather_with_limit(tasks):
-            response.extend(result_list)
+                        name       = btn.text(strip=True) or "Player"
+                        player_url = self.fix_url(src)
 
-        # Eğer hiç buton yoksa, eski fallback
-        if not seen_srcs:
-            iframe_src = secici.select_attr("iframe", "src")
-            if iframe_src:
-                iframe_src = self.fix_url(iframe_src)
-                data       = await self.extract(iframe_src, referer=f"{self.main_url}/")
-                self.collect_results(response, data)
+                        if "/vid/kapat/?git=" in player_url:
+                            player_url = player_url.split("git=")[-1]
+
+                        full_name = f"{prefix} | {name}" if prefix else name
+
+                        if "/vid/ply/" in player_url:
+                            data = await self._extract_internal_player(player_url, prefix=full_name)
+                            self.collect_results(response, data)
+                        else:
+                            data = await self.extract(player_url, referer=url, prefix=full_name)
+                            self.collect_results(response, data)
+        else:
+            for btn in secici.select("button[data-hhs]"):
+                data_hhs_raw = btn.select_attr(None, "data-hhs")
+                if not data_hhs_raw: continue
+                for src in data_hhs_raw.split(","):
+                    if not src or "404.html" in src or src in seen_srcs:
+                        continue
+                    seen_srcs.add(src)
+
+                    name       = btn.text(strip=True) or "Player"
+                    player_url = self.fix_url(src)
+
+                    if "/vid/kapat/?git=" in player_url:
+                        player_url = player_url.split("git=")[-1]
+
+                    if "/vid/ply/" in player_url:
+                        data = await self._extract_internal_player(player_url, prefix=name)
+                        self.collect_results(response, data)
+                    else:
+                        data = await self.extract(player_url, referer=url, prefix=name)
+                        self.collect_results(response, data)
+
+        # 2. Iframe'den topla
+        for iframe in secici.select("iframe"):
+            iframe_src = iframe.attrs.get("src")
+            if iframe_src and "404.html" not in iframe_src:
+                iframe_url = self.fix_url(iframe_src)
+                if iframe_url not in seen_srcs and "youtube.com" not in iframe_url:
+                    seen_srcs.add(iframe_url)
+                    if "/vid/ply/" in iframe_url:
+                        data = await self._extract_internal_player(iframe_url)
+                    else:
+                        data = await self.extract(iframe_url, referer=url)
+                    self.collect_results(response, data)
 
         return self.deduplicate(response)
+
+    async def _extract_internal_player(self, url, prefix="") -> list[ExtractResult]:
+        """TvDiziler internal player extractor (tvdiziler.tv/vid/ply/)"""
+        try:
+            headers = {"Referer": f"{self.main_url}/"}
+            istek   = await self.httpx.get(url, headers=headers)
+
+            # JWPlayer setup find sources
+            match = re.search(r'sources:\s*(\[.*?\])', istek.text, re.DOTALL)
+            if not match:
+                return []
+
+            sources_str = match.group(1)
+            results     = []
+            for block_match in re.finditer(r'\{(.*?)\}', sources_str):
+                block   = block_match.group(1)
+                file_m  = re.search(r'file\s*:\s*[\'\"]([^\'\"]+)[\'\"]', block)
+                label_m = re.search(r'label\s*:\s*[\'\"]([^\'\"]+)[\'\"]', block)
+
+                if file_m:
+                    file_url = file_m.group(1)
+                    raw_lbl  = label_m.group(1) if label_m else ""
+                    label    = raw_lbl or prefix or "Internal"
+
+                    results.append(ExtractResult(
+                        name = f"{prefix} | {label}" if prefix and raw_lbl else label,
+                        url  = file_url
+                    ))
+            return results
+        except Exception:
+            return []

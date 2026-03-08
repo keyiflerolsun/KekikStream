@@ -7,7 +7,7 @@ import re, json
 class DiziMag(PluginBase):
     name        = "DiziMag"
     language    = "tr"
-    main_url    = "https://dizimag.lol"
+    main_url    = "https://dizimag.onl"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "DiziMag ile yabancı dizi izle ve film izle keyfi! Full HD 1080p kalite, güncel içerikler ve geniş arşivle sinema deneyimini yaşa."
 
@@ -106,30 +106,32 @@ class DiziMag(PluginBase):
         description = secici.select_text("div.series-profile-summary p")
         tags        = secici.select_texts("div.series-profile-type a")
         actors      = []
-        for cast in secici.select("div.series-profile-cast li"):
-            name = cast.select_text("h5.truncate")
-            if name:
-                actors.append(name.strip())
+        for cast in secici.select('ul[scrollable="true"] h5, .series-profile-cast li h5'):
+            actors.append(cast.text(strip=True))
 
         if "/dizi/" in url:
             episodes = []
-            szn      = 1
-            for sezon in secici.select("div.series-profile-episode-list"):
-                blm = 1
+            for sezon in secici.select(".series-profile-episode-list"):
+                # Sezon numarasını id'den çek: sea-1 -> 1
+                sezon_parent = sezon.parent
+                s_id         = sezon_parent.attributes.get("id") if sezon_parent else ""
+                s_val        = int(s_id.split("-")[-1]) if s_id and "-" in s_id else 1
+
                 for bolum in sezon.select("li"):
-                    ep_name = bolum.select_text("h6.truncate a")
-                    ep_href = bolum.select_attr("h6.truncate a", "href")
-                    if not ep_name or not ep_href:
+                    ep_link = bolum.select_first("div.series-profile-episode-list-left a.truncate")
+                    ep_name = bolum.select_text("h6.truncate a") or (ep_link.text(strip=True) if ep_link else "")
+                    ep_href = ep_link.attrs.get("href") if ep_link else ""
+                    if not ep_href:
                         continue
 
+                    _, e_val = secici.extract_season_episode(ep_href)
+
                     episodes.append(Episode(
-                        season  = szn,
-                        episode = blm,
-                        title   = ep_name,
+                        season  = s_val,
+                        episode = e_val or 1,
+                        title   = ep_name or f"Bölüm {e_val}",
                         url     = self.fix_url(ep_href),
                     ))
-                    blm += 1
-                szn += 1
 
             return SeriesInfo(
                 url         = url,
@@ -155,56 +157,18 @@ class DiziMag(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        # ci_session cookie al
-        init_resp = await self.httpx.get(self.main_url)
-        ci_cookie = init_resp.cookies.get("ci_session", "")
-
-        istek  = await self.httpx.get(
-            url,
-            headers = {"Referer": f"{self.main_url}/"},
-            cookies = {"ci_session": ci_cookie} if ci_cookie else {},
-        )
+        istek  = await self.httpx.get(url, headers={"Referer": self.main_url})
         secici = HTMLHelper(istek.text)
-
-        iframe_src = secici.select_attr("div#tv-spoox2 iframe", "src")
-        if not iframe_src:
-            return []
-
-        iframe_src  = self.fix_url(iframe_src)
-        iframe_resp = await self.httpx.get(iframe_src, headers={"Referer": f"{self.main_url}/"})
 
         response = []
 
-        # bePlayer pattern — CryptoJS decrypt
-        be_match = re.search(r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\)", iframe_resp.text)
-        if be_match:
-            pass_val = be_match.group(1)
-            data_val = be_match.group(2)
+        # Yeni DiziMag: Alternatifler button[data-hhs] veya button[data-frame] içinde
+        for server in secici.select("div.video-services button[data-hhs], div.video-services button[data-frame]"):
+            server_name = server.attrs.get("title") or server.text(strip=True)
+            video_url   = server.attrs.get("data-hhs") or server.attrs.get("data-frame")
 
-            try:
-                decrypted = AESManager.decrypt(data_val, pass_val)
-                data      = json.loads(decrypted)
-                m3u8_url  = data.get("video_location", "")
-
-                subtitles = []
-                for sub in data.get("strSubtitles", []):
-                    sub_file  = sub.get("file", "")
-                    sub_label = sub.get("label", "")
-                    if sub_file and "Forced" not in sub_label:
-                        subtitles.append(self.new_subtitle(self.fix_url(sub_file), sub_label))
-
-                if m3u8_url:
-                    response.append(ExtractResult(
-                        name      = self.name,
-                        url       = m3u8_url,
-                        referer   = iframe_src,
-                        subtitles = subtitles,
-                    ))
-            except Exception:
-                pass
-
-        # Fallback: loadExtractor
-        data = await self.extract(iframe_src, referer=f"{self.main_url}/")
-        self.collect_results(response, data)
+            if video_url:
+                data = await self.extract(video_url, name_override=server_name)
+                self.collect_results(response, data)
 
         return self.deduplicate(response)

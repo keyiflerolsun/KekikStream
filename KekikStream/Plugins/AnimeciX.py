@@ -153,4 +153,7 @@ class AnimeciX(PluginBase):
             redir_resp  = await self.httpx.get(iframe_link, follow_redirects=True, headers={"Referer": f"{self.main_url}/"})
             iframe_link = str(redir_resp.url)
 
-        return await self.extract(iframe_link, referer=f"{self.main_url}/")
+        results = []
+        data    = await self.extract(iframe_link, referer=f"{self.main_url}/")
+        self.collect_results(results, data)
+        return results

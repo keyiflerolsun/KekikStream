@@ -8,8 +8,8 @@ class MolyStream(ExtractorBase):
 
     # Birden fazla domain destekle
     supported_domains = [
-        "dbx.molystream.org", "ydx.molystream.org",
-        "yd.sheila.stream", "ydf.popcornvakti.net",
+        "dbx.molystream.org", "ydx.molystream.org", "molystream.org",
+        "yd.sheila.stream", "ydf.popcornvakti.net", "rufiiguta.com",
     ]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
