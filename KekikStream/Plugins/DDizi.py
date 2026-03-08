@@ -119,6 +119,11 @@ class DDizi(PluginBase):
                 title   = title,
                 url     = url
             ))
+        elif episodes:
+            last_episode = episodes[-1]
+            last_resp    = await self.httpx.get(last_episode.url)
+            if "videoyok.html" in last_resp.text:
+                episodes.pop()
 
         return SeriesInfo(
             url         = url,

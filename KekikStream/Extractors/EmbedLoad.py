@@ -18,13 +18,15 @@ class EmbedLoad(PackedJSExtractor):
         resp = await self.httpx.get(url, follow_redirects=True)
         html = resp.text
 
-        # Packed JS unpack et
         sel    = HTMLHelper(html)
-        packed = sel.regex_first(PACKED_REGEX)
-        if not packed:
-            raise ValueError(f"EmbedLoad: Packed JS bulunamadı. {url}")
+        if iframe_src := sel.select_attr("iframe", "src"):
+            iframe_src = self.fix_url(iframe_src)
+            resp       = await self.httpx.get(iframe_src, headers={"Referer": url}, follow_redirects=True)
+            html       = resp.text
+            sel        = HTMLHelper(html)
 
-        unpacked = Packer.unpack(packed)
+        packed   = sel.regex_first(PACKED_REGEX)
+        unpacked = Packer.unpack(packed) if packed else html
 
         # base64 encode edilmiş URL'leri bul ve decode et
         b64_strings = re.findall(r'atob\(["\']([A-Za-z0-9+/=]+)["\']\)', unpacked)
@@ -52,7 +54,21 @@ class EmbedLoad(PackedJSExtractor):
             elif ".srt" in decoded or ".vtt" in decoded:
                 sub_urls.append(decoded)
 
-        video_url = m3u8_url or mp4_url
+        if not m3u8_url:
+            link_map = dict(re.findall(r'"(hls\d+)":"([^"]+)"', unpacked))
+            for key in ("hls4", "hls3", "hls2"):
+                if link_map.get(key):
+                    m3u8_url = self.fix_url(link_map[key])
+                    break
+
+        video_url = self.unpack_and_find(html) or m3u8_url or mp4_url
+        if not video_url:
+            video_url = (
+                sel.regex_first(r'["\']file["\']\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']') or
+                sel.regex_first(r'["\']src["\']\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']') or
+                sel.select_attr("source", "src") or
+                sel.select_attr("video", "src")
+            )
         if not video_url:
             raise ValueError(f"EmbedLoad: Video URL bulunamadı. {url}")
 

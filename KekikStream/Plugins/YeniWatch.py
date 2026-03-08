@@ -101,6 +101,9 @@ class YeniWatch(PluginBase):
             t.strip() for t in secici.select_texts("div.genres a")
             if t.strip().lower() != "yeniwatch"
         ]
+        year        = secici.regex_first(r"Yılı\s*:\s*</span>\s*([0-9]{4})", istek.text)
+        actors_text = secici.regex_first(r"Oyuncular\s*:\s*</span>\s*([^<]+)", istek.text)
+        actors      = [actor.strip() for actor in (actors_text or "").split(",") if actor.strip()]
 
         episodes = []
         for el in secici.select("div.bolumust"):
@@ -128,6 +131,8 @@ class YeniWatch(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
+            year        = year,
+            actors      = actors,
             episodes    = episodes,
         )
 
@@ -139,7 +144,7 @@ class YeniWatch(PluginBase):
         if not iframe_src or "cizgipass" not in iframe_src:
             return []
 
-        iframe_src = self.fix_url(iframe_src)
+        iframe_src = self.fix_url(re.sub(r"\s+", "", iframe_src))
 
         response = []
         data     = await self.extract(iframe_src, referer=url)

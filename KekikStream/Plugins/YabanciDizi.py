@@ -86,7 +86,7 @@ class YabanciDizi(PluginBase):
 
         title       = (secici.select_attr("meta[property='og:title']", "content") or "").split("|")[0].strip() or secici.select_text("h1")
         poster      = secici.select_poster("div  #series-profile-wrapper img")
-        description = secici.select_text("p  #tv-series-desc")
+        description = secici.select_text("p#tv-series-desc") or secici.select_text("#tv-series-desc")
         year        = secici.extract_year("td div.truncate")
         tags        = secici.meta_list("Türü", container_selector="div.item")
         rating      = secici.meta_value("IMDb Puanı", container_selector="div.media-meta")
@@ -238,6 +238,13 @@ class YabanciDizi(PluginBase):
             iframe = secici.select_attr("iframe", "src")
             if iframe:
                 extracted = await self.extract(self.fix_url(iframe), name_override="Main")
+                if extracted:
+                    self.collect_results(results, extracted)
+
+        if not results:
+            trailer_url = secici.regex_first(r'"embedUrl"\s*:\s*"([^"]+youtube[^"]+)"') or secici.select_attr("iframe", "src")
+            if trailer_url:
+                extracted = await self.extract(self.fix_url(trailer_url), referer=url, name_override="Fragman")
                 if extracted:
                     self.collect_results(results, extracted)
 

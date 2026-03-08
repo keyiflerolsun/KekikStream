@@ -3,6 +3,7 @@
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import re as _re
 import contextlib
+import json
 
 class SetFilmIzle(PluginBase):
     name        = "SetFilmIzle"
@@ -49,13 +50,13 @@ class SetFilmIzle(PluginBase):
             data = resp.json()
             if data and data.get("success"):
                 nonces = data.get("data", {}).get("nonces", {})
-                return nonces.get(nonce_type if nonce_type != "search" else "dt_ajax_search", "")
+                return nonces.get(nonce_type, "")
 
         # AJAX başarısızsa sayfadan çekmeyi dene
         with contextlib.suppress(Exception):
             main_resp = await self.async_cf_get(referer or self.main_url)
             # STMOVIE_AJAX = { ... nonces: { search: "...", ... } }
-            nonce = HTMLHelper(main_resp.text).regex_first(rf'"{nonce_type}":\s*"([^"]+)"')
+            nonce = HTMLHelper(main_resp.text).regex_first(rf'{nonce_type}\s*:\s*["\']([^"\']+)["\']')
             return nonce or ""
 
         return ""
@@ -99,7 +100,7 @@ class SetFilmIzle(PluginBase):
         )
 
         try:
-            data = search_resp.json()
+            data = json.loads(search_resp.text.lstrip("\ufeff"))
             html = data.get("html", "")
         except Exception:
             return []
@@ -196,7 +197,7 @@ class SetFilmIzle(PluginBase):
                         "part_key"    : part_key or ""
                     }
                 )
-                data = resp.json()
+                data = json.loads(resp.text.lstrip("\ufeff"))
             except Exception:
                 return []
 
@@ -215,7 +216,7 @@ class SetFilmIzle(PluginBase):
             if label:
                 final_name = f"{final_name} | {label}" if final_name else label
 
-            extracted = await self.extract(iframe_url)
+            extracted = await self.extract(iframe_url, referer=url)
             if not extracted:
                 return []
 
@@ -245,4 +246,4 @@ class SetFilmIzle(PluginBase):
              if group:
                  final_results.extend(group)
 
-        return final_results
+        return self.deduplicate(final_results, key="url+name")

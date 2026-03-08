@@ -2,6 +2,9 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 from contextlib       import suppress
+from urllib.parse     import parse_qs, urlencode, urlsplit, urlunsplit
+import json
+import re
 
 class BelgeselX(PluginBase):
     name        = "BelgeselX"
@@ -134,10 +137,19 @@ class BelgeselX(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = self._to_title_case(secici.select_text("h2.gen-title"))
-        poster      = secici.select_poster("div.gen-tv-show-top img")
-        description = secici.select_text("div.gen-single-tv-show-info p")
-        tags        = [self._to_title_case(t.rsplit("/", 1)[-1].replace("-", " ")) for t in secici.select_attrs("div.gen-socail-share a[href*='belgeselkanali']", "href")]
+        title = (
+            self._to_title_case(secici.select_text("h2.gen-title")) or
+            self._to_title_case(secici.select_attr("meta[property='og:title']", "content").split(" İzle")[0])
+        )
+        poster = (
+            secici.select_poster("div.gen-tv-show-top img") or
+            secici.select_attr("meta[property='og:image']", "content")
+        )
+        description = (
+            secici.select_text("div.gen-single-tv-show-info p") or
+            secici.select_attr("meta[name='description']", "content")
+        )
+        tags = [self._to_title_case(t.rsplit("/", 1)[-1].replace("-", " ")) for t in secici.select_attrs("div.gen-socail-share a[href*='belgeselkanali']", "href")]
 
         # Meta bilgilerinden yıl ve puanı çıkar
         meta_items = secici.select_texts("div.gen-single-meta-holder ul li")
@@ -152,24 +164,48 @@ class BelgeselX(PluginBase):
                     rating = float(r_match) / 10
         rating = rating or None
 
-        episodes = []
-        for i, ep in enumerate(secici.select("div.gen-movie-contain")):
-            name    = ep.select_text("div.gen-movie-info h3 a")
-            href    = ep.select_attr("div.gen-movie-info h3 a", "href")
-            item_id = ep.select_attr("div.gen-movie-info h3 a", "id")
-            if name and href:
-                s, e = secici.extract_season_episode(ep.select_text("div.gen-single-meta-holder ul li"))
-                # ID'yi URL'ye ekle ki load_links doğru bölümü çekebilsin
-                final_url = self.fix_url(href)
-                if item_id:
-                    final_url = f"{final_url}?id={item_id}"
+        episodes        = []
+        episode_matches = re.findall(
+            r'href="([^"]+)"[^>]+onclick="diziGetir\(\'(\d+)\',\'([^\']+)\',\'([^\']+)\',\'([^\']+)\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'([^\']*)\'',
+            istek.text,
+            re.I,
+        )
+        for i, match in enumerate(episode_matches):
+            href, bolum_id, ic1, ic2, ic3, baslik, sezon, bolum = match
+            params = {
+                "bid" : bolum_id,
+                "ic1" : ic1,
+                "ic2" : ic2,
+                "ic3" : ic3,
+            }
+            final_url = self._with_query(self.fix_url(href), params)
 
+            s, e = secici.extract_season_episode(f"{sezon} {bolum} {baslik}")
+            episodes.append(Episode(
+                season  = s or 1,
+                episode = e or (i + 1),
+                title   = baslik or name or f"Bölüm {i + 1}",
+                url     = final_url
+            ))
+
+        if not episodes:
+            seen = set()
+            for i, ep_url in enumerate(re.findall(r'https://belgeselx\.com/belgesel/[^"\']+', istek.text), start=1):
+                if ep_url in seen:
+                    continue
+                seen.add(ep_url)
+                ep_num = re.search(r'bolum-(\d+)', ep_url)
+                ep_val = int(ep_num.group(1)) if ep_num else i
                 episodes.append(Episode(
-                    season  = s or 1,
-                    episode = e or (i + 1),
-                    title   = name,
-                    url     = final_url
+                    season  = 1,
+                    episode = ep_val,
+                    title   = f"Bölüm {ep_val}",
+                    url     = self.fix_url(ep_url),
                 ))
+
+        if not episodes:
+            for season_blob in self._extract_json_ld_episodes(istek.text):
+                episodes.append(season_blob)
 
         return SeriesInfo(
             url         = url,
@@ -183,42 +219,108 @@ class BelgeselX(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        # URL'den ID'yi ayıkla
-        params     = dict([x.split('=') for x in url.split('?')[-1].split('&')]) if '?' in url else {}
-        episode_id = params.get('id')
-        main_url   = url.split('?')[0]
-
-        istek  = await self.httpx.get(main_url)
-        secici = HTMLHelper(istek.text)
+        query      = parse_qs(urlsplit(url).query)
+        episode_id = (query.get("bid") or [""])[0]
+        ic_values  = [(query.get(f"ic{i}") or [""])[0] for i in range(1, 4)]
+        main_url   = urlsplit(url)._replace(query="").geturl()
 
         if not episode_id:
-            episode_id = secici.regex_first(r'data-episode=["\'](\d+)["\']')
+            page_resp      = await self.httpx.get(main_url)
+            wanted_episode = re.search(r'bolum-(\d+)', url)
+            wanted_episode = wanted_episode.group(1) if wanted_episode else None
+            candidates     = re.findall(
+                r"diziGetir\('(\d+)','([^']+)','([^']+)','([^']+)','([^']*)','[^']*','[^']*','([^']*)','([^']*)'.*?'(\d+)'\)",
+                page_resp.text,
+                re.I | re.S,
+            )
+
+            for bid, ic1, ic2, ic3, baslik, sezon, bolum, sira in candidates:
+                if wanted_episode and wanted_episode not in {str(bolum), str(sira)} and wanted_episode not in baslik:
+                    continue
+                episode_id = bid
+                ic_values  = [ic1, ic2, ic3]
+                break
 
         if not episode_id:
             return []
 
-        iframe_resp = await self.httpx.get(f"{self.main_url}/video/data/new4.php?id={episode_id}", headers={"Referer": main_url})
-        secici      = HTMLHelper(iframe_resp.text)
+        src_map = {"0": "new5", "2": "new1", "5": "new4", "3": "new2", "4": "new3"}
+        results = []
 
-        links  = []
-        files  = secici.regex_all(r'file:"([^"]+)"')
-        labels = secici.regex_all(r'label: "([^"]+)"')
+        for idx, ic_val in enumerate(ic_values, start=1):
+            endpoint = src_map.get(str(ic_val))
+            if not endpoint:
+                continue
 
-        for i, video_url in enumerate(files):
-            quality = labels[i] if i < len(labels) else "HD"
-            name    = f"{'Google' if 'google' in video_url.lower() or 'blogspot' in video_url.lower() or quality == 'FULL' else self.name} | {'1080p' if quality == 'FULL' else quality}"
+            player_url  = f"{self.main_url}/video/data/{endpoint}.php?id={episode_id}"
+            player_resp = await self.httpx.get(player_url, headers={"Referer": main_url})
+            player_html = player_resp.text
+            player_sel  = HTMLHelper(player_html)
 
-            # belgeselx.php redirect'ini çöz
-            if "belgeselx.php" in video_url or "belgeselx2.php" in video_url:
-                with suppress(Exception):
-                    # HEAD isteği ile lokasyonu alalım
-                    resp      = await self.httpx.head(video_url, headers={"Referer": main_url}, follow_redirects=True)
-                    video_url = str(resp.url)
+            extracted_urls = []
+            if iframe_src := player_sel.select_attr("iframe", "src"):
+                iframe_src = iframe_src.strip()
+                if iframe_src and iframe_src.startswith("x"):
+                    iframe_src = f"https://www.dailymotion.com/embed/video/{iframe_src}"
+                extracted_urls.append(self.fix_url(iframe_src))
 
-            links.append(ExtractResult(
-                url     = video_url,
-                name    = name,
-                referer = main_url
-            ))
+            if video_src := player_sel.select_attr("video", "src"):
+                extracted_urls.append(self.fix_url(video_src))
 
-        return links
+            for file_url in player_sel.regex_all(r'file\s*:\s*"([^"]+)"'):
+                extracted_urls.append(self.fix_url(file_url))
+
+            for extracted_url in extracted_urls:
+                if "belgeselx.php" in extracted_url or "belgeselx2.php" in extracted_url:
+                    with suppress(Exception):
+                        resp          = await self.httpx.head(extracted_url, headers={"Referer": main_url}, follow_redirects=True)
+                        extracted_url = str(resp.url)
+
+                if extracted_url.startswith("http"):
+                    if "dailymotion.com/embed/video/" in extracted_url:
+                        results.append(ExtractResult(
+                            url     = extracted_url,
+                            name    = f"{self.name} | Kaynak {idx}",
+                            referer = main_url
+                        ))
+                        continue
+                    data = await self.extract(extracted_url, referer=main_url, prefix=f"{self.name} | Kaynak {idx}")
+                    if data:
+                        self.collect_results(results, data)
+                    else:
+                        results.append(ExtractResult(
+                            url     = extracted_url,
+                            name    = f"{self.name} | Kaynak {idx}",
+                            referer = main_url
+                        ))
+
+        return self.deduplicate(results, key="url+name")
+
+    @staticmethod
+    def _with_query(url: str, params: dict[str, str]) -> str:
+        parts = list(urlsplit(url))
+        parts[3] = urlencode(params)
+        return urlunsplit(parts)
+
+    def _extract_json_ld_episodes(self, html_text: str) -> list[Episode]:
+        secici   = HTMLHelper(html_text)
+        payloads = secici.regex_all(r'<script type="application/ld\+json">\s*([\s\S]*?)</script>')
+        episodes = []
+
+        for payload in payloads:
+            try:
+                data = json.loads(payload)
+            except Exception:
+                continue
+
+            seasons = data.get("containsSeason", []) if isinstance(data, dict) else []
+            for season in seasons:
+                for idx, item in enumerate(season.get("episode", []), start=1):
+                    episodes.append(Episode(
+                        season  = int(season.get("seasonNumber") or 1),
+                        episode = int(item.get("episodeNumber") or idx),
+                        title   = item.get("name") or f"Bölüm {idx}",
+                        url     = self.fix_url(item.get("url", ""))
+                    ))
+
+        return episodes

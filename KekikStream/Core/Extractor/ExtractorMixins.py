@@ -57,6 +57,28 @@ class SecuredLinkExtractor(ExtractorBase):
         parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}"
 
+    @staticmethod
+    def _extract_link_from_text(text: str) -> str | None:
+        sel = HTMLHelper(text)
+
+        candidates = [
+            sel.regex_first(r'"securedLink"\s*:\s*"([^"]+)"'),
+            sel.regex_first(r'"videoSource"\s*:\s*"([^"]+)"'),
+            sel.regex_first(r"['\"]securedLink['\"]\s*:\s*['\"]([^'\"]+)['\"]"),
+            sel.regex_first(r"['\"]videoSource['\"]\s*:\s*['\"]([^'\"]+)['\"]"),
+            sel.regex_first(r'videoUrl":"([^",]+)"'),
+            sel.regex_first(FILE_REGEX),
+            sel.regex_first(M3U8_FILE_REGEX),
+            sel.select_attr("source", "src"),
+            sel.select_attr("iframe", "src"),
+        ]
+
+        for candidate in candidates:
+            if candidate:
+                return candidate
+
+        return None
+
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         ref      = referer or self.main_url
         v_id     = self._parse_video_id(url)
@@ -68,9 +90,26 @@ class SecuredLinkExtractor(ExtractorBase):
             headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
         )
 
-        m3u8_url = resp.json().get("securedLink")
+        m3u8_url = None
+        with contextlib.suppress(json.JSONDecodeError, ValueError):
+            payload = resp.json()
+            if isinstance(payload, dict):
+                m3u8_url = payload.get("securedLink") or payload.get("videoSource")
+
+        if not m3u8_url:
+            m3u8_url = self._extract_link_from_text(resp.text)
+
         if not m3u8_url:
             raise ValueError(f"{self.name}: Video URL bulunamadı. {url}")
+
+        m3u8_url = self.fix_url(m3u8_url)
+
+        # Bazı hostlar POST yanıtında sadece iframe döndürüyor; ikinci katmanı da çöz.
+        if "/player/" in m3u8_url or "/video/" in m3u8_url or "/embed/" in m3u8_url:
+            if m3u8_url != url:
+                inner_resp = await self.httpx.get(m3u8_url, headers={"Referer": ref})
+                if inner_url := self._extract_link_from_text(inner_resp.text):
+                    m3u8_url = self.fix_url(inner_url)
 
         return ExtractResult(name=self.name, url=m3u8_url, referer=ref)
 

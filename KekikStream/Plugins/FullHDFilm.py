@@ -188,14 +188,19 @@ class FullHDFilm(PluginBase):
                 return None
             return await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=part_name or None)
 
-        pdata_tasks = []
+        pdata_tasks   = []
+        fragman_tasks = []
         for idx, (key, value) in enumerate(pdata_list):
-            part_name = part_names[idx] if idx < len(part_names) else ""
-            if "fragman" in part_name.lower() or "fragman" in key.lower():
-                continue
-            pdata_tasks.append(_process_pdata(value, part_name))
+            part_name   = part_names[idx] if idx < len(part_names) else ""
+            target_list = fragman_tasks if "fragman" in part_name.lower() or "fragman" in key.lower() else pdata_tasks
+            target_list.append(_process_pdata(value, part_name))
 
         for data in await self.gather_with_limit(pdata_tasks):
             self.collect_results(response, data)
+
+        # Asıl host öldüyse en azından sayfadaki açık fragman kaynağını döndür.
+        if not response:
+            for data in await self.gather_with_limit(fragman_tasks):
+                self.collect_results(response, data)
 
         return response

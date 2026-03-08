@@ -94,7 +94,8 @@ class AnimeciX(PluginBase):
         poster     = data.get("poster")
         desc       = data.get("description")
         year       = data.get("year")
-        tags       = [g.get("display_name", "") for g in data.get("genres", [])]
+        tags       = [g.get("display_name", "") for g in data.get("genres", []) if g.get("display_name")]
+        actors     = [person.get("name", "") for person in data.get("credits", []) if person.get("name")]
         title_type = data.get("title_type", "anime")
 
         episodes = []
@@ -107,9 +108,19 @@ class AnimeciX(PluginBase):
                 )
                 vid_data = vid_resp.json()
                 for video in vid_data.get("videos", []):
-                    ep_num = video.get("episode_num")
-                    s_n    = video.get("season_num", s_num)
+                    raw_ep = video.get("episode_num")
+                    raw_sn = video.get("season_num", s_num)
                     ep_url = video.get("url", "")
+
+                    try:
+                        ep_num = int(float(raw_ep))
+                    except (TypeError, ValueError):
+                        ep_num = 0
+
+                    try:
+                        s_n = int(float(raw_sn))
+                    except (TypeError, ValueError):
+                        s_n = s_num
 
                     episodes.append(Episode(
                         season  = s_n,
@@ -134,6 +145,7 @@ class AnimeciX(PluginBase):
             description = desc,
             tags        = tags,
             year        = str(year) if year else None,
+            actors      = actors,
             episodes    = episodes,
         )
 

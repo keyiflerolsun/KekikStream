@@ -98,7 +98,7 @@ class PluginValidator:
 
         return result
 
-    async def test_search(self, plugin, query: str = "adam") -> dict:
+    async def test_search(self, plugin, query: str = "art") -> dict:
         """search metodu test eder."""
         result = {"status": "❌", "message": "", "data": None}
 

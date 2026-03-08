@@ -267,13 +267,20 @@ class TurkAnime(PluginBase):
             onclick = button.attrs.get("onclick", "")
             if not onclick:
                 continue
-            sub_link_match = re.search(r"IndexIcerik\('([^']+)'\)", onclick)
+            sub_link_match = re.search(r"IndexIcerik\('([^']+)'", onclick)
             if sub_link_match:
                 sub_links.append(self.fix_url(sub_link_match.group(1)))
 
         async def _process_sub_link(sub_link):
             try:
-                sub_resp   = await self.httpx.get(sub_link, headers={"X-Requested-With": "XMLHttpRequest"})
+                sub_resp   = await self.httpx.get(
+                    sub_link,
+                    headers = {
+                        "X-Requested-With" : "XMLHttpRequest",
+                        "Referer"          : url,
+                    },
+                    cookies = self._COOKIES,
+                )
                 sub_secici = HTMLHelper(sub_resp.text)
 
                 # Artplayer data-url kontrol (m3u8 direkt link)

@@ -141,14 +141,46 @@ class DiziKorea(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        iframes = []
-        for btn in secici.select("div.video-services button"):
-            iframe_src = btn.attrs.get("data-hhs")
-            if iframe_src:
-                iframes.append(self.fix_url(iframe_src))
+        extract_args = []
 
-        tasks    = [self.extract(url, referer=f"{self.main_url}/") for url in iframes]
+        for tab in secici.select("ul.tab.alternative-group li[data-number]"):
+            tab_hash = tab.attrs.get("data-group-hash")
+            tab_name = tab.select_text(None) or ""
+
+            if not tab_hash:
+                continue
+
+            with_groups = await self.httpx.post(
+                url     = f"{self.main_url}/get/video/group",
+                headers = {
+                    "X-Requested-With" : "XMLHttpRequest",
+                    "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Referer"          : url,
+                },
+                data    = {"hash": tab_hash},
+            )
+
+            try:
+                payload = with_groups.json()
+            except Exception:
+                payload = {}
+
+            videos = payload.get("videos", []) if payload.get("success") else []
+            for video in videos:
+                iframe_src  = self.fix_url(video.get("link", ""))
+                player_name = video.get("name", "") or tab_name
+                if iframe_src:
+                    extract_args.append((iframe_src, f"{tab_name} | {player_name}" if tab_name else player_name))
+
+        if not extract_args:
+            for btn in secici.select("div.video-services button[data-hhs], div.video-services button[data-frame]"):
+                iframe_src  = btn.attrs.get("data-hhs") or btn.attrs.get("data-frame")
+                player_name = btn.attrs.get("title") or btn.text(strip=True)
+                if iframe_src:
+                    extract_args.append((self.fix_url(iframe_src), player_name))
+
         response = []
+        tasks    = [self.extract(video_url, referer=f"{self.main_url}/", name_override=name or None) for video_url, name in extract_args]
         for data in await self.gather_with_limit(tasks):
             self.collect_results(response, data)
 

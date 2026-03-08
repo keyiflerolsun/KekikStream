@@ -15,8 +15,10 @@ class ShowFlix(PluginBase):
     tv_api    = "https://parse.showflix.sbs/parse/classes/seriesv2"
 
     # Parse API ayarları (Kotlin'den uyarlandı) - Bu placeholder'lar çalışıyor!
-    app_id = "SHOWFLIXAPPID"
-    js_key = "SHOWFLIXMASTERKEY"
+    app_id   = "SHOWFLIXAPPID"
+    js_key   = "SHOWFLIXMASTERKEY"
+    tmdb_api = "https://api.themoviedb.org/3"
+    tmdb_key = "1865f43a0549ca50d341dd9ab8b29f49"
 
     def get_payload(self, extra: dict) -> dict:
         base = {
@@ -28,6 +30,24 @@ class ShowFlix(PluginBase):
         }
         base.update(extra)
         return base
+
+    async def _get_tmdb_metadata(self, tmdb_id: int | str | None, item_type: str) -> dict:
+        if not tmdb_id:
+            return {}
+
+        media_type = "movie" if item_type == "movie" else "tv"
+        try:
+            resp = await self.httpx.get(
+                f"{self.tmdb_api}/{media_type}/{tmdb_id}",
+                params = {
+                    "api_key"            : self.tmdb_key,
+                    "append_to_response" : "credits"
+                },
+                headers = {"Referer": f"{self.main_url}/"}
+            )
+            return resp.json() if resp.status_code == 200 else {}
+        except Exception:
+            return {}
 
     main_page = {
         "movie" : "Movies",
@@ -130,6 +150,13 @@ class ShowFlix(PluginBase):
         rating      = item.get("rating")
         genres      = item.get("genres", [])
         tags        = ", ".join(genres) if isinstance(genres, list) else genres
+        tmdb_meta   = await self._get_tmdb_metadata(item.get("tmdbId"), item_type)
+        actors      = [cast.get("name") for cast in tmdb_meta.get("credits", {}).get("cast", []) if cast.get("name")][:10]
+        duration    = tmdb_meta.get("runtime")
+
+        if duration is None and item_type != "movie":
+            runtimes = tmdb_meta.get("episode_run_time") or []
+            duration = runtimes[0] if runtimes else None
 
         if item_type == "movie":
             return MovieInfo(
@@ -139,7 +166,9 @@ class ShowFlix(PluginBase):
                 description = description,
                 year        = str(year) if year else None,
                 rating      = str(rating).strip() if rating else None,
-                tags        = tags
+                tags        = tags,
+                actors      = actors,
+                duration    = duration
             )
         else:
             # Sezon ve bölümleri ayrı API çağrılarıyla alıyoruz
@@ -153,6 +182,8 @@ class ShowFlix(PluginBase):
                 year        = str(year) if year else None,
                 rating      = str(rating).strip() if rating else None,
                 tags        = tags,
+                actors      = actors,
+                duration    = duration,
                 episodes    = episodes
             )
 

@@ -235,4 +235,11 @@ class JetFilmizle(PluginBase):
         for data in await self.gather_with_limit(tasks):
             self.collect_results(response, data)
 
+        # Takedown alınmış sayfalarda çoğu zaman yalnızca resmi fragman kalıyor.
+        if not response:
+            trailer_url = secici.select_attr("iframe", "src")
+            if trailer_url and "youtube.com" in trailer_url:
+                data = await self.extract(self.fix_url(trailer_url), referer=url, name_override="Fragman")
+                self.collect_results(response, data)
+
         return response

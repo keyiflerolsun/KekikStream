@@ -196,6 +196,7 @@ class Dramacool(PluginBase):
             src = iframe.select_attr(None, "src")
             if not src:
                 continue
+            src = src.strip()
             if src.startswith("//"):
                 src = f"https:{src}"
             iframe_srcs.append(src)
@@ -211,6 +212,7 @@ class Dramacool(PluginBase):
                 src = iframe.select_attr(None, "src")
                 if not src:
                     continue
+                src = src.strip()
                 if src.startswith("//"):
                     src = f"https:{src}"
                 fallback_srcs.append(src)

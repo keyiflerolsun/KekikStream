@@ -133,6 +133,12 @@ class DiziMag(PluginBase):
                         url     = self.fix_url(ep_href),
                     ))
 
+            if episodes:
+                last_episode = episodes[-1]
+                with_ready   = await self.httpx.get(last_episode.url, headers={"Referer": self.main_url})
+                if "this-episode-not-ready" in with_ready.text or "çok yakında yayınlanacak" in with_ready.text.lower():
+                    episodes.pop()
+
             return SeriesInfo(
                 url         = url,
                 poster      = self.fix_url(poster),
@@ -160,15 +166,48 @@ class DiziMag(PluginBase):
         istek  = await self.httpx.get(url, headers={"Referer": self.main_url})
         secici = HTMLHelper(istek.text)
 
-        response = []
+        response     = []
+        extract_args = []
 
-        # Yeni DiziMag: Alternatifler button[data-hhs] veya button[data-frame] içinde
-        for server in secici.select("div.video-services button[data-hhs], div.video-services button[data-frame]"):
-            server_name = server.attrs.get("title") or server.text(strip=True)
-            video_url   = server.attrs.get("data-hhs") or server.attrs.get("data-frame")
+        for tab in secici.select("ul.tab.alternative-group li[data-number]"):
+            tab_hash = tab.attrs.get("data-group-hash")
+            tab_name = tab.select_text(None) or ""
 
-            if video_url:
-                data = await self.extract(video_url, name_override=server_name)
-                self.collect_results(response, data)
+            if not tab_hash:
+                continue
+
+            group_resp = await self.httpx.post(
+                url     = f"{self.main_url}/get/video/group",
+                headers = {
+                    "X-Requested-With" : "XMLHttpRequest",
+                    "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Referer"          : url,
+                },
+                data    = {"hash": tab_hash},
+            )
+
+            try:
+                payload = group_resp.json()
+            except Exception:
+                payload = {}
+
+            videos = payload.get("videos", []) if payload.get("success") else []
+            for video in videos:
+                video_url   = self.fix_url(video.get("link", ""))
+                server_name = video.get("name", "") or tab_name
+                if video_url:
+                    extract_args.append((video_url, f"{tab_name} | {server_name}" if tab_name else server_name))
+
+        if not extract_args:
+            for server in secici.select("div.video-services button[data-hhs], div.video-services button[data-frame]"):
+                server_name = server.attrs.get("title") or server.text(strip=True)
+                video_url   = server.attrs.get("data-hhs") or server.attrs.get("data-frame")
+
+                if video_url:
+                    extract_args.append((self.fix_url(video_url), server_name))
+
+        tasks = [self.extract(video_url, name_override=server_name or None) for video_url, server_name in extract_args]
+        for data in await self.gather_with_limit(tasks):
+            self.collect_results(response, data)
 
         return self.deduplicate(response)
