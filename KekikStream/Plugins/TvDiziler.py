@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import re, json
+from unicodedata      import normalize
+import re
 
 class TvDiziler(PluginBase):
     name        = "TvDiziler"
@@ -79,22 +80,15 @@ class TvDiziler(PluginBase):
         results = []
         try:
             data = istek.json()
-            # Bazı durumlarda direkt html listesi dönebilir
-            if isinstance(data, list):
-                items = data
-            elif isinstance(data, dict):
-                items = data.get("data", [])
-                if isinstance(items, str):
-                    secici = HTMLHelper(items)
-                    items  = secici.select("li.col, a.search-result-item")
-            else:
-                items = []
+            html_content = ""
+            if isinstance(data, dict):
+                html_content = data.get("data") or data.get("theme") or data.get("html") or ""
+            elif isinstance(data, list):
+                html_content = "".join(item for item in data if isinstance(item, str))
 
-            for item in items:
-                if isinstance(item, str):
-                     # HTML string ise tekrar işle
-                     pass
+            secici = HTMLHelper(html_content) if html_content else HTMLHelper(istek.text)
 
+            for item in secici.select("li.col, li[class*='col'], a.search-result-item"):
                 href   = item.select_attr("a", "href") or item.select_attr(None, "href")
                 title  = item.select_text("h3") or item.select_text("span.title") or item.select_attr("img", "alt") or item.text(strip=True)
                 poster = item.select_attr("img", "data-src") or item.select_attr("img", "src")
@@ -109,7 +103,42 @@ class TvDiziler(PluginBase):
             # Fallback to direct search if AJAX fails
             pass
 
-        return results
+        if results:
+            return self._dedupe_search_results(results)
+
+        query_norm = self._normalize_search_text(query)
+        for index, (page_url, category) in enumerate(self.main_page.items()):
+            if index >= 6:
+                break
+
+            for item in await self.get_main_page(1, page_url, category):
+                if query_norm not in self._normalize_search_text(item.title) and query_norm not in self._normalize_search_text(item.url):
+                    continue
+
+                results.append(SearchResult(
+                    title  = item.title,
+                    url    = item.url,
+                    poster = item.poster,
+                ))
+
+        return self._dedupe_search_results(results)
+
+    @staticmethod
+    def _normalize_search_text(text: str) -> str:
+        return normalize("NFKD", text or "").encode("ascii", "ignore").decode().lower()
+
+    @staticmethod
+    def _dedupe_search_results(results: list[SearchResult]) -> list[SearchResult]:
+        deduped = []
+        seen    = set()
+
+        for item in results:
+            if not item.url or item.url in seen:
+                continue
+            seen.add(item.url)
+            deduped.append(item)
+
+        return deduped
 
     async def load_item(self, url: str) -> SeriesInfo:
         istek  = await self.httpx.get(url, headers={"Referer": f"{self.main_url}/"})

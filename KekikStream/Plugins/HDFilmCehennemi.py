@@ -354,4 +354,15 @@ class HDFilmCehennemi(PluginBase):
         for vid, name, ref in sources:
             tasks.append(self._get_video_source(vid, name, ref))
 
-        return [item for sublist in await self.gather_with_limit(tasks) for item in sublist]
+        results = [item for sublist in await self.gather_with_limit(tasks) for item in sublist]
+
+        if not results:
+            trailer_id = secici.regex_first(r'data-modal="trailer/([^"]+)"')
+            if trailer_id:
+                results.append(ExtractResult(
+                    name    = "Fragman",
+                    url     = f"https://www.youtube.com/embed/{trailer_id}",
+                    referer = url,
+                ))
+
+        return results

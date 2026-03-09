@@ -171,4 +171,13 @@ class SuperFilmIzle(PluginBase):
         for group in results_groups:
             final_results.extend(group)
 
+        if not final_results:
+            for ifr in secici.select("div.video-content iframe"):
+                if src := ifr.attrs.get("src") or ifr.attrs.get("data-src"):
+                    final_results.append(ExtractResult(
+                        name    = "Fragman",
+                        url     = self.fix_url(src),
+                        referer = url,
+                    ))
+
         return final_results

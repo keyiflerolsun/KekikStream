@@ -38,23 +38,35 @@ class WebteIzle(PluginBase):
         return response.content.decode("windows-1254", errors="replace")
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        symbol      = "&" if "?" in url else "/"
-        request_url = url.rstrip("/") if page == 1 else f"{url.rstrip('/')}{symbol}{page}"
+        symbol     = "&" if "?" in url else "/"
+        candidates = [url if page == 1 else f"{url.rstrip('/')}{symbol}{page}"]
 
-        secici  = HTMLHelper(await self._request(request_url))
-        results = []
-        for veri in secici.select("div.card.golgever"):
-            link = veri.select_first("a[href*='/hakkinda/']") or veri.select_first("a.image")
-            if not link:
-                continue
+        if page == 1:
+            normalized = url.rstrip("/")
+            if normalized != url:
+                candidates.append(normalized)
+            else:
+                candidates.append(f"{url}/")
 
-            results.append(MainPageResult(
-                category = category,
-                title    = veri.select_text("div.filmname"),
-                url      = self.fix_url(link.attrs.get("href", "")),
-                poster   = self.fix_url(veri.select_attr("img", "data-src") or ""),
-            ))
-        return results
+        for request_url in candidates:
+            secici  = HTMLHelper(await self._request(request_url))
+            results = []
+            for veri in secici.select("div.card.golgever"):
+                link = veri.select_first("a[href*='/hakkinda/']") or veri.select_first("a.image")
+                if not link:
+                    continue
+
+                results.append(MainPageResult(
+                    category = category,
+                    title    = veri.select_text("div.filmname"),
+                    url      = self.fix_url(link.attrs.get("href", "")),
+                    poster   = self.fix_url(veri.select_attr("img", "data-src") or ""),
+                ))
+
+            if results:
+                return results
+
+        return []
 
     async def search(self, query: str) -> list[SearchResult]:
         secici  = HTMLHelper(await self._request(f"{self.main_url}/filtre?a={query}"))

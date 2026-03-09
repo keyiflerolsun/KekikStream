@@ -182,6 +182,15 @@ class FilmBip(PluginBase):
         for data in await self.gather_with_limit(tasks):
             self.collect_results(results, data)
 
+        if not results:
+            trailer_id = secici.select_attr(".seriesFragmans", "data-yt") or secici.regex_first(r'data-yt="([^"]+)"')
+            if trailer_id:
+                results.append(ExtractResult(
+                    name    = "Fragman",
+                    url     = f"https://www.youtube.com/embed/{trailer_id}",
+                    referer = url,
+                ))
+
         # Eğer hiç sonuç bulunamazsa fallback
         if not results:
             fallback_iframes = []

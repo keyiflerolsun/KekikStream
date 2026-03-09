@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 import base64, re
 
 class FullHDFilm(PluginBase):
@@ -133,7 +134,7 @@ class FullHDFilm(PluginBase):
                     season  = sz_num,
                     episode = ep_num,
                     title   = f"{sz_num}. Sezon {ep_num}. Bölüm",
-                    url     = iframe_url,
+                    url     = self._with_query(url, {"part": str(idx)}),
                 ))
 
             return SeriesInfo(
@@ -171,7 +172,10 @@ class FullHDFilm(PluginBase):
             return response
 
         # Film — pdata[] iframe'lerini çöz
-        istek      = await self.httpx.get(url)
+        selected_part = parse_qs(urlsplit(url).query).get("part", [""])[0]
+        base_url      = urlsplit(url)._replace(query="").geturl()
+
+        istek      = await self.httpx.get(base_url)
         pdata_list = re.findall(r"pdata\['(.*?)'\]\s*=\s*'(.*?)';", istek.text)
         secici     = HTMLHelper(istek.text)
         part_names = [el.text(strip=True) for el in secici.select("li.psec a")]
@@ -186,11 +190,22 @@ class FullHDFilm(PluginBase):
                 iframe_url  = str(iframe_resp.url)
             except Exception:
                 return None
-            return await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=part_name or None)
+            data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=part_name or None)
+            if data:
+                return data
+            if "youtube.com/embed/" in iframe_url or "youtu.be/" in iframe_url:
+                return [ExtractResult(
+                    name    = part_name or "Fragman",
+                    url     = iframe_url,
+                    referer = f"{self.main_url}/",
+                )]
+            return None
 
         pdata_tasks   = []
         fragman_tasks = []
         for idx, (key, value) in enumerate(pdata_list):
+            if selected_part and str(idx) != selected_part:
+                continue
             part_name   = part_names[idx] if idx < len(part_names) else ""
             target_list = fragman_tasks if "fragman" in part_name.lower() or "fragman" in key.lower() else pdata_tasks
             target_list.append(_process_pdata(value, part_name))
@@ -204,3 +219,9 @@ class FullHDFilm(PluginBase):
                 self.collect_results(response, data)
 
         return response
+
+    @staticmethod
+    def _with_query(url: str, params: dict[str, str]) -> str:
+        parts = list(urlsplit(url))
+        parts[3] = urlencode(params)
+        return urlunsplit(parts)

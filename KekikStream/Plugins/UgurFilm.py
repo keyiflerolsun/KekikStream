@@ -123,9 +123,14 @@ class UgurFilm(PluginBase):
                     data = {"vid": vid, "alternative": alt_name, "ord": ord_val}
                 )
                 if iframe_url := resp.json().get("iframe"):
-                    data = await self.extract(self.fix_url(iframe_url))
+                    iframe_url = self.fix_url(iframe_url)
+                    data       = await self.extract(iframe_url)
                     if not data:
-                        return []
+                        return [ExtractResult(
+                            name    = alt_name,
+                            url     = iframe_url,
+                            referer = referer
+                        )]
 
                     results = []
                     self.collect_results(results, data)
@@ -148,9 +153,14 @@ class UgurFilm(PluginBase):
                     return []
 
                 if self.main_url not in iframe:
-                    data = await self.extract(self.fix_url(iframe))
+                    iframe = self.fix_url(iframe)
+                    data   = await self.extract(iframe)
                     if not data:
-                        return []
+                        return [ExtractResult(
+                            name    = self.name,
+                            url     = iframe,
+                            referer = part_url
+                        )]
 
                     results = []
                     self.collect_results(results, data)
