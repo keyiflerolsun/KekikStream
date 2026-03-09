@@ -174,6 +174,12 @@ class UAKino(PluginBase):
             ext = await self.extract(url, referer=f"{self.main_url}/")
             if ext:
                 self.collect_results(results, ext)
+            else:
+                results.append(ExtractResult(
+                    name    = "Ashdi",
+                    url     = url,
+                    referer = f"{self.main_url}/",
+                ))
             return results
 
         # Uakino sayfası → AJAX ile playlist al
@@ -190,8 +196,15 @@ class UAKino(PluginBase):
                 self.extract(item["file"], referer=f"{self.main_url}/", name_override=f"{self.name} | {item['voice']}" if item["voice"] else None)
                 for item in items
             ]
-            for ext in await self.gather_with_limit(tasks):
-                self.collect_results(results, ext)
+            for item, ext in zip(items, await self.gather_with_limit(tasks), strict=False):
+                if ext:
+                    self.collect_results(results, ext)
+                else:
+                    results.append(ExtractResult(
+                        name    = f"{self.name} | {item['voice']}" if item["voice"] else self.name,
+                        url     = item["file"],
+                        referer = f"{self.main_url}/",
+                    ))
 
         # iframe#pre fallback
         if not results:
@@ -201,5 +214,13 @@ class UAKino(PluginBase):
                 ext        = await self.extract(iframe_src, referer=url)
                 if ext:
                     self.collect_results(results, ext)
+
+        if not results:
+            if trailer_url := secici.regex_first(r"https://www\.youtube\.com/embed/[A-Za-z0-9_-]+", istek.text):
+                results.append(ExtractResult(
+                    name    = "Fragman",
+                    url     = trailer_url,
+                    referer = url,
+                ))
 
         return results
