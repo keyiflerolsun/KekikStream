@@ -364,12 +364,14 @@ class BelgeselX(PluginBase):
                         ".mp4",
                         ".m3u8"
                     )):
+                        _parts = urlsplit(extracted_url).netloc.removeprefix("www.").split(".")
+                        _sld   = _parts[-2]
+                        domain = _sld if len(_sld) >= 5 else f"{_sld}.{_parts[-1]}"
                         results.append(ExtractResult(
                             url     = extracted_url,
-                            name    = f"Kaynak {idx}",
+                            name    = domain,
                             referer = main_url
                         ))
-                        idx += 1
                         continue
                     data = await self.extract(extracted_url, referer=main_url)
                     if data:
