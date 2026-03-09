@@ -230,7 +230,7 @@ class TurkAnime(PluginBase):
                     file_url = self.fix_url(file_url)
                     label    = src.get("label", "")
                     results.append(ExtractResult(
-                        name    = f"TurkAnime | {label}" if label else "TurkAnime",
+                        name    = label or "Kaynak",
                         url     = file_url,
                         referer = f"{self.main_url}/",
                     ))

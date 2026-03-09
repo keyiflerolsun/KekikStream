@@ -29,13 +29,24 @@ class Filemoon(PackedJSExtractor):
         }
         self.httpx.headers.update(headers)
 
-        istek  = await self.httpx.get(url)
+        try:
+            istek = await self.httpx.get(url)
+            if len(istek.text) < 5000:
+                raise Exception("CF challenge suspected")
+        except Exception:
+            istek = await self.async_cf_get(url, headers=headers)
         secici = HTMLHelper(istek.text)
 
         # iframe varsa takip et
         if iframe_src := secici.select_attr("iframe", "src"):
             url   = self.fix_url(iframe_src)
-            istek = await self.httpx.get(url)
+            try:
+                istek = await self.httpx.get(url)
+                if len(istek.text) < 5000:
+                    raise Exception("CF challenge suspected")
+            except Exception:
+                istek = await self.async_cf_get(url, headers=headers)
+            secici = HTMLHelper(istek.text)
 
         m3u8_url = self.unpack_and_find(istek.text)
 

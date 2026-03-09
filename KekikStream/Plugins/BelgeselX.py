@@ -357,22 +357,23 @@ class BelgeselX(PluginBase):
                         extracted_url = str(resp.url)
 
                 if extracted_url.startswith("http"):
-                    if "dailymotion.com/embed/video/" in extracted_url:
+                    if any(x in extracted_url for x in (
+                        "dailymotion.com/embed/video/",
+                        "googlevideo.com/videoplayback",
+                        "googleusercontent.com/",
+                        ".mp4",
+                        ".m3u8"
+                    )):
                         results.append(ExtractResult(
                             url     = extracted_url,
-                            name    = f"{self.name} | Kaynak {idx}",
+                            name    = f"Kaynak {idx}",
                             referer = main_url
                         ))
+                        idx += 1
                         continue
-                    data = await self.extract(extracted_url, referer=main_url, prefix=f"{self.name} | Kaynak {idx}")
+                    data = await self.extract(extracted_url, referer=main_url)
                     if data:
                         self.collect_results(results, data)
-                    else:
-                        results.append(ExtractResult(
-                            url     = extracted_url,
-                            name    = f"{self.name} | Kaynak {idx}",
-                            referer = main_url
-                        ))
 
         return self.deduplicate(results, key="url+name")
 

@@ -226,8 +226,7 @@ class HDrezka(PluginBase):
         try:
             res = json.loads(url)
         except Exception:
-            # Fallback for direct URLs
-            return [ExtractResult(name=self.name, url=url)]
+            return []
 
         results = []
 

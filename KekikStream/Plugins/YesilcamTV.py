@@ -117,7 +117,7 @@ class YesilcamTV(PluginBase):
                 continue
 
             real_url = self.fix_url(src)
-            label    = labels[i] if i < len(labels) else f"Kaynak {i+1}"
+            label    = labels[i] if i < len(labels) else None
 
             data = await self.extract(real_url, referer=f"{self.main_url}/", prefix=label)
             self.collect_results(response, data)

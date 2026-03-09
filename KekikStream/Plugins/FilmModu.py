@@ -138,7 +138,7 @@ class FilmModu(PluginBase):
 
             for source in source_data.get("sources", []):
                 results.append(ExtractResult(
-                    name      = f"{self.name} | {alt_name} | {source.get('label', 'Bilinmiyor')}",
+                    name      = f"{alt_name} | {source.get('label', 'Bilinmiyor')}",
                     url       = self.fix_url(source["src"]),
                     referer   = f"{self.main_url}/",
                     subtitles = [self.new_subtitle(subtitle_url, "Türkçe")] if subtitle_url else []

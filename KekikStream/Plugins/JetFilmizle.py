@@ -1,8 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+from urllib.parse     import urlparse, parse_qs
 import re
-from urllib.parse import urlparse, parse_qs
 
 class JetFilmizle(PluginBase):
     name        = "JetFilmizle"
@@ -225,7 +225,7 @@ class JetFilmizle(PluginBase):
                 if oyun_istek.status_code == 200:
                     src = HTMLHelper(oyun_istek.text).select_attr("iframe", "src")
                     if src:
-                        return await self.extract(self.fix_url(src), prefix=f"[{p_type.upper()}] {label}")
+                        return await self.extract(self.fix_url(src), name_override=f"[{p_type.upper()}] {label}")
             except Exception:
                 pass
             return None

@@ -155,7 +155,7 @@ class DiziMom(PluginBase):
 
         async def _extract_or_fallback(iframe_url, source_name):
             iframe_url = self.fix_url(iframe_url)
-            result = await self.extract(iframe_url, prefix=source_name)
+            result = await self.extract(iframe_url, name_override=source_name)
             if result:
                 return result
             return ExtractResult(url=iframe_url, name=f"{source_name} | External", referer=self.main_url)

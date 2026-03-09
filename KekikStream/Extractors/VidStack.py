@@ -3,6 +3,7 @@
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 from Crypto.Cipher    import AES
 from Crypto.Util      import Padding
+from urllib.parse     import urlparse, parse_qs
 import re
 
 class VidStack(ExtractorBase):
@@ -11,25 +12,34 @@ class VidStack(ExtractorBase):
     requires_referer = True
 
     supported_domains = [
-        "vidstack.io", "server1.uns.bio", "upns.one"
+        "vidstack.io", "server1.uns.bio", "upns.one", "upn.one",
+        "webdrama.upns.online", "webdrama.playerp2p.com",
+        "player4me.vip", "vidplayer.live",
     ]
 
-    def decrypt_aes(self, input_hex: str, key: str, iv: str) -> str:
+    def decrypt_aes(self, input_hex: str, key: str, iv: bytes) -> str:
         try:
-            cipher    = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
+            cipher    = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv)
             raw_data  = bytes.fromhex(input_hex)
             decrypted = cipher.decrypt(raw_data)
             unpadded  = Padding.unpad(decrypted, AES.block_size)
             return unpadded.decode('utf-8')
-        except Exception as e:
-            # print(f"DEBUG VidStack: {iv} -> {e}") # Debugging
+        except Exception:
             return None
+
+    def _extract_id(self, url: str) -> str:
+        # ?id=XXX query parametresini dene
+        qs = parse_qs(urlparse(url).query)
+        if "id" in qs:
+            return qs["id"][0]
+        # Fragment veya son path parçası (#hash ya da /path/hash)
+        fragment = url.split("#")[-1]
+        return fragment.split("/")[-1]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult | list[ExtractResult]:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0"}
 
-        # Hash ve Base URL çıkarma
-        hash_val = url.split("#")[-1].split("/")[-1]
+        hash_val = self._extract_id(url)
         base_url = self.get_base_url(url)
 
         # API İsteği
@@ -39,9 +49,9 @@ class VidStack(ExtractorBase):
         # Bazen yanıt tırnak içinde gelebilir, temizleyelim
         encoded_data = istek.text.strip().strip('"')
 
-        # AES Çözme
+        # AES Çözme — sıfır IV (webdrama), ardından bilinen IV'lar
         key = "kiemtienmua911ca"
-        ivs = ["1234567890oiuytr", "0123456789abcdef"]
+        ivs = [b"\x00" * 16, b"1234567890oiuytr", b"0123456789abcdef"]
 
         decrypted_text = None
         for iv in ivs:

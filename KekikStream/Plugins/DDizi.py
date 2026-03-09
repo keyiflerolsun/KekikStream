@@ -169,9 +169,10 @@ class DDizi(PluginBase):
                     is_direct = any(x in src.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"])
 
                     if is_direct:
+                        src_name = "YouTube" if any(x in src.lower() for x in ["google", "youtube"]) else ("M3U8" if ".m3u8" in src.lower() else "MP4")
                         results.append(ExtractResult(
                             url        = src,
-                            name       = "Video",
+                            name       = src_name,
                             user_agent = "googleusercontent",
                             referer    = "https://twitter.com/"
                         ))
@@ -185,9 +186,10 @@ class DDizi(PluginBase):
                 # Fallback to target_url itself if nothing found inside
                 if not results:
                      if any(x in target_url.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"]) and ".html" not in target_url:
+                        fb_name = "YouTube" if any(x in target_url.lower() for x in ["google", "youtube"]) else ("M3U8" if ".m3u8" in target_url.lower() else "MP4")
                         results.append(ExtractResult(
                             url        = target_url,
-                            name       = "Video",
+                            name       = fb_name,
                             user_agent = "googleusercontent",
                             referer    = "https://twitter.com/"
                         ))

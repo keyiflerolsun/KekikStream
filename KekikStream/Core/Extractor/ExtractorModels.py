@@ -15,3 +15,4 @@ class ExtractResult(BaseModel):
     referer    : str | None     = None
     user_agent : str | None     = None
     subtitles  : list[Subtitle] = []
+    extractor  : str | None     = None

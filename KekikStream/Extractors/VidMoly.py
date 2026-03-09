@@ -3,11 +3,11 @@
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
 from KekikStream.Core  import PackedJSExtractor, ExtractResult, Subtitle, HTMLHelper
-import contextlib, json
+import contextlib, json, re
 
 class VidMoly(PackedJSExtractor):
     name     = "VidMoly"
-    main_url = "https://vidmoly.to"
+    main_url = "https://vidmoly.me"
 
     # Birden fazla domain destekle
     supported_domains = ["vidmoly.to", "vidmoly.me", "vidmoly.net", "vidmoly.biz"]
@@ -18,8 +18,10 @@ class VidMoly(PackedJSExtractor):
 
         self.httpx.headers.update({"Sec-Fetch-Dest" : "iframe"})
 
-        # Domain normalleştirme
-        url = url.replace(".me", ".net").replace(".to", ".net")
+        # Domain normalleştirme: çalışan domain vidmoly.me
+        url = re.sub(r'https?://vidmoly\.[a-z]+', 'https://vidmoly.me', url)
+        # Eski embed format dönüştürme: /embed-CODE.html → /w/CODE
+        url = re.sub(r'/embed-([a-z0-9]+)\.html', r'/w/\1', url)
 
         resp = await self.httpx.get(url, follow_redirects=True)
         sel  = HTMLHelper(resp.text)

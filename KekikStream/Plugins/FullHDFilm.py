@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
+from urllib.parse     import parse_qs, urlencode, urlsplit, urlunsplit
 import base64, re
 
 class FullHDFilm(PluginBase):
@@ -190,7 +190,7 @@ class FullHDFilm(PluginBase):
                 iframe_url  = str(iframe_resp.url)
             except Exception:
                 return None
-            data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=part_name or None)
+            data = await self.extract(iframe_url, referer=f"{self.main_url}/", name_override=part_name if part_name else None)
             if data:
                 return data
             if "youtube.com/embed/" in iframe_url or "youtu.be/" in iframe_url:

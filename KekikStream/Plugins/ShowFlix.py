@@ -242,7 +242,7 @@ class ShowFlix(PluginBase):
                 self.collect_results(results, res)
 
             if val := data.get("original"):
-                 results.append(ExtractResult(name="ShowFlix (Original)", url=val, referer=self.main_url))
+                 results.append(ExtractResult(name="Original", url=val, referer=self.main_url))
 
             return results
 
@@ -267,6 +267,6 @@ class ShowFlix(PluginBase):
             self.collect_results(results, res)
 
         if val := item.get("originalURL"):
-             results.append(ExtractResult(name="ShowFlix (Original)", url=val, referer=self.main_url))
+             results.append(ExtractResult(name="Original", url=val, referer=self.main_url))
 
         return results

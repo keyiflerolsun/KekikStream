@@ -132,7 +132,5 @@ class FlwBasePlugin(PluginBase):
                 data = await self.extract(video_url, name_override=server_name)
                 if data:
                     self.collect_results(results, data)
-                else:
-                    results.append(ExtractResult(url=video_url, name=f"{self.name} | {server_name}"))
 
         return results

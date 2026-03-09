@@ -169,17 +169,11 @@ class UAKino(PluginBase):
         if any(ext in url for ext in [".mp4", ".m3u8"]):
             return [ExtractResult(name=self.name, url=url)]
 
-        # ashdi.vip → Ashdi extractor'a gönder
+        # ashdi.vip → Ashdi extractor'a gönder; başarısız olursa atla
         if "ashdi.vip" in url:
             ext = await self.extract(url, referer=f"{self.main_url}/")
             if ext:
                 self.collect_results(results, ext)
-            else:
-                results.append(ExtractResult(
-                    name    = "Ashdi",
-                    url     = url,
-                    referer = f"{self.main_url}/",
-                ))
             return results
 
         # Uakino sayfası → AJAX ile playlist al
@@ -193,7 +187,7 @@ class UAKino(PluginBase):
         if playlist_html:
             items = self._parse_playlist_items(playlist_html)
             tasks = [
-                self.extract(item["file"], referer=f"{self.main_url}/", name_override=f"{self.name} | {item['voice']}" if item["voice"] else None)
+                self.extract(item["file"], referer=f"{self.main_url}/", name_override=item['voice'] if item["voice"] else None)
                 for item in items
             ]
             for item, ext in zip(items, await self.gather_with_limit(tasks), strict=False):
@@ -201,7 +195,7 @@ class UAKino(PluginBase):
                     self.collect_results(results, ext)
                 else:
                     results.append(ExtractResult(
-                        name    = f"{self.name} | {item['voice']}" if item["voice"] else self.name,
+                        name    = item['voice'] if item["voice"] else "Kaynak",
                         url     = item["file"],
                         referer = f"{self.main_url}/",
                     ))

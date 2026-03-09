@@ -220,7 +220,7 @@ class Dizilla(PluginBase):
         if not iframe_url:
             return []
 
-        data = await self.extract(iframe_url, referer=f"{self.main_url}/", prefix=first_result.get('language_name', 'Unknown'))
+        data = await self.extract(iframe_url, referer=f"{self.main_url}/", name_override=first_result.get('language_name', 'Unknown'))
         if not data:
             return []
 
