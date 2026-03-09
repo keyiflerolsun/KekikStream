@@ -17,6 +17,10 @@ from rich.table       import Table
 from rich.panel       import Panel
 from rich.text        import Text
 from copy             import copy
+import csv
+
+CSV_SUCCESS_PATH = os.path.join(root_dir, "extractors_success.csv")
+CSV_FAILS_PATH   = os.path.join(root_dir, "extractors_fail.csv")
 
 class PluginValidator:
     """Her eklentinin tüm metotlarını ve veri modellerini doğrular."""
@@ -25,6 +29,28 @@ class PluginValidator:
         self.ext     = ExtractorManager()
         self.plugins = PluginManager(ex_manager=self.ext)
         self.results = {}
+        self._init_csv_files()
+
+    def _init_csv_files(self):
+        """CSV çıktı dosyalarını başlıkla oluşturur (mevcut dosyanın üzerine yazar)."""
+        headers = ["plugin", "extractor", "name", "url"]
+        for path in (CSV_SUCCESS_PATH, CSV_FAILS_PATH):
+            with open(path, "w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(headers)
+
+    def _write_extract_rows(self, plugin_name: str, links: list):
+        """ExtractResult listesini success/internal/fail CSV dosyalarına ayırır."""
+        for link in links:
+            row  = [plugin_name, link.extractor or "Internal", link.name, link.url]
+            with open(CSV_SUCCESS_PATH, "a", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(row)
+
+    def _write_failed_extractions(self, plugin_name: str, failures: list):
+        """Extractor bulunamadı / Extractor hatası kayıtlarını fail CSV'ye ekler."""
+        with open(CSV_FAILS_PATH, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            for fail in failures:
+                writer.writerow([plugin_name, fail["extractor"], fail["name"], fail["url"]])
 
     def validate_model_completeness(self, obj, model_name: str) -> dict:
         """Model alanlarının doluluğunu kontrol eder."""
@@ -223,7 +249,8 @@ class PluginValidator:
             else:
                 result["status"] = "✅"
 
-            result["data"] = first_link
+            result["data"]  = first_link
+            result["links"] = links
 
             konsol.print(links)
 
@@ -281,9 +308,15 @@ class PluginValidator:
                 if link_url:
                     konsol.log("[yellow]▶ load_links test ediliyor...")
                     konsol.log(f"[dim]URL: {link_url}[/]")
+                    plugin.failed_extractions = []
                     load_links_result = await self.test_load_links(plugin, link_url)
                     validation_results["load_links"] = load_links_result
                     konsol.log(f"  {load_links_result['status']} {load_links_result['message']}")
+
+                    if load_links_result.get("links"):
+                        self._write_extract_rows(plugin_name, load_links_result["links"])
+                    if plugin.failed_extractions:
+                        self._write_failed_extractions(plugin_name, plugin.failed_extractions)
 
         # Genel durum belirleme
         for key, val in validation_results.items():

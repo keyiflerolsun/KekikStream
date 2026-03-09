@@ -66,6 +66,8 @@ class PluginBase(ABC):
         else:
             self.ex_manager = ExtractorManager(extractor_dir=ex_manager)
 
+        self.failed_extractions: list[dict] = []
+
         self._cache_namespace = f"{self.__class__.__module__}.{self.__class__.__name__}"
         self._setup_default_method_caches()
 
@@ -355,6 +357,7 @@ class PluginBase(ABC):
         extractor = self.ex_manager.find_extractor(url)
         if not extractor:
             konsol.log(f"[magenta][?] {self.name} » Extractor bulunamadı: {url}")
+            self.failed_extractions.append({"url": url, "extractor": "", "name": name_override or prefix or "", "error": "Extractor bulunamadı"})
             return None
 
         try:
@@ -363,6 +366,7 @@ class PluginBase(ABC):
             # Liste ise her bir öğe için prefix/override ekle
             if isinstance(data, list):
                 for item in data:
+                    item.extractor = extractor.name
                     if name_override:
                         item.name = name_override
                     elif prefix and item.name:
@@ -373,6 +377,7 @@ class PluginBase(ABC):
                 return data
 
             # Tekil öğe ise
+            data.extractor = extractor.name
             if name_override:
                 data.name = name_override
             elif prefix and data.name:
@@ -384,6 +389,7 @@ class PluginBase(ABC):
             return data
         except Exception as hata:
             konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
+            self.failed_extractions.append({"url": url, "extractor": extractor.name, "name": name_override or prefix or "", "error": str(hata)})
             return None
 
     async def play(self, **kwargs):
