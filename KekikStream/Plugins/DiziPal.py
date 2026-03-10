@@ -74,7 +74,7 @@ class DiziPal(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        poster      = self.fix_url(secici.select_attr("meta[property='og:image']", "content"))
+        poster      = self.fix_url(secici.regex_first(r'"thumbnailUrl":"(https?://[^"]+)"'))
         description = secici.select_attr("meta[property='og:description']", "content")
         title       = secici.select_text("h1")
 
