@@ -98,7 +98,7 @@ class FilmciBaba(PluginBase):
             return MovieInfo(
                 url         = url,
                 title       = title,
-                description = description,
+                description = description.replace("kesintisizfilmcibabaizle", "").strip() if description else None,
                 poster      = self.fix_url(poster),
                 year        = year,
                 rating      = rating if rating != "." else None,
@@ -116,7 +116,7 @@ class FilmciBaba(PluginBase):
         return SeriesInfo(
             url         = url,
             title       = title,
-            description = description,
+            description = description.replace("kesintisizfilmcibabaizle", "").strip() if description else None,
             poster      = self.fix_url(poster),
             year        = year,
             rating      = rating,
