@@ -7,7 +7,7 @@ import re, base64
 class Dramacool(PluginBase):
     name        = "Dramacool"
     language    = "en"
-    main_url    = "https://dramacool.io.in"
+    main_url    = "https://dramacool-l.fun"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Watch drama asian Online for free releases in Korean, Taiwanese, Thailand, Japanese and Chinese with English subtitles on Dramacool."
 
