@@ -22,6 +22,7 @@ class VidHide(PackedJSExtractor):
         "filelions.live",
         "filelions.online",
         "filelions.to",
+        "filelions.top",
         "kinoger.be",
         "smoothpre.com",
         "dhtpre.com",

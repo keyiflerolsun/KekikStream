@@ -30,12 +30,14 @@ class DoodStream(ExtractorBase):
         "ds2video.com",
         "dooood.com",
         "dood.cc",
+        "dooodster.com",
     ]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        url     = url.replace("/e/", "/d/") if "/e/" in url else url
-        base    = self.get_base_url(url)
-        headers = {"Referer": referer or base}
+        original_url = url
+        url          = url.replace("/e/", "/d/") if "/e/" in url else url
+        base         = self.get_base_url(url)
+        headers      = {"Referer": referer or base}
 
         resp = await self.httpx.get(url, headers=headers)
         html = resp.text
@@ -46,7 +48,9 @@ class DoodStream(ExtractorBase):
         # DoodStream token/key parsing
         pass_key = re.search(r"/pass_md5/([^']+)", html)
         if not pass_key:
-            # Try /e/ version if /d/ failed to find key
+            # /d/ sürümünde bulamazsak /e/ sürümünü dene (tekrar döngüye girme)
+            if "/d/" in url and "/e/" in original_url:
+                raise ValueError(f"{self.name}: Pass key bulunamadı.")
             if "/d/" in url:
                 return await self.extract(url.replace("/d/", "/e/"), referer=referer)
             raise ValueError(f"{self.name}: Pass key bulunamadı.")

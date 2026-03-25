@@ -152,11 +152,18 @@ class DoramasLatinoX(PluginBase):
                 data      = r.json()
                 embed_url = data.get("embed_url")
                 if embed_url:
-                    # HTML içerebilir, regex ile linki ayıkla
-                    link_match = re.search(r'src=["\'](https?://[^"\']+)["\']', embed_url)
-                    target     = self.fix_url(link_match.group(1) if link_match else embed_url)
+                    # HTML içerebilir, regex ile linki ayıkla (whitespace ve tek slash toleranslı)
+                    link_match = re.search(r'src=\s*["\']?\s*(https?:/{1,2}[^"\'>\s]+)', embed_url)
+                    if link_match:
+                        raw    = link_match.group(1).strip()
+                        target = re.sub(r'^(https?:)/([^/])', r'\1//\2', raw)
+                        target = self.fix_url(target)
+                    elif embed_url.startswith("http"):
+                        target = self.fix_url(embed_url)
+                    else:
+                        return None
 
-                    if not any(x in target.lower() for x in ["google", "facebook", "ads", "analytics"]):
+                    if not any(x in target.lower() for x in ["google", "facebook", "ads", "analytics", "democraticexit"]):
                         return await self.extract(target, referer=url)
             except:
                 pass

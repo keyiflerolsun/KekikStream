@@ -81,12 +81,16 @@ class AnimeYTX(PluginBase):
         description = secici.select_text(".entry-content[itemprop='description'] p") or secici.select_attr("meta[property='og:description']", "content")
 
         # Meta verileri (İspanyolca etiketler)
-        year = secici.meta_value("Estreno") or secici.meta_value("Año")
+        year_raw = secici.meta_value("Estreno") or secici.meta_value("Año")
+        year     = None
+        if year_raw:
+            m    = re.search(r"\b(19\d{2}|20\d{2})\b", str(year_raw))
+            year = m.group(1) if m else None
         if not year:
             year = secici.regex_first(r"\b(20\d{2}|19\d{2})\b", target=title)
 
         tags   = secici.select_texts(".genxed a")
-        actors = secici.meta_list("Reparto") or secici.meta_list("Voces") or secici.meta_list("Actores")
+        actors = secici.select_texts(".cvactor .charname a") or secici.meta_list("Reparto") or secici.meta_list("Voces") or secici.meta_list("Actores")
 
         episodes = []
         for el in secici.select(".eplister ul li"):

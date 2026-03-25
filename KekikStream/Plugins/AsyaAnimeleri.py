@@ -78,7 +78,11 @@ class AsyaAnimeleri(PluginBase):
         poster      = veri.select_poster("img.ts-post-image") or veri.select_poster("div.thumb img")
 
         # Tags/Genres
-        tags = veri.select_texts("span.genres a")
+        tags = veri.select_texts("div.genxed a") or veri.select_texts("span.genres a")
+
+        # Meta
+        year   = veri.meta_value("Yayın Yılı") or veri.meta_value("Yıl") or veri.extract_year(".split", ".spe span")
+        actors = veri.meta_list("Oyuncular") or veri.meta_list("Kadro")
 
         episodes = []
 
@@ -106,7 +110,7 @@ class AsyaAnimeleri(PluginBase):
                 print(f"Error parsing episode: {e}")
                 continue
 
-        return SeriesInfo(url=url, title=title, poster=self.fix_url(poster) if poster else "", description=description, tags=tags, episodes=episodes)
+        return SeriesInfo(url=url, title=title, poster=self.fix_url(poster) if poster else "", description=description, tags=tags, year=str(year) if year else None, actors=actors, episodes=episodes)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek = await self.httpx.get(url)

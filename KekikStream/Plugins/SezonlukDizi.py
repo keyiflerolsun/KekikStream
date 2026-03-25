@@ -159,6 +159,10 @@ class SezonlukDizi(PluginBase):
                     if not iframe_src:
                         return []
 
+                    # reCAPTCHA veya site-içi AJAX endpoint'lerini atla
+                    if any(x in iframe_src.lower() for x in ["recaptcha", "recap", "ajax/"]):
+                        return []
+
                     iframe_url = self.fix_url(iframe_src)
 
                     real_url = iframe_url

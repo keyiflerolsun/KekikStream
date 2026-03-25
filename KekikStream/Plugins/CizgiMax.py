@@ -77,7 +77,7 @@ class CizgiMax(PluginBase):
 
         title       = secici.select_text("h1.page-title") or ""
         poster      = secici.select_attr("img.series-profile-thumb", "src")
-        description = secici.select_text("p  #tv-series-desc")
+        description = secici.select_text("#tv-series-desc") or secici.select_attr("meta[property='og:description']", "content")
         tags        = secici.select_texts("div.genre-item a")
 
         episodes = []

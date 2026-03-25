@@ -118,8 +118,14 @@ class YoTurkish(PluginBase):
 
         for src in sources:
             src = self.fix_url(src)
-            # Reklam veya geçersiz yapıları atla
-            if any(x in src.lower() for x in ["google", "facebook", "ads", "analytics", "data:image", "gb.ligninkeftiu.com"]):
+            # Reklam, JS, CDN veya geçersiz yapıları atla
+            if any(x in src.lower() for x in [
+                "google", "facebook", "ads", "analytics", "data:image",
+                "gb.ligninkeftiu.com", "cloudflare", "sharethis",
+                "wp-content/", "wp-includes/", "pubadx", "bvtpk.com",
+            ]):
+                continue
+            if src.lower().endswith((".js", ".css", ".png", ".jpg", ".gif", ".svg", ".ico")):
                 continue
 
             tasks.append(self.extract(src, referer=url))

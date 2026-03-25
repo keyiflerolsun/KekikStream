@@ -31,7 +31,7 @@ class DiziGom(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}  #p={page}")
+        istek  = await self.httpx.get(f"{url}#p={page}")
         secici = HTMLHelper(istek.text)
 
         results = []

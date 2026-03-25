@@ -34,8 +34,11 @@ class Voe(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         if "/download/" in url:
             url = url.replace("/download/", "/e/")
+        elif url.rstrip("/").endswith("/download"):
+            url  = url.rstrip("/").rsplit("/download", 1)[0]
+            v_id = url.split("/")[-1]
+            url  = f"https://voe.sx/e/{v_id}"
         elif "/e/" not in url and "voe.sx" in url:
-            # v -> e conversion if needed
             v_id = url.split("/")[-1]
             url  = f"https://voe.sx/e/{v_id}"
 

@@ -12,6 +12,13 @@ class VideoParktop(ExtractorBase):
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         qs     = parse_qs(urlparse(url).query)
         vid_id = qs.get("id", [None])[0]
+
+        # /titan/w/{code} formatı için path'den ID çıkar
+        if not vid_id:
+            path_parts = urlparse(url).path.rstrip("/").split("/")
+            if len(path_parts) >= 3 and path_parts[-2] == "w":
+                vid_id = path_parts[-1]
+
         if not vid_id:
             raise ValueError(f"VideoParktop: ID bulunamadı. {url}")
 

@@ -47,6 +47,8 @@ class StreamWish(PackedJSExtractor):
 
     def resolve_embed_url(self, url: str) -> str:
         # Kotlin: /f/ -> /, /e/ -> /
+        if "/download/" in url:
+            return url.replace("/download/", "/")
         if "/f/" in url:
             return url.replace("/f/", "/")
         if "/e/" in url:

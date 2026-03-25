@@ -78,7 +78,7 @@ class SineWix(PluginBase):
         }
 
         if item_type == "movie":
-            return MovieInfo(**common_data, year=veri.get("release_date"))
+            return MovieInfo(**common_data, year=veri.get("release_date", "")[:4] or None)
 
         episodes = []
         for season in veri.get("seasons", []):
@@ -93,7 +93,7 @@ class SineWix(PluginBase):
                     url     = f"{self.main_url}/sinewix/{item_type}/{item_id}/season/{season.get('season_number')}/episode/{episode.get('episode_number')}"
                 ))
 
-        return SeriesInfo(**common_data, year=veri.get("first_air_date"), episodes=episodes)
+        return SeriesInfo(**common_data, year=veri.get("first_air_date", "")[:4] or None, episodes=episodes)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # 1. Eğer halihazırda bir video linkiyse (API değilse) direkt dön
