@@ -8,7 +8,7 @@ class DoramasLatinoX(PluginBase):
     language    = "mx"
     main_url    = "https://doramaslatinox.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Ver doramas online gratis en español latino y subtitulado. La mejor selección de dramas coreanos, chinos y japoneses en alta calidad."
+    description = "Doramas en Audio Español Latino y Subtitulado"
 
     main_page = {
         f"{main_url}/movies/"             : "Todas las Películas",

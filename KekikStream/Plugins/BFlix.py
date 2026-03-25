@@ -8,7 +8,7 @@ class BFlix(FlwBasePlugin):
     language    = "en"
     main_url    = "https://fmovies.llc"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch movies and TV shows online"
+    description = "Watch free Streaming movies and TV shows online in HD quality. You can also Download movies for free here on Fmovies website"
 
     main_page   = {
         f"{main_url}/movie?page="          : "Movies",

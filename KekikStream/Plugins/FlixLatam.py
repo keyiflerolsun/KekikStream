@@ -18,7 +18,7 @@ class FlixLatam(PluginBase):
     language    = "mx"
     main_url    = "https://flixlatam.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "FlixLatam - Películas, series y animes online en audio latino. El mejor contenido de streaming gratuito con alta calidad."
+    description = "Mira tus Series, Películas y Animes en Latino Online."
 
     _headers = {
         "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0",

@@ -9,7 +9,7 @@ class DocumentaryArea(PluginBase):
     language    = "en"
     main_url    = "https://www.documentaryarea.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch the best documentaries online for free. Explore a wide range of topics from science and history to nature and technology."
+    description = "Watch the best online documentary films.Stunning collection of awesome, eyeopening, interesting, just released, full documentaries."
 
     main_page = {
         f"{main_url}/"                       : "Newly Added",

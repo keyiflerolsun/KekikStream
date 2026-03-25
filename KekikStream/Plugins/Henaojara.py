@@ -9,7 +9,7 @@ class Henaojara(PluginBase):
     language    = "mx"
     main_url    = "https://ww1.henaojara.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Henaojara - Ver anime online gratis en español latino. Nuevos episodios, series y películas en alta calidad."
+    description = "Ver anime online, subtitulado y/o doblado al español latino HD y completamente gratis. Aquí podrás ver y descargar todas tus series preferidas sin anuncios."
 
     main_page = {
         main_url: "Episodios Nuevos",

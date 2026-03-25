@@ -10,7 +10,7 @@ class AsyaAnimeleri(PluginBase):
     language    = "tr"
     main_url    = "https://asyaanimeleri.top"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Asya Animeleri - Anime izle | Donghua izle | Animeler"
+    description = "Anime izle | Donghua izle | Animeler | Türkanime | Donghua Anime, Türkçe Altyazılı Anime izle , Türkçe Anime, animeizle"
 
     main_page = {
         f"{main_url}/series/"      : "Son Eklenenler",

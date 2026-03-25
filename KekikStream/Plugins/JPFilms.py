@@ -9,7 +9,7 @@ class JPFilms(PluginBase):
     language    = "en"
     main_url    = "https://jp-films.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch online Japan Movies and TV-Series with English subtitle. Large collection of classic and modern Japanese cinema."
+    description = "Watch online The Legend of Love & Sincerity on Japanese Classic Movies and TVSeries (https://jp-films.com) with English Subtitle. Japanese Classic Movies, Japanese Classic TVSeries, Jindaigeki, Action, Tora-san, Zatoichi"
 
     main_page = {
         f"{main_url}/movies/"                                                   : "Latest Movies",

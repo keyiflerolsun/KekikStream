@@ -9,7 +9,7 @@ class Dramacool(PluginBase):
     language    = "en"
     main_url    = "https://dramacool-l.fun"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch drama asian Online for free releases in Korean, Taiwanese, Thailand, Japanese and Chinese with English subtitles on Dramacool."
+    description = "Asian Drama Lover, Watch drama asian Online for free releases in Korean, Taiwanese, Thailand, Japanese and Chinese with English subtitles on Dramacool."
 
     main_page   = {
         f"{main_url}/recently-added-drama" : "Yeni Dizi Bölümleri",

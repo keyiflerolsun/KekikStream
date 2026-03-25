@@ -9,7 +9,7 @@ class YoTurkish(PluginBase):
     language    = "en"
     main_url    = "https://yoturkish.to"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch Turkish series online with English Subtitles. The largest platform for high-quality Turkish dramas."
+    description = "YoTurkish - is the most favorite website for watching turkish series with english subtitles for free online, only at yoturkish.to"
 
     main_page = {
         f"{main_url}/series/"          : "Latest Series",

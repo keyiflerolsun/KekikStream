@@ -8,7 +8,7 @@ class Movies2Watch(FlwBasePlugin):
     language    = "en"
     main_url    = "https://movies2watch.tv"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch HD movies and TV shows online for free"
+    description = "Watch free movies and TV shows online in HD quality, free hd Streaming of new full length Movies and more."
 
     main_page   = {
         f"{main_url}/movie?page="           : "Movies",

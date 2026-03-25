@@ -11,7 +11,7 @@ class BelgeselX(PluginBase):
     language    = "tr"
     main_url    = "https://belgeselx.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "2022 yılında son çıkan belgeselleri belgeselx.com'da izle. En yeni belgeseller, türkçe altyazılı yada dublaj olarak 1080p kalitesinde hd belgesel izle."
+    description = "En yeni belgeselleri türkçe altyazılı ya da dublaj olarak 1080p HD kalitesinde izle."
 
     main_page   = {
         f"{main_url}/konu/turk-tarihi-belgeselleri&page=" : "Türk Tarihi",

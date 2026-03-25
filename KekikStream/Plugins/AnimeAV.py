@@ -9,7 +9,7 @@ class AnimeAV(PluginBase):
     language    = "mx"
     main_url    = "https://animeav1.com"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch anime online with subtitles and dubbing. Latest episodes and high-quality streaming for anime fans."
+    description = "Disfruta de los últimos episodios y animes agregados en HD y Sub Español. Miles de series, películas y OVAs disponibles para ver online totalmente gratis."
 
     category_url = f"{main_url}/catalogo"
 

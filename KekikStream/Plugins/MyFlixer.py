@@ -8,7 +8,7 @@ class MyFlixer(FlwBasePlugin):
     language    = "en"
     main_url    = "https://myflixerz.to"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Watch free movies and tv shows online"
+    description = "Full Movies Online Streaming and Tv Shows Streaming At no cost - Fast and Free with Great support on many devices - Chromecast supported - Safe Private streaming"
 
     main_page   = {
         f"{main_url}/movie?page="           : "Movies",

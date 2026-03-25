@@ -7,7 +7,7 @@ class FilmModu(PluginBase):
     language    = "tr"
     main_url    = "https://www.filmmodu.nl"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Film modun geldiyse yüksek kalitede yeni filmleri izle, 1080p izleyebileceğiniz reklamsız tek film sitesi."
+    description = "Film modun geldiyse yüksek kalitede hd film izle, 1080p izleyebileceğiniz reklamsız ve hızlı film sitesi."
 
     main_page   = {
         f"{main_url}/hd-film-kategori/4k-film-izle?page=SAYFA"         : "4K",
