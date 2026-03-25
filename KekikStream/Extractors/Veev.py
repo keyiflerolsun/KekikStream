@@ -133,7 +133,12 @@ class Veev(ExtractorBase):
                 final_url = self.decode_url(self.veev_decode(encoded_dv), rules)
 
                 if final_url.startswith("http"):
-                     return ExtractResult(name=self.name, url=self.fix_url(final_url), referer=self.main_url)
+                     return ExtractResult(
+                         name       = self.name,
+                         url        = self.fix_url(final_url),
+                         referer    = self.main_url,
+                         user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                     )
 
             except Exception as e:
                 # print(f"Veev Error: {e}")

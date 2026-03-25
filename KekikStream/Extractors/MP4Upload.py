@@ -39,4 +39,9 @@ class MP4Upload(ExtractorBase):
         elif video.startswith("/"):
             video = domain + video
 
-        return ExtractResult(name=self.name, url=self.fix_url(video), referer=domain)
+        return ExtractResult(
+            name       = self.name,
+            url        = self.fix_url(video),
+            referer    = domain,
+            user_agent = headers["User-Agent"]
+        )

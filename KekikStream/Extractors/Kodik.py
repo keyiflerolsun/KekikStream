@@ -97,9 +97,10 @@ class Kodik(ExtractorBase):
                         decoded = decode_kodik(encoded_src)
                         if decoded:
                             results.append(ExtractResult(
-                                name    = f"{self.name} {resolution}p",
-                                url     = self.fix_url(decoded),
-                                referer = url
+                                name       = f"{self.name} {resolution}p",
+                                url        = self.fix_url(decoded),
+                                referer    = url,
+                                user_agent = headers["User-Agent"]
                             ))
             return results
         except Exception:

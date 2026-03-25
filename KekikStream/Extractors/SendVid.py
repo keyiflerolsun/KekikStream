@@ -2,11 +2,12 @@
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
-class Tukipasti(ExtractorBase):
-    name     = "Tukipasti"
-    main_url = "https://tukipasti.com"
 
-    supported_domains = ["tukipasti.com"]
+class SendVid(ExtractorBase):
+    name     = "SendVid"
+    main_url = "https://sendvid.com"
+
+    supported_domains = ["sendvid.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         headers = {
@@ -17,19 +18,17 @@ class Tukipasti(ExtractorBase):
         resp   = await self.httpx.get(url, headers=headers)
         secici = HTMLHelper(resp.text)
 
-        # JWPlayer with turboviplay CDN: <div id="video_player" data-hash="...m3u8">
-        video_url = secici.select_attr("#video_player", "data-hash")
+        video_url = secici.select_attr("source", "src")
 
         if not video_url:
-            # Fallback: var urlPlay = '...m3u8';
-            video_url = secici.regex_first(r"var\s+urlPlay\s*=\s*['\"]([^'\"]+)['\"]")
+            video_url = secici.regex_first(r'var\s+video_source\s*=\s*["\']([^"\']+)')
 
         if not video_url:
-            raise ValueError(f"Tukipasti: Video URL bulunamadı. {url}")
+            raise ValueError(f"SendVid: Video URL bulunamadı. {url}")
 
         return ExtractResult(
             name       = self.name,
             url        = video_url,
-            referer    = self.main_url + "/",
+            referer    = f"{self.main_url}/",
             user_agent = headers["User-Agent"]
         )

@@ -14,4 +14,9 @@ class SibNet(ExtractorBase):
         if not path:
             raise ValueError(f"SibNet: Video yolu bulunamadı. {url}")
 
-        return ExtractResult(name=self.name, url=f"{self.main_url}{path}", referer=url)
+        return ExtractResult(
+            name       = self.name,
+            url        = f"{self.main_url}{path}",
+            referer    = url,
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )

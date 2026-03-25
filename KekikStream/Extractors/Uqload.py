@@ -44,7 +44,8 @@ class Uqload(ExtractorBase):
             raise ValueError(f"Uqload: Video URL bulunamadı. {url}")
 
         return ExtractResult(
-            name    = self.name,
-            url     = video_url,
-            referer = domain
+            name       = self.name,
+            url        = video_url,
+            referer    = domain,
+            user_agent = headers["User-Agent"]
         )

@@ -51,7 +51,8 @@ class LuluStream(ExtractorBase):
             raise ValueError(f"LuluStream: Video URL bulunamadı. {url}")
 
         return ExtractResult(
-            name    = self.name,
-            url     = video_url,
-            referer = url
+            name       = self.name,
+            url        = video_url,
+            referer    = url,
+            user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
         )
