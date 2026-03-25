@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
-import re
+import re, json
 
 class WebteIzle(PluginBase):
     name        = "WebteIzle"
@@ -141,7 +141,7 @@ class WebteIzle(PluginBase):
             )
 
             try:
-                alt_json = alt_res.json()
+                alt_json = json.loads(alt_res.content.decode("windows-1254", errors="replace"))
             except:
                 continue
 

@@ -6,7 +6,7 @@ class LuluStream(ExtractorBase):
     name     = "LuluStream"
     main_url = "https://luluvdo.com"
 
-    supported_domains = ["lulustream.com", "luluvdo.com", "luluview.com", "ponmody.com"]
+    supported_domains = ["lulustream.com", "luluvdo.com", "luluview.com", "luluvid.com", "ponmody.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         domain = self.get_base_url(url)

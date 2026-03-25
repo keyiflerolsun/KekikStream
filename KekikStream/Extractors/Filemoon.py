@@ -9,7 +9,7 @@ class Filemoon(PackedJSExtractor):
     url_pattern = M3U8_FILE_REGEX
 
     # Filemoon'un farklı domainlerini destekle
-    supported_domains = ["filemoon.to", "filemoon.in", "filemoon.sx", "filemoon.nl", "filemoon.com", "bysejikuar.com", "bysesukior.com", "bysedikamoum.com"]
+    supported_domains = ["filemoon.to", "filemoon.in", "filemoon.sx", "filemoon.nl", "filemoon.com", "bysedikamoum.com"]
 
     _UA = "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"
 

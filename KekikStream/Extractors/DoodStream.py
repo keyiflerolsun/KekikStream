@@ -31,6 +31,8 @@ class DoodStream(ExtractorBase):
         "dooood.com",
         "dood.cc",
         "dooodster.com",
+        "myvidplay.com",
+        "dsvplay.com",
     ]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:

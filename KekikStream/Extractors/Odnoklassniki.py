@@ -7,11 +7,15 @@ class Odnoklassniki(ExtractorBase):
     name     = "Odnoklassniki"
     main_url = "https://odnoklassniki.ru"
 
-    supported_domains = ["odnoklassniki.ru", "ok.ru", "vkvideo.ru"]
+    supported_domains = ["odnoklassniki.ru", "ok.ru", "vkvideo.ru", "vk.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        # vkvideo.ru → embed formatına çevir
-        if "vkvideo.ru" in url:
+        # href.li redirect wrapper'ını soy
+        if "href.li/?" in url:
+            url = url.split("href.li/?", 1)[1]
+
+        # vkvideo.ru / vk.com → embed formatına çevir
+        if "vkvideo.ru" in url or "vk.com" in url:
             return await self._extract_vk(url, referer)
 
         if "/video/" in url:
@@ -61,14 +65,19 @@ class Odnoklassniki(ExtractorBase):
         )
 
     async def _extract_vk(self, url: str, referer: str = None) -> ExtractResult:
-        """vkvideo.ru video_ext.php embed üzerinden mp4 URL çıkar."""
-        vm = re.match(r'.*/video(-?\d+)_(\d+)', url)
-        if not vm:
-            raise ValueError(f"Odnoklassniki: VK video ID ayrıştırılamadı. {url}")
-
-        oid, vid   = vm.group(1), vm.group(2)
-        embed_url  = f"https://vkvideo.ru/video_ext.php?oid={oid}&id={vid}"
+        """vkvideo.ru / vk.com video_ext.php embed üzerinden mp4 URL çıkar."""
         user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+        # vk.com/video_ext.php?oid=X&id=Y zaten embed formatında
+        if "video_ext.php" in url:
+            embed_url = url
+        else:
+            # vkvideo.ru/video-OWNERID_VIDEOID formatı
+            vm = re.match(r'.*/video(-?\d+)_(\d+)', url)
+            if not vm:
+                raise ValueError(f"Odnoklassniki: VK video ID ayrıştırılamadı. {url}")
+            oid, vid  = vm.group(1), vm.group(2)
+            embed_url = f"https://vkvideo.ru/video_ext.php?oid={oid}&id={vid}"
 
         resp = await self.httpx.get(embed_url, headers={"User-Agent": user_agent}, follow_redirects=True)
 

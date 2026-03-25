@@ -8,7 +8,7 @@ class MixDrop(ExtractorBase):
     main_url = "https://mixdrop.co"
 
     supported_domains = [
-        "mixdrop.co", "mixdrop.to", "mixdrop.ps", "mixdrop.ag", "mixdrop.club"
+        "mixdrop.co", "mixdrop.to", "mixdrop.ps", "mixdrop.ag", "mixdrop.club",
     ]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:

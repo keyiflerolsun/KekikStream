@@ -1,12 +1,11 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from abc              import ABC, abstractmethod
-from cloudscraper     import CloudScraper
-from httpx            import AsyncClient
-from typing           import Optional
-from .ExtractorModels import ExtractResult
-from urllib.parse     import urljoin, urlparse
-import asyncio
+from abc                import ABC, abstractmethod
+from curl_cffi.requests import AsyncSession
+from httpx              import AsyncClient
+from typing             import Optional
+from .ExtractorModels   import ExtractResult
+from urllib.parse       import urljoin, urlparse
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -14,13 +13,16 @@ class ExtractorBase(ABC):
     main_url = ""
 
     def __init__(self):
-        # cloudscraper - for bypassing Cloudflare
-        self.cloudscraper = CloudScraper()
+        # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
+        self._cf_session = AsyncSession(impersonate="chrome")
+        self._cf_session.headers.update({
+            "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
+            "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+        })
 
         # httpx - lightweight and safe for most HTTP requests
         self.httpx = AsyncClient(timeout = 10)
-        self.httpx.headers.update(self.cloudscraper.headers)
-        self.httpx.cookies.update(self.cloudscraper.cookies)
+        self.httpx.headers.update(self._cf_session.headers)
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -49,18 +51,17 @@ class ExtractorBase(ABC):
         pass
 
     async def close(self):
-        """Close HTTP client."""
+        """Close HTTP clients."""
         await self.httpx.aclose()
+        await self._cf_session.close()
 
     async def async_cf_get(self, url: str, **kwargs):
-        """cloudscraper.get() için async wrapper. Event loop'u bloklamaz."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: self.cloudscraper.get(url, **kwargs))
+        """curl_cffi.AsyncSession ile Cloudflare bypasslı GET isteği."""
+        return await self._cf_session.get(url, **kwargs)
 
     async def async_cf_post(self, url: str, **kwargs):
-        """cloudscraper.post() için async wrapper. Event loop'u bloklamaz."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, lambda: self.cloudscraper.post(url, **kwargs))
+        """curl_cffi.AsyncSession ile Cloudflare bypasslı POST isteği."""
+        return await self._cf_session.post(url, **kwargs)
 
     def fix_url(self, url: str) -> str:
         # Eksik URL'leri düzelt ve tam URL formatına çevir
