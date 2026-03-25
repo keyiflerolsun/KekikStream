@@ -111,8 +111,8 @@ class RecTV(PluginBase):
         duration     = None
         if duration_raw:
             with contextlib.suppress(Exception):
-                h = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
-                m = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
+                h        = int(HTMLHelper(duration_raw).regex_first(r"(\d+)h") or 0)
+                m        = int(HTMLHelper(duration_raw).regex_first(r"(\d+)min") or 0)
                 duration = h * 60 + m
 
         common_info = {

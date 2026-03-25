@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 import re
+
 
 class VidLoad(ExtractorBase):
     name              = "VidLoad"
@@ -9,10 +10,12 @@ class VidLoad(ExtractorBase):
     supported_domains = ["vidload.site"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({
-            "Referer" : referer or self.main_url,
-            "Origin"  : self.main_url,
-        })
+        self.httpx.headers.update(
+            {
+                "Referer" : referer or self.main_url,
+                "Origin"  : self.main_url,
+            }
+        )
 
         resp = await self.httpx.get(url)
         html = resp.text
@@ -34,7 +37,7 @@ class VidLoad(ExtractorBase):
             html,
             re.DOTALL,
         ):
-            sub_url  = track.group(1)
+            sub_url = track.group(1)
             sub_name = track.group(2)
             if sub_url.startswith("/"):
                 sub_url = f"{base_url}{sub_url}"

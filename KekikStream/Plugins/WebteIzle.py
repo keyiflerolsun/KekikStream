@@ -11,22 +11,22 @@ class WebteIzle(PluginBase):
     description = "Her türlü filmi ister dublaj ister altyazılı, en kaliteli bir şekilde izleyebileceğiniz arşivi en geniş gerçek film izleme siteniz."
 
     main_page   = {
-        f"{main_url}/yeni-filmler/"           : "Son Eklenenler",
-        f"{main_url}/imdb/8/"                 : "IMDB 8+",
-        f"{main_url}/yil/2026/"               : "2026 Filmleri",
-        f"{main_url}/yil/2025/"               : "2025 Filmleri",
-        f"{main_url}/tavsiye-filmler/"        : "Tavsiye",
-        f"{main_url}/filtre?tur=Aksiyon"      : "Aksiyon",
-        f"{main_url}/filtre?tur=Animasyon"    : "Animasyon",
-        f"{main_url}/filtre?tur=Belgesel"     : "Belgesel",
-        f"{main_url}/filtre?tur=Bilim-Kurgu"  : "Bilim Kurgu",
-        f"{main_url}/filtre?tur=Dram"         : "Dram",
-        f"{main_url}/filtre?tur=Fantastik"    : "Fantastik",
-        f"{main_url}/filtre?tur=Gerilim"      : "Gerilim",
-        f"{main_url}/filtre?tur=Komedi"       : "Komedi",
-        f"{main_url}/filtre?tur=Korku"        : "Korku",
-        f"{main_url}/filtre?tur=Macera"       : "Macera",
-        f"{main_url}/filtre?tur=Romantik"     : "Romantik",
+        f"{main_url}/yeni-filmler/"          : "Son Eklenenler",
+        f"{main_url}/imdb/8/"                : "IMDB 8+",
+        f"{main_url}/yil/2026/"              : "2026 Filmleri",
+        f"{main_url}/yil/2025/"              : "2025 Filmleri",
+        f"{main_url}/tavsiye-filmler/"       : "Tavsiye",
+        f"{main_url}/filtre?tur=Aksiyon"     : "Aksiyon",
+        f"{main_url}/filtre?tur=Animasyon"   : "Animasyon",
+        f"{main_url}/filtre?tur=Belgesel"    : "Belgesel",
+        f"{main_url}/filtre?tur=Bilim-Kurgu" : "Bilim Kurgu",
+        f"{main_url}/filtre?tur=Dram"        : "Dram",
+        f"{main_url}/filtre?tur=Fantastik"   : "Fantastik",
+        f"{main_url}/filtre?tur=Gerilim"     : "Gerilim",
+        f"{main_url}/filtre?tur=Komedi"      : "Komedi",
+        f"{main_url}/filtre?tur=Korku"       : "Korku",
+        f"{main_url}/filtre?tur=Macera"      : "Macera",
+        f"{main_url}/filtre?tur=Romantik"    : "Romantik",
     }
 
     async def _request(self, url: str, method: str = "GET", **kwargs) -> str:

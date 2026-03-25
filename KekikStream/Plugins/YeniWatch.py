@@ -11,11 +11,11 @@ class YeniWatch(PluginBase):
     description = "Yeni diziwatch yani Yeniwatch. Yabancı dizi izle, anime izle, en popüler yabancı dizileri ve animeleri ücretsiz olarak yeniwatch.net.tr'te izleyin."
 
     main_page   = {
-        f"{main_url}/episodes/page/1/"     : "Yeni Bölümler",
-        f"{main_url}/anime-arsivi/page/1/" : "Tüm Animeler",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Aksiyon"  : "Aksiyon",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Komedi"   : "Komedi",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=İsekai"   : "İsekai",
+        f"{main_url}/episodes/page/1/"                                                              : "Yeni Bölümler",
+        f"{main_url}/anime-arsivi/page/1/"                                                          : "Tüm Animeler",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Aksiyon" : "Aksiyon",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Komedi"  : "Komedi",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=İsekai"  : "İsekai",
     }
 
     def _episode_to_category_url(self, url: str) -> str:

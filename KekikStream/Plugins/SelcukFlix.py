@@ -184,7 +184,7 @@ class SelcukFlix(PluginBase):
             return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
 
         try:
-            next_data = json.loads(next_data_text)
+            next_data       = json.loads(next_data_text)
             secure_data_raw = next_data["props"]["pageProps"].get("secureData")
             if not secure_data_raw:
                   return SeriesInfo(url=url, title=sel.select_text("h1") or "Bilinmeyen")
@@ -261,9 +261,9 @@ class SelcukFlix(PluginBase):
             return []
 
         try:
-            data = json.loads(next_data)
+            data        = json.loads(next_data)
             secure_data = data["props"]["pageProps"]["secureData"]
-            raw_data = base64.b64decode(secure_data.replace('"', ''))
+            raw_data    = base64.b64decode(secure_data.replace('"', ''))
 
             try:
                 decoded_str = raw_data.decode('utf-8')

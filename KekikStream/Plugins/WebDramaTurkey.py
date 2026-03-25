@@ -11,12 +11,12 @@ class WebDramaTurkey(PluginBase):
     description = "Kore dizisi izle, çin dizisi izle, japon dizisi izle, kore dizileri izle, kore filmleri, asya dizileri, çin filmleri, japon filmleri, bl dizi izle, asya dizisi izle, web drama izle."
 
     main_page   = {
-        f"{main_url}/"           : "Son Bölümler",
-        f"{main_url}/diziler"     : "Diziler",
-        f"{main_url}/filmler"     : "Filmler",
-        f"{main_url}/anime"       : "Animeler",
-        f"{main_url}/tur/romantik": "Romantik",
-        f"{main_url}/tur/lise"    : "Lise",
+        f"{main_url}/"             : "Son Bölümler",
+        f"{main_url}/diziler"      : "Diziler",
+        f"{main_url}/filmler"      : "Filmler",
+        f"{main_url}/anime"        : "Animeler",
+        f"{main_url}/tur/romantik" : "Romantik",
+        f"{main_url}/tur/lise"     : "Lise",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

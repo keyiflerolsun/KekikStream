@@ -157,7 +157,7 @@ class DDizi(PluginBase):
 
         if target_url:
             with suppress(Exception):
-                player_istek = await self.httpx.get(target_url, headers={"Referer": url})
+                player_istek  = await self.httpx.get(target_url, headers={"Referer": url})
                 player_secici = HTMLHelper(player_istek.text)
 
                 # file: '...' logic

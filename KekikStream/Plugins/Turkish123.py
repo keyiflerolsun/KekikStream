@@ -12,7 +12,7 @@ class Turkish123(PluginBase):
 
     main_page   = {
         f"{main_url}/series-list/page/"   : "Series List",
-        f"{main_url}/episodes-list/page/": "Episodes List",
+        f"{main_url}/episodes-list/page/" : "Episodes List",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

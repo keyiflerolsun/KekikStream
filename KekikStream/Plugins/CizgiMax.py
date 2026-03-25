@@ -18,7 +18,7 @@ class CizgiMax(PluginBase):
         f"{main_url}/diziler?s_type&tur[0]=cocuklar&orderby=date&order=DESC"            : "Çocuklar",
         f"{main_url}/diziler?s_type&tur[0]=dram&orderby=date&order=DESC"                : "Dram",
         f"{main_url}/diziler?s_type&tur[0]=komedi&orderby=date&order=DESC"              : "Komedi",
-        f"{main_url}/diziler?s_type&tur[0]=suc&orderby=date&order=DESC"                  : "Suç",
+        f"{main_url}/diziler?s_type&tur[0]=suc&orderby=date&order=DESC"                 : "Suç",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

@@ -214,7 +214,7 @@ class SinemaCX(PluginBase):
             else:
                 # Yeni sayfa fetch et
                 with contextlib.suppress(Exception):
-                    resp = await self.httpx.get(src_url)
+                    resp       = await self.httpx.get(src_url)
                     iframe_url = await self._get_iframe_from_source(resp.text)
 
             if iframe_url:

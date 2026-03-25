@@ -11,28 +11,28 @@ class KultFilmler(PluginBase):
     description = "Sinema tarihine damga vuran en iyi kült filmler ve bağımsız yapımlar burada. Geniş arşivimizi keşfedin, dilediğiniz yapımı HD kalitesinde izleyin."
 
     main_page   = {
-        f"{main_url}/category/aile-filmleri-izle"       : "Aile",
-        f"{main_url}/category/aksiyon-filmleri-izle"    : "Aksiyon",
-        f"{main_url}/category/animasyon-filmleri-izle"  : "Animasyon",
-        f"{main_url}/category/belgesel-izle"            : "Belgesel",
-        f"{main_url}/category/bilim-kurgu-filmleri-izle": "Bilim Kurgu",
-        f"{main_url}/category/biyografi-filmleri-izle"  : "Biyografi",
-        f"{main_url}/category/dram-filmleri-izle"       : "Dram",
-        f"{main_url}/category/fantastik-filmleri-izle"  : "Fantastik",
-        f"{main_url}/category/gerilim-filmleri-izle"    : "Gerilim",
-        f"{main_url}/category/gizem-filmleri-izle"      : "Gizem",
-        f"{main_url}/category/kara-filmleri-izle"       : "Kara Film",
-        f"{main_url}/category/kisa-film-izle"           : "Kısa Metraj",
-        f"{main_url}/category/komedi-filmleri-izle"     : "Komedi",
-        f"{main_url}/category/korku-filmleri-izle"      : "Korku",
-        f"{main_url}/category/macera-filmleri-izle"     : "Macera",
-        f"{main_url}/category/muzik-filmleri-izle"      : "Müzik",
-        f"{main_url}/category/polisiye-filmleri-izle"   : "Polisiye",
-        f"{main_url}/category/romantik-filmleri-izle"   : "Romantik",
-        f"{main_url}/category/savas-filmleri-izle"      : "Savaş",
-        f"{main_url}/category/suc-filmleri-izle"        : "Suç",
-        f"{main_url}/category/tarih-filmleri-izle"      : "Tarih",
-        f"{main_url}/category/yerli-filmleri-izle"      : "Yerli",
+        f"{main_url}/category/aile-filmleri-izle"        : "Aile",
+        f"{main_url}/category/aksiyon-filmleri-izle"     : "Aksiyon",
+        f"{main_url}/category/animasyon-filmleri-izle"   : "Animasyon",
+        f"{main_url}/category/belgesel-izle"             : "Belgesel",
+        f"{main_url}/category/bilim-kurgu-filmleri-izle" : "Bilim Kurgu",
+        f"{main_url}/category/biyografi-filmleri-izle"   : "Biyografi",
+        f"{main_url}/category/dram-filmleri-izle"        : "Dram",
+        f"{main_url}/category/fantastik-filmleri-izle"   : "Fantastik",
+        f"{main_url}/category/gerilim-filmleri-izle"     : "Gerilim",
+        f"{main_url}/category/gizem-filmleri-izle"       : "Gizem",
+        f"{main_url}/category/kara-filmleri-izle"        : "Kara Film",
+        f"{main_url}/category/kisa-film-izle"            : "Kısa Metraj",
+        f"{main_url}/category/komedi-filmleri-izle"      : "Komedi",
+        f"{main_url}/category/korku-filmleri-izle"       : "Korku",
+        f"{main_url}/category/macera-filmleri-izle"      : "Macera",
+        f"{main_url}/category/muzik-filmleri-izle"       : "Müzik",
+        f"{main_url}/category/polisiye-filmleri-izle"    : "Polisiye",
+        f"{main_url}/category/romantik-filmleri-izle"    : "Romantik",
+        f"{main_url}/category/savas-filmleri-izle"       : "Savaş",
+        f"{main_url}/category/suc-filmleri-izle"         : "Suç",
+        f"{main_url}/category/tarih-filmleri-izle"       : "Tarih",
+        f"{main_url}/category/yerli-filmleri-izle"       : "Yerli",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -135,7 +135,7 @@ class KultFilmler(PluginBase):
 
         try:
             decoded = base64.b64decode(match).decode("utf-8")
-            src = HTMLHelper(decoded).select_attr("iframe", "src")
+            src     = HTMLHelper(decoded).select_attr("iframe", "src")
             return self.fix_url(src) if src else None
         except Exception:
             return None

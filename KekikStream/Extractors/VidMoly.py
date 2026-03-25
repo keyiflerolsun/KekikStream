@@ -54,7 +54,7 @@ class VidMoly(PackedJSExtractor):
 
             with contextlib.suppress(json.JSONDecodeError):
                 sub_sources = json.loads(f"[{sub_data}]")
-                subtitles = [
+                subtitles   = [
                     Subtitle(name=sub.get("label"), url=self.fix_url(sub.get("file")))
                     for sub in sub_sources if sub.get("kind") == "captions"
                 ]

@@ -1,9 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import asyncio
 import base64
 import re
+
 
 class AsyaAnimeleri(PluginBase):
     name        = "AsyaAnimeleri"
@@ -12,9 +12,9 @@ class AsyaAnimeleri(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Asya Animeleri - Anime izle | Donghua izle | Animeler"
 
-    main_page   = {
-        f"{main_url}/series/" : "Son Eklenenler",
-        f"{main_url}/tur/anime/" : "Animeler",
+    main_page = {
+        f"{main_url}/series/"      : "Son Eklenenler",
+        f"{main_url}/tur/anime/"   : "Animeler",
         f"{main_url}/tur/donghua/" : "Donghualar",
     }
 
@@ -44,11 +44,7 @@ class AsyaAnimeleri(PluginBase):
                 poster_raw = item.select_poster("img.ts-post-image")
 
                 if title and url_raw:
-                    results.append(SearchResult(
-                        title  = title,
-                        url    = self.fix_url(url_raw),
-                        poster = self.fix_url(poster_raw) if poster_raw else ""
-                    ))
+                    results.append(SearchResult(title=title, url=self.fix_url(url_raw), poster=self.fix_url(poster_raw) if poster_raw else ""))
         except Exception as e:
             print(f"AsyaAnimeleri Search Error: {e}")
 
@@ -67,12 +63,7 @@ class AsyaAnimeleri(PluginBase):
                 poster_raw = item.select_poster("img.ts-post-image")
 
                 if title and url_raw:
-                    results.append(MainPageResult(
-                        category = category,
-                        title    = title,
-                        url      = self.fix_url(url_raw),
-                        poster   = self.fix_url(poster_raw) if poster_raw else ""
-                    ))
+                    results.append(MainPageResult(category=category, title=title, url=self.fix_url(url_raw), poster=self.fix_url(poster_raw) if poster_raw else ""))
         except Exception as e:
             print(f"AsyaAnimeleri Helper Error: {e}")
 
@@ -81,7 +72,6 @@ class AsyaAnimeleri(PluginBase):
     async def load_item(self, url: str) -> SeriesInfo:
         istek = await self.httpx.get(url)
         veri  = HTMLHelper(istek.text)
-
 
         title       = veri.select_text("h1.entry-title") or veri.select_text("h1")
         description = veri.select_text("div.entry-content") or veri.select_text("div.desc")
@@ -104,7 +94,6 @@ class AsyaAnimeleri(PluginBase):
 
                 full_title = f"{ep_num} - {ep_title}" if ep_num else ep_title
 
-
                 s_num, e_num = 1, 0
                 if ep_num:
                     try:
@@ -112,26 +101,12 @@ class AsyaAnimeleri(PluginBase):
                     except:
                         pass
 
-                episodes.append(Episode(
-                    season  = s_num,
-                    episode = e_num,
-                    title   = full_title,
-                    url     = ep_url
-                ))
+                episodes.append(Episode(season=s_num, episode=e_num, title=full_title, url=ep_url))
             except Exception as e:
                 print(f"Error parsing episode: {e}")
                 continue
 
-
-
-        return SeriesInfo(
-            url         = url,
-            title       = title,
-            poster      = self.fix_url(poster) if poster else "",
-            description = description,
-            tags        = tags,
-            episodes    = episodes
-        )
+        return SeriesInfo(url=url, title=title, poster=self.fix_url(poster) if poster else "", description=description, tags=tags, episodes=episodes)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek = await self.httpx.get(url)
@@ -139,11 +114,10 @@ class AsyaAnimeleri(PluginBase):
 
         links = []
 
-
         options = veri.select("select.mirror option")
 
         for opt in options:
-            val  = opt.attrs.get('value')
+            val  = opt.attrs.get("value")
             name = opt.text(strip=True)
 
             if not val:
@@ -152,15 +126,13 @@ class AsyaAnimeleri(PluginBase):
             try:
 
                 decoded_bytes = base64.b64decode(val)
-                decoded_str   = decoded_bytes.decode('utf-8')
-
+                decoded_str   = decoded_bytes.decode("utf-8")
 
                 match = re.search(r'src=["\']([^"\']+)["\']', decoded_str)
                 if match:
                     src = match.group(1)
                     if src.startswith("//"):
                         src = "https:" + src
-
 
                     data = await self.extract(src, referer=self.main_url)
                     self.collect_results(links, data)

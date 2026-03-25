@@ -14,7 +14,7 @@ class Dizilla(PluginBase):
     description = "1080p yabancı dizi izle. Türkçe altyazılı veya dublaj seçenekleriyle 1080p çözünürlükte yabancı dizilere anında ulaş. Popüler dizileri kesintisiz izle."
 
     main_page   = {
-        f"{main_url}/tum-bolumler" : "Altyazılı Bölümler",
+        f"{main_url}/tum-bolumler"                                                                                                                                                                                                                                             : "Altyazılı Bölümler",
         f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=15&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Aile",
         f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=9&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma="  : "Aksiyon",
         f"{main_url}/api/bg/findSeries?releaseYearStart=1900&releaseYearEnd=2050&imdbPointMin=0&imdbPointMax=10&categoryIdsComma=17&countryIdsComma=&orderType=date_desc&languageId=-1&currentPage=SAYFA&currentPageCount=24&queryStr=&categorySlugsComma=&countryCodesComma=" : "Animasyon",

@@ -1,7 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import re, json, base64, asyncio
+import re
+import asyncio
+
 
 class Kinogo(PluginBase):
     name        = "Kinogo"
@@ -10,33 +12,33 @@ class Kinogo(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Смотреть фильмы и сериалы онлайн бесплатно на официальном КИНОГО в хорошем качестве."
 
-    main_page   = {
-        f"{main_url}/filmy/page/"           : "Все фильмы",
-        f"{main_url}/serialy/page/"         : "Сериалы",
-        f"{main_url}/multfilmy/page/"       : "Мультфильмы",
-        f"{main_url}/anime/page/"           : "Аниме",
-        f"{main_url}/tv-peredachi/page/"    : "ТВ Передачи",
-        f"{main_url}/pod-borki/page/"       : "Подборки",
-        f"{main_url}/novinki/page/"         : "Новинки",
-        f"{main_url}/fantastika/page/"      : "Фантастика",
-        f"{main_url}/fjentezi/page/"        : "Фэнтези",
-        f"{main_url}/nuar/page/"            : "Нуар",
-        f"{main_url}/uzhasy/page/"          : "Ужасы",
-        f"{main_url}/triller/page/"         : "Триллер",
-        f"{main_url}/sport/page/"           : "Спорт",
-        f"{main_url}/prikljuchenija/page/"  : "Приключения",
-        f"{main_url}/istoricheskie/page/"   : "Исторические",
-        f"{main_url}/mjuzikl/page/"         : "Мюзикл",
-        f"{main_url}/melodrama/page/"       : "Мелодрама",
-        f"{main_url}/korotkometrazhka/page/": "Короткометражка",
-        f"{main_url}/kriminal/page/"        : "Криминал",
-        f"{main_url}/drama/page/"           : "Драма",
-        f"{main_url}/komedija/page/"        : "Комедия",
-        f"{main_url}/dokumentalnye/page/"   : "Документальные",
-        f"{main_url}/detektiv/page/"        : "Детектив",
-        f"{main_url}/detskij/page/"         : "Детский",
-        f"{main_url}/voennyj/page/"         : "Военный",
-        f"{main_url}/vestern/page/"         : "Вестерн",
+    main_page = {
+        f"{main_url}/filmy/page/"            : "Все фильмы",
+        f"{main_url}/serialy/page/"          : "Сериалы",
+        f"{main_url}/multfilmy/page/"        : "Мультфильмы",
+        f"{main_url}/anime/page/"            : "Аниме",
+        f"{main_url}/tv-peredachi/page/"     : "ТВ Передачи",
+        f"{main_url}/pod-borki/page/"        : "Подборки",
+        f"{main_url}/novinki/page/"          : "Новинки",
+        f"{main_url}/fantastika/page/"       : "Фантастика",
+        f"{main_url}/fjentezi/page/"         : "Фэнтези",
+        f"{main_url}/nuar/page/"             : "Нуар",
+        f"{main_url}/uzhasy/page/"           : "Ужасы",
+        f"{main_url}/triller/page/"          : "Триллер",
+        f"{main_url}/sport/page/"            : "Спорт",
+        f"{main_url}/prikljuchenija/page/"   : "Приключения",
+        f"{main_url}/istoricheskie/page/"    : "Исторические",
+        f"{main_url}/mjuzikl/page/"          : "Мюзикл",
+        f"{main_url}/melodrama/page/"        : "Мелодрама",
+        f"{main_url}/korotkometrazhka/page/" : "Короткометражка",
+        f"{main_url}/kriminal/page/"         : "Криминал",
+        f"{main_url}/drama/page/"            : "Драма",
+        f"{main_url}/komedija/page/"         : "Комедия",
+        f"{main_url}/dokumentalnye/page/"    : "Документальные",
+        f"{main_url}/detektiv/page/"         : "Детектив",
+        f"{main_url}/detskij/page/"          : "Детский",
+        f"{main_url}/voennyj/page/"          : "Военный",
+        f"{main_url}/vestern/page/"          : "Вестерн",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -50,12 +52,14 @@ class Kinogo(PluginBase):
             img   = veri.select_poster("img")
 
             if title and href:
-                results.append(MainPageResult(
-                    category = category,
-                    title    = title,
-                    url      = self.fix_url(href),
-                    poster   = self.fix_url(img),
-                ))
+                results.append(
+                    MainPageResult(
+                        category = category,
+                        title    = title,
+                        url      = self.fix_url(href),
+                        poster   = self.fix_url(img),
+                    )
+                )
 
         return results
 
@@ -70,11 +74,13 @@ class Kinogo(PluginBase):
             img   = veri.select_poster("img")
 
             if title and href:
-                results.append(SearchResult(
-                    title  = title,
-                    url    = self.fix_url(href),
-                    poster = self.fix_url(img),
-                ))
+                results.append(
+                    SearchResult(
+                        title  = title,
+                        url    = self.fix_url(href),
+                        poster = self.fix_url(img),
+                    )
+                )
 
         return results
 
@@ -82,7 +88,9 @@ class Kinogo(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        poster      = self.fix_url(secici.select_poster("div.sPoster img") or secici.select_poster("div.fullstoryPoster img") or secici.select_poster("div.fposter img") or secici.select_attr("meta[property='og:image']", "content"))
+        poster = self.fix_url(
+            secici.select_poster("div.sPoster img") or secici.select_poster("div.fullstoryPoster img") or secici.select_poster("div.fposter img") or secici.select_attr("meta[property='og:image']", "content")
+        )
         description = secici.select_attr("meta[property='og:description']", "content")
         title       = secici.select_text("h1")
 
@@ -90,7 +98,7 @@ class Kinogo(PluginBase):
         rating       = secici.meta_value("IMDB") or secici.meta_value("КиноПоиск")
         duration_raw = secici.meta_value("Продолжительность")
         if duration_raw:
-            parts = duration_raw.split()
+            parts    = duration_raw.split()
             duration = int(parts[0]) if parts[0].isdigit() else None
         else:
             duration = None
@@ -108,7 +116,7 @@ class Kinogo(PluginBase):
                 iframes.append(p_src)
 
         if not iframes:
-            i = secici.regex_first(r'<iframe[^>]+src=[\"\']([^\"\']+)[\"\']')
+            i = secici.regex_first(r"<iframe[^>]+src=[\"\']([^\"\']+)[\"\']")
             if i and "youtube" not in i and "facebook" not in i and "vk.com" not in i:
                 iframes.append(i)
 
@@ -125,40 +133,14 @@ class Kinogo(PluginBase):
                             if ep_data.get("type") == "series":
                                 s_num = ep_data["season"]
                                 e_num = ep_data["episode"]
-                                episodes.append(Episode(
-                                    season  = s_num,
-                                    episode = e_num,
-                                    title   = f"Серия {e_num}",
-                                    url     = f"{url}#season={s_num}&episode={e_num}"
-                                ))
+                                episodes.append(Episode(season=s_num, episode=e_num, title=f"Серия {e_num}", url=f"{url}#season={s_num}&episode={e_num}"))
                         if episodes:
                             break
 
         if episodes:
-            return SeriesInfo(
-                url         = url,
-                poster      = poster,
-                title       = title,
-                description = description,
-                tags        = tags,
-                rating      = rating,
-                year        = year,
-                duration    = duration,
-                actors      = actors,
-                episodes    = episodes
-            )
+            return SeriesInfo(url=url, poster=poster, title=title, description=description, tags=tags, rating=rating, year=year, duration=duration, actors=actors, episodes=episodes)
 
-        return MovieInfo(
-            url         = url,
-            poster      = poster,
-            title       = title,
-            description = description,
-            tags        = tags,
-            rating      = rating,
-            year        = year,
-            duration    = duration,
-            actors      = actors
-        )
+        return MovieInfo(url=url, poster=poster, title=title, description=description, tags=tags, rating=rating, year=year, duration=duration, actors=actors)
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         target_season  = None
@@ -187,7 +169,7 @@ class Kinogo(PluginBase):
                 iframes.append(p_src)
 
         if not iframes:
-            i = secici.regex_first(r'<iframe[^>]+src=[\"\']([^\"\']+)[\"\']')
+            i = secici.regex_first(r"<iframe[^>]+src=[\"\']([^\"\']+)[\"\']")
             if i and "youtube" not in i and "facebook" not in i and "vk.com" not in i:
                 iframes.append(i)
 
@@ -202,24 +184,16 @@ class Kinogo(PluginBase):
                     for ep_data in playlist:
                         if ep_data.get("type") == "series" and ep_data["season"] == target_season and ep_data["episode"] == target_episode:
                             for v in ep_data["voices"]:
-                                clean_title = re.sub(r'<[^>]+>', '', v['title']).strip()
+                                clean_title = re.sub(r"<[^>]+>", "", v["title"]).strip()
                                 c_name      = clean_title if clean_title else "Kinogo"
 
                                 link_str = v.get("link", "")
-                                for l in link_str.split(','):
-                                    m = re.search(r'\[(.*?)\](.*)', l)
+                                for l in link_str.split(","):
+                                    m = re.search(r"\[(.*?)\](.*)", l)
                                     if m:
-                                        results.append(ExtractResult(
-                                            name    = f"{c_name} {m.group(1)}",
-                                            url     = self.fix_url(m.group(2)),
-                                            referer = self.main_url
-                                        ))
+                                        results.append(ExtractResult(name=f"{c_name} {m.group(1)}", url=self.fix_url(m.group(2)), referer=self.main_url))
                                     else:
-                                        results.append(ExtractResult(
-                                            name    = c_name,
-                                            url     = self.fix_url(l),
-                                            referer = self.main_url
-                                        ))
+                                        results.append(ExtractResult(name=c_name, url=self.fix_url(l), referer=self.main_url))
                     if results:
                         break
             return results

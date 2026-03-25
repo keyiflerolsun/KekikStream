@@ -12,22 +12,22 @@ class DiziGom(PluginBase):
     description = "Türkçe altyazılı yabancı dizi izle, Tüm yabancı, kore, netflix dizilerin yeni ve eski sezonlarını orijinal dilinde dizigom1 alt yazılı film izleyebilir, sadece türkçe altyazılı en iyi yabancı diziler ve filmler hakkında yorum yapabilirsiniz."
 
     main_page   = {
-        f"{main_url}/tur/aile/"       : "Aile",
-        f"{main_url}/tur/aksiyon/"    : "Aksiyon",
-        f"{main_url}/tur/animasyon/"  : "Animasyon",
-        f"{main_url}/tur/belgesel/"   : "Belgesel",
+        f"{main_url}/tur/aile/"        : "Aile",
+        f"{main_url}/tur/aksiyon/"     : "Aksiyon",
+        f"{main_url}/tur/animasyon/"   : "Animasyon",
+        f"{main_url}/tur/belgesel/"    : "Belgesel",
         f"{main_url}/tur/bilim-kurgu/" : "Bilim Kurgu",
-        f"{main_url}/tur/dram/"       : "Dram",
-        f"{main_url}/tur/fantastik/"  : "Fantastik",
-        f"{main_url}/tur/gerilim/"    : "Gerilim",
-        f"{main_url}/tur/komedi/"     : "Komedi",
-        f"{main_url}/tur/korku/"      : "Korku",
-        f"{main_url}/tur/macera/"     : "Macera",
-        f"{main_url}/tur/polisiye/"   : "Polisiye",
-        f"{main_url}/tur/romantik/"   : "Romantik",
-        f"{main_url}/tur/savas/"      : "Savaş",
-        f"{main_url}/tur/suc/"        : "Suç",
-        f"{main_url}/tur/tarih/"      : "Tarih",
+        f"{main_url}/tur/dram/"        : "Dram",
+        f"{main_url}/tur/fantastik/"   : "Fantastik",
+        f"{main_url}/tur/gerilim/"     : "Gerilim",
+        f"{main_url}/tur/komedi/"      : "Komedi",
+        f"{main_url}/tur/korku/"       : "Korku",
+        f"{main_url}/tur/macera/"      : "Macera",
+        f"{main_url}/tur/polisiye/"    : "Polisiye",
+        f"{main_url}/tur/romantik/"    : "Romantik",
+        f"{main_url}/tur/savas/"       : "Savaş",
+        f"{main_url}/tur/suc/"         : "Suç",
+        f"{main_url}/tur/tarih/"       : "Tarih",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

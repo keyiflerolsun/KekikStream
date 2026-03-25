@@ -145,7 +145,7 @@ class BelgeselX(PluginBase):
                 if poster and "diziresimleri" in poster:
                     file_name = poster.rsplit("/", 1)[-1]
                     file_name = HTMLHelper(file_name).regex_replace(r"\.(jpe?g|png|webp)$", "")
-                    url_val = f"{self.main_url}/belgeseldizi/{file_name}"
+                    url_val   = f"{self.main_url}/belgeseldizi/{file_name}"
                 else:
                     continue
 

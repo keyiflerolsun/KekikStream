@@ -14,7 +14,8 @@ class VidStack(ExtractorBase):
     supported_domains = [
         "vidstack.io", "server1.uns.bio", "upns.one", "upn.one",
         "webdrama.upns.online", "webdrama.playerp2p.com",
-        "player4me.vip", "vidplayer.live",
+        "player4me.vip", "vidplayer.live", "rpmvid.com", "rpmshare.com",
+        "rpmplayer.com", "ytplay.rpmvid.com"
     ]
 
     def decrypt_aes(self, input_hex: str, key: str, iv: bytes) -> str:
@@ -37,17 +38,30 @@ class VidStack(ExtractorBase):
         return fragment.split("/")[-1]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult | list[ExtractResult]:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0"}
+        headers = {
+            "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0",
+            "Referer"    : url
+        }
 
         hash_val = self._extract_id(url)
         base_url = self.get_base_url(url)
 
-        # API İsteği
-        api_url = f"{base_url}/api/v1/video?id={hash_val}"
-        istek   = await self.httpx.get(api_url, headers=headers)
+        # API İsteği (Video veya Info endpointini dene)
+        api_paths    = ["/api/v1/video", "/api/v1/info"]
+        encoded_data = None
 
-        # Bazen yanıt tırnak içinde gelebilir, temizleyelim
-        encoded_data = istek.text.strip().strip('"')
+        for path in api_paths:
+            try:
+                api_url = f"{base_url}{path}?id={hash_val}"
+                istek   = await self.httpx.get(api_url, headers=headers)
+                if istek.status_code == 200 and len(istek.text) > 20:
+                    encoded_data = istek.text.strip().strip('"')
+                    break
+            except:
+                continue
+
+        if not encoded_data:
+            raise ValueError(f"VidStack: API yanıtı alınamadı. {url}")
 
         # AES Çözme — sıfır IV (webdrama), ardından bilinen IV'lar
         key = "kiemtienmua911ca"

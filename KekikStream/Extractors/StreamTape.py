@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
-import re
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+
 
 class StreamTape(ExtractorBase):
     name              = "StreamTape"
@@ -9,9 +9,11 @@ class StreamTape(ExtractorBase):
     supported_domains = ["streamtape.com", "streamtape.to", "streamtape.net", "strtape.cloud", "strcloud.in"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({
-            "Referer" : referer or self.main_url,
-        })
+        self.httpx.headers.update(
+            {
+                "Referer": referer or self.main_url,
+            }
+        )
 
         resp = await self.httpx.get(url, follow_redirects=True)
         html = resp.text

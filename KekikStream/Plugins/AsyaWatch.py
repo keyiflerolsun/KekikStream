@@ -12,16 +12,16 @@ class AsyaWatch(PluginBase):
 
     main_page   = {
         f"{main_url}/tum-bolumler" : "Yeni Bölümler",
-        "15" : "Aile",
-        "9"  : "Aksiyon",
-        "5"  : "Bilim Kurgu",
-        "2"  : "Dram",
-        "12" : "Fantastik",
-        "18" : "Gerilim",
-        "3"  : "Gizem",
-        "8"  : "Korku",
-        "4"  : "Komedi",
-        "7"  : "Romantik",
+        "15"                       : "Aile",
+        "9"                        : "Aksiyon",
+        "5"                        : "Bilim Kurgu",
+        "2"                        : "Dram",
+        "12"                       : "Fantastik",
+        "18"                       : "Gerilim",
+        "3"                        : "Gizem",
+        "8"                        : "Korku",
+        "4"                        : "Komedi",
+        "7"                        : "Romantik",
     }
 
     def _fix_poster(self, url: str) -> str:
@@ -75,7 +75,7 @@ class AsyaWatch(PluginBase):
 
         results = []
         try:
-            data = istek.json()
+            data    = istek.json()
             encoded = data.get("response", "")
             decoded = base64.b64decode(encoded).decode("utf-8", errors="replace")
             media   = json.loads(decoded)

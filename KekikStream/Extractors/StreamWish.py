@@ -2,19 +2,47 @@
 
 from KekikStream.Core import PackedJSExtractor, ExtractResult, M3U8_FILE_REGEX
 
+
 class StreamWish(PackedJSExtractor):
     name        = "StreamWish"
     main_url    = "https://streamwish.to"
     url_pattern = M3U8_FILE_REGEX
 
     supported_domains = [
-        "streamwish.to", "streamwish.site", "streamwish.xyz", "streamwish.com",
-        "embedwish.com", "mwish.pro", "dwish.pro", "wishembed.pro", "wishembed.com",
-        "kswplayer.info", "wishfast.top", "sfastwish.com", "strwish.xyz", "strwish.com",
-        "flaswish.com", "awish.pro", "obeywish.com", "jodwish.com", "swhoi.com",
-        "multimovies.cloud", "uqloads.xyz", "doodporn.xyz", "cdnwish.com", "asnwish.com",
-        "nekowish.my.id", "neko-stream.click", "swdyu.com", "wishonly.site", "playerwish.com",
-        "streamhls.to", "hlswish.com"
+        "streamwish.to",
+        "streamwish.site",
+        "streamwish.xyz",
+        "streamwish.com",
+        "embedwish.com",
+        "mwish.pro",
+        "dwish.pro",
+        "wishembed.pro",
+        "wishembed.com",
+        "kswplayer.info",
+        "wishfast.top",
+        "sfastwish.com",
+        "strwish.xyz",
+        "strwish.com",
+        "flaswish.com",
+        "awish.pro",
+        "obeywish.com",
+        "jodwish.com",
+        "swhoi.com",
+        "multimovies.cloud",
+        "uqloads.xyz",
+        "doodporn.xyz",
+        "cdnwish.com",
+        "asnwish.com",
+        "nekowish.my.id",
+        "neko-stream.click",
+        "swdyu.com",
+        "wishonly.site",
+        "playerwish.com",
+        "streamhls.to",
+        "hlswish.com",
+        "kitraskimisi.com",
+        "engifuosi.com",
+        "doramasfoxito.p2pplay.online",
     ]
 
     def resolve_embed_url(self, url: str) -> str:
@@ -23,30 +51,30 @@ class StreamWish(PackedJSExtractor):
             return url.replace("/f/", "/")
         if "/e/" in url:
             return url.replace("/e/", "/")
+        if "/d/" in url:
+            return url.replace("/d/", "/")
         return url
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         base_url  = self.get_base_url(url)
         embed_url = self.resolve_embed_url(url)
-        istek     = await self.httpx.get(
-            url     = embed_url,
-            headers = {
-                "Accept"     : "*/*",
-                "Connection" : "keep-alive",
-                "Referer"    : f"{base_url}/",
-                "Origin"     : f"{base_url}/",
-                "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            },
-            follow_redirects=True
-        )
+        headers   = {
+            "Accept"     : "*/*",
+            "Connection" : "keep-alive",
+            "Referer"    : referer or f"{base_url}/",
+            "Origin"     : f"{base_url}/",
+            "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
 
-        m3u8_url = self.unpack_and_find(istek.text)
+        try:
+            istek = await self.httpx.get(url=embed_url, headers=headers, follow_redirects=True)
+            html  = istek.text
+        except Exception:
+            istek = await self.async_cf_get(url=embed_url, headers=headers)
+            html  = istek.text
+
+        m3u8_url = self.unpack_and_find(html)
         if not m3u8_url:
             raise ValueError(f"StreamWish: m3u8 bulunamadı. {url}")
 
-        return ExtractResult(
-            name       = self.name,
-            url        = self.fix_url(m3u8_url),
-            referer    = f"{base_url}/",
-            user_agent = self.httpx.headers.get("User-Agent", "")
-        )
+        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=f"{base_url}/", user_agent=self.httpx.headers.get("User-Agent", ""))

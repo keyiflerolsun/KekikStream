@@ -11,20 +11,20 @@ class HDrezka(PluginBase):
     description = "Смотреть фильмы онлайн в HD качестве. Сериалы, мультфильмы, аниме, передачи и ТВ шоу на нашем киносайте, без регистрации и смс. Фильмы в высоком качестве на HDrezka.me"
 
     main_page   = {
-        f"{main_url}/films/?filter=watching"     : "Фильмы",
-        f"{main_url}/films/action/?filter=watching" : "Боевики",
-        f"{main_url}/films/fiction/?filter=watching" : "Фантастика",
-        f"{main_url}/films/comedy/?filter=watching" : "Комедии",
-        f"{main_url}/films/thriller/?filter=watching" : "Триллеры",
-        f"{main_url}/films/drama/?filter=watching" : "Драмы",
-        f"{main_url}/films/horror/?filter=watching" : "Ужасы",
+        f"{main_url}/films/?filter=watching"           : "Фильмы",
+        f"{main_url}/films/action/?filter=watching"    : "Боевики",
+        f"{main_url}/films/fiction/?filter=watching"   : "Фантастика",
+        f"{main_url}/films/comedy/?filter=watching"    : "Комедии",
+        f"{main_url}/films/thriller/?filter=watching"  : "Триллеры",
+        f"{main_url}/films/drama/?filter=watching"     : "Драмы",
+        f"{main_url}/films/horror/?filter=watching"    : "Ужасы",
         f"{main_url}/films/detective/?filter=watching" : "Детективы",
-        f"{main_url}/films/crime/?filter=watching" : "Криминал",
-        f"{main_url}/series/?filter=watching"    : "Сериалы",
-        f"{main_url}/series/comedy/?filter=watching" : "Комедийные сериалы",
-        f"{main_url}/series/drama/?filter=watching" : "Драматические сериалы",
-        f"{main_url}/cartoons/?filter=watching"  : "Мультфильмы",
-        f"{main_url}/animation/?filter=watching" : "Аниме",
+        f"{main_url}/films/crime/?filter=watching"     : "Криминал",
+        f"{main_url}/series/?filter=watching"          : "Сериалы",
+        f"{main_url}/series/comedy/?filter=watching"   : "Комедийные сериалы",
+        f"{main_url}/series/drama/?filter=watching"    : "Драматические сериалы",
+        f"{main_url}/cartoons/?filter=watching"        : "Мультфильмы",
+        f"{main_url}/animation/?filter=watching"       : "Аниме",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -262,7 +262,7 @@ class HDrezka(PluginBase):
                         if res.get("episode"):
                             payload["episode"] = res["episode"]
 
-                        api_url = f"{self.main_url}/ajax/get_cdn_series/"
+                        api_url   = f"{self.main_url}/ajax/get_cdn_series/"
                         istek_api = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
                         try:
                             api_data = istek_api.json()

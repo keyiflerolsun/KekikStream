@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from Kekik.Sifreleme  import AESManager
-import re, json
+
 
 class DiziMag(PluginBase):
     name        = "DiziMag"
@@ -11,25 +10,25 @@ class DiziMag(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "DiziMag ile yabancı dizi izle ve film izle keyfi! Full HD 1080p kalite, güncel içerikler ve geniş arşivle sinema deneyimini yaşa."
 
-    main_page   = {
-        f"{main_url}/dizi/tur/aile"             : "Aile Dizi",
-        f"{main_url}/dizi/tur/aksiyon-macera"   : "Aksiyon-Macera Dizi",
-        f"{main_url}/dizi/tur/animasyon"        : "Animasyon Dizi",
+    main_page = {
+        f"{main_url}/dizi/tur/aile"                : "Aile Dizi",
+        f"{main_url}/dizi/tur/aksiyon-macera"      : "Aksiyon-Macera Dizi",
+        f"{main_url}/dizi/tur/animasyon"           : "Animasyon Dizi",
         f"{main_url}/dizi/tur/bilim-kurgu-fantazi" : "Bilim Kurgu Dizi",
-        f"{main_url}/dizi/tur/dram"             : "Dram Dizi",
-        f"{main_url}/dizi/tur/gizem"            : "Gizem Dizi",
-        f"{main_url}/dizi/tur/komedi"           : "Komedi Dizi",
-        f"{main_url}/dizi/tur/suc"              : "Suç Dizi",
-        f"{main_url}/film/tur/aksiyon"          : "Aksiyon Film",
-        f"{main_url}/film/tur/bilim-kurgu"      : "Bilim-Kurgu Film",
-        f"{main_url}/film/tur/dram"             : "Dram Film",
-        f"{main_url}/film/tur/fantastik"        : "Fantastik Film",
-        f"{main_url}/film/tur/gerilim"          : "Gerilim Film",
-        f"{main_url}/film/tur/komedi"           : "Komedi Film",
-        f"{main_url}/film/tur/korku"            : "Korku Film",
-        f"{main_url}/film/tur/macera"           : "Macera Film",
-        f"{main_url}/film/tur/romantik"         : "Romantik Film",
-        f"{main_url}/film/tur/suc"              : "Suç Film",
+        f"{main_url}/dizi/tur/dram"                : "Dram Dizi",
+        f"{main_url}/dizi/tur/gizem"               : "Gizem Dizi",
+        f"{main_url}/dizi/tur/komedi"              : "Komedi Dizi",
+        f"{main_url}/dizi/tur/suc"                 : "Suç Dizi",
+        f"{main_url}/film/tur/aksiyon"             : "Aksiyon Film",
+        f"{main_url}/film/tur/bilim-kurgu"         : "Bilim-Kurgu Film",
+        f"{main_url}/film/tur/dram"                : "Dram Film",
+        f"{main_url}/film/tur/fantastik"           : "Fantastik Film",
+        f"{main_url}/film/tur/gerilim"             : "Gerilim Film",
+        f"{main_url}/film/tur/komedi"              : "Komedi Film",
+        f"{main_url}/film/tur/korku"               : "Korku Film",
+        f"{main_url}/film/tur/macera"              : "Macera Film",
+        f"{main_url}/film/tur/romantik"            : "Romantik Film",
+        f"{main_url}/film/tur/suc"                 : "Suç Film",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -43,12 +42,14 @@ class DiziMag(PluginBase):
             poster = veri.select_attr("div.poster-long-image img", "data-src")
 
             if title and href:
-                results.append(MainPageResult(
-                    category = category,
-                    title    = title,
-                    url      = self.fix_url(href),
-                    poster   = self.fix_url(poster),
-                ))
+                results.append(
+                    MainPageResult(
+                        category = category,
+                        title    = title,
+                        url      = self.fix_url(href),
+                        poster   = self.fix_url(poster),
+                    )
+                )
 
         return results
 
@@ -80,11 +81,13 @@ class DiziMag(PluginBase):
                 poster = li.select_attr("img", "data-src")
 
                 if title and href:
-                    results.append(SearchResult(
-                        title  = title.strip(),
-                        url    = self.fix_url(href),
-                        poster = self.fix_url(poster),
-                    ))
+                    results.append(
+                        SearchResult(
+                            title  = title.strip(),
+                            url    = self.fix_url(href),
+                            poster = self.fix_url(poster),
+                        )
+                    )
         except Exception:
             pass
 
@@ -126,12 +129,14 @@ class DiziMag(PluginBase):
 
                     _, e_val = secici.extract_season_episode(ep_href)
 
-                    episodes.append(Episode(
-                        season  = s_val,
-                        episode = e_val or 1,
-                        title   = ep_name or f"Bölüm {e_val}",
-                        url     = self.fix_url(ep_href),
-                    ))
+                    episodes.append(
+                        Episode(
+                            season  = s_val,
+                            episode = e_val or 1,
+                            title   = ep_name or f"Bölüm {e_val}",
+                            url     = self.fix_url(ep_href),
+                        )
+                    )
 
             if episodes:
                 last_episode = episodes[-1]

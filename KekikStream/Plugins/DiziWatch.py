@@ -12,17 +12,17 @@ class DiziWatch(PluginBase):
     description = "Yabancı dizi izle, anime izle, en popüler yabancı dizileri ve animeleri ücretsiz olarak diziwatch.tv'de izleyin."
 
     main_page   = {
-        f"{main_url}/episodes"                                       : "Yeni Bölümler",
-        f"{main_url}/anime-arsivi?category=9&sort=date_desc"         : "Aksiyon",
-        f"{main_url}/anime-arsivi?category=17&sort=date_desc"        : "Animasyon",
-        f"{main_url}/anime-arsivi?category=5&sort=date_desc"         : "Bilim Kurgu",
-        f"{main_url}/anime-arsivi?category=2&sort=date_desc"         : "Dram",
-        f"{main_url}/anime-arsivi?category=12&sort=date_desc"        : "Fantastik",
-        f"{main_url}/anime-arsivi?category=3&sort=date_desc"         : "Gizem",
-        f"{main_url}/anime-arsivi?category=4&sort=date_desc"         : "Komedi",
-        f"{main_url}/anime-arsivi?category=8&sort=date_desc"         : "Korku",
-        f"{main_url}/anime-arsivi?category=24&sort=date_desc"        : "Macera",
-        f"{main_url}/anime-arsivi?category=7&sort=date_desc"         : "Romantik",
+        f"{main_url}/episodes"                                : "Yeni Bölümler",
+        f"{main_url}/anime-arsivi?category=9&sort=date_desc"  : "Aksiyon",
+        f"{main_url}/anime-arsivi?category=17&sort=date_desc" : "Animasyon",
+        f"{main_url}/anime-arsivi?category=5&sort=date_desc"  : "Bilim Kurgu",
+        f"{main_url}/anime-arsivi?category=2&sort=date_desc"  : "Dram",
+        f"{main_url}/anime-arsivi?category=12&sort=date_desc" : "Fantastik",
+        f"{main_url}/anime-arsivi?category=3&sort=date_desc"  : "Gizem",
+        f"{main_url}/anime-arsivi?category=4&sort=date_desc"  : "Komedi",
+        f"{main_url}/anime-arsivi?category=8&sort=date_desc"  : "Korku",
+        f"{main_url}/anime-arsivi?category=24&sort=date_desc" : "Macera",
+        f"{main_url}/anime-arsivi?category=7&sort=date_desc"  : "Romantik",
     }
 
     _session_cookies = None
@@ -122,8 +122,8 @@ class DiziWatch(PluginBase):
 
         results = []
         try:
-            data    = resp.json()
-            items   = data.get("data", {}).get("result", [])
+            data  = resp.json()
+            items = data.get("data", {}).get("result", [])
         except Exception:
             return results
 

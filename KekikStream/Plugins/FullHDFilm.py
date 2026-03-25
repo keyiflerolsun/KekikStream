@@ -12,13 +12,13 @@ class FullHDFilm(PluginBase):
     description = "Fullhdfilm ile en yeni vizyon filmler Full HD ve kesintisiz film sizlerle. Özgün film arşivimizle en üstün kaliteli film izle keyfini sunuyoruz."
 
     main_page   = {
-        f"{main_url}/yabanci-dizi-izle/page"          : "Yabancı Dizi",
+        f"{main_url}/yabanci-dizi-izle/page"           : "Yabancı Dizi",
         f"{main_url}/yabanci-film-izle/page"           : "Yabancı Film",
         f"{main_url}/yerli-film-izle/page"             : "Yerli Film",
         f"{main_url}/netflix-filmleri-izle/page"       : "Netflix",
         f"{main_url}/aile-filmleri/page"               : "Aile",
         f"{main_url}/aksiyon-filmleri-izle-hd1/page"   : "Aksiyon",
-        f"{main_url}/animasyon-filmleri-izlesene/page"  : "Animasyon",
+        f"{main_url}/animasyon-filmleri-izlesene/page" : "Animasyon",
         f"{main_url}/bilim-kurgu-filmleri/page"        : "Bilim Kurgu",
         f"{main_url}/dram-filmleri/page"               : "Dram",
         f"{main_url}/fantastik-filmler-izle/page"      : "Fantastik",

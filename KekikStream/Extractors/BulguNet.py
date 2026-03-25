@@ -1,7 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+from KekikStream.Core import ExtractorBase, ExtractResult
 import json, re
+
 
 class BulguNet(ExtractorBase):
     name     = "BulguNet"
@@ -11,17 +12,19 @@ class BulguNet(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         # bulgu.net/okru/embed/TOKEN  -->  player sayfası
-        self.httpx.headers.update({
-            "Referer" : referer or self.main_url,
-            "Origin"  : self.main_url,
-        })
+        self.httpx.headers.update(
+            {
+                "Referer" : referer or self.main_url,
+                "Origin"  : self.main_url,
+            }
+        )
 
         resp = await self.httpx.get(url, follow_redirects=True)
         page = resp.text
 
         # qualities dizisini JS kaynağından parse et
         # const qualities = [{...}];
-        m = re.search(r'const\s+qualities\s*=\s*(\[.*?\]);', page, re.DOTALL)
+        m = re.search(r"const\s+qualities\s*=\s*(\[.*?\]);", page, re.DOTALL)
         if not m:
             raise ValueError("BulguNet: qualities dizisi bulunamadı.")
 

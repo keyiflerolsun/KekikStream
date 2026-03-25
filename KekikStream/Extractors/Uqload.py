@@ -22,7 +22,7 @@ class Uqload(ExtractorBase):
             resp    = await self.httpx.get(url, headers=headers, follow_redirects=True)
             if "embed restricted" in resp.text:
                 headers.pop("Referer", None)
-                resp = await self.httpx.get(url, headers=headers, follow_redirects=True)
+                resp    = await self.httpx.get(url, headers=headers, follow_redirects=True)
             content = resp.text
         except Exception:
             resp    = await self.async_cf_get(url, headers=headers)

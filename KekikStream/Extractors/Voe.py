@@ -4,6 +4,7 @@ from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 import base64
 import json
 
+
 class Voe(ExtractorBase):
     name     = "Voe"
     main_url = "https://voe.sx"
@@ -16,7 +17,7 @@ class Voe(ExtractorBase):
         if not raw:
             return None
 
-        raw = raw.strip().strip('"\'')
+        raw = raw.strip().strip("\"'")
         # base64 padding düzelt
         pad = len(raw) % 4
         if pad:
@@ -31,6 +32,13 @@ class Voe(ExtractorBase):
         return None
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        if "/download/" in url:
+            url = url.replace("/download/", "/e/")
+        elif "/e/" not in url and "voe.sx" in url:
+            # v -> e conversion if needed
+            v_id = url.split("/")[-1]
+            url  = f"https://voe.sx/e/{v_id}"
+
         try:
             # Voe often uses protection (DDG, etc.), use cloudscraper async wrapper
             resp    = await self.async_cf_get(url, headers={"Referer": referer or self.main_url})
@@ -64,11 +72,7 @@ class Voe(ExtractorBase):
                     js_data   = json.loads(decoded)
                     video_url = js_data.get("file") or js_data.get("hls")
                     if video_url:
-                        return ExtractResult(
-                            name    = self.name,
-                            url     = video_url.replace("\\/", "/"),
-                            referer = url
-                        )
+                        return ExtractResult(name=self.name, url=video_url.replace("\\/", "/"), referer=url)
             except Exception:
                 pass
 
@@ -81,10 +85,6 @@ class Voe(ExtractorBase):
             video_url = secici.regex_first(r"hls\s*:\s*['\"]([^'\"]+)['\"]")
 
         if not video_url:
-             raise ValueError(f"Voe: Video URL bulunamadı. {url}")
+            raise ValueError(f"Voe: Video URL bulunamadı. {url}")
 
-        return ExtractResult(
-            name    = self.name,
-            url     = video_url.replace("\\/", "/").replace("&amp;", "&"),
-            referer = url
-        )
+        return ExtractResult(name=self.name, url=video_url.replace("\\/", "/").replace("&amp;", "&"), referer=url)

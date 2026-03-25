@@ -12,22 +12,22 @@ class UAKino(PluginBase):
     description = "Дивитися фільми та серіали онлайн в HD якості. У нас можна дивитися кіно онлайн безкоштовно, у високій якості та з якісним українським дубляжем"
 
     main_page = {
-        f"{main_url}/filmy/page/"                 : "Фільми",
-        f"{main_url}/filmy/genre-action/page/"    : "Бойовики",
-        f"{main_url}/filmy/genre_fantastic/page/" : "Фантастика",
-        f"{main_url}/filmy/genre_adventure/page/" : "Пригоди",
-        f"{main_url}/filmy/genre_comedy/page/"    : "Комедії",
-        f"{main_url}/filmy/genre_detective/page/" : "Детективи",
-        f"{main_url}/filmy/genre_drama/page/"    : "Драми",
-        f"{main_url}/filmy/genre_horror/page/"    : "Жахи",
-        f"{main_url}/filmy/genre_thriller/page/"  : "Трилери",
-        f"{main_url}/seriesss/page/"              : "Серіали",
-        f"{main_url}/seriesss/doramy/page/"       : "Дорами",
-        f"{main_url}/seriesss/comedy_series/page/": "Комедійні серіали",
-        f"{main_url}/seriesss/drama_series/page/" : "Драматичні серіали",
-        f"{main_url}/animeukr/page/"              : "Аніме",
-        f"{main_url}/cartoon/page/"               : "Мультфільми",
-        f"{main_url}/cartoon/cartoonseries/page/" : "Мультсеріали"
+        f"{main_url}/filmy/page/"                  : "Фільми",
+        f"{main_url}/filmy/genre-action/page/"     : "Бойовики",
+        f"{main_url}/filmy/genre_fantastic/page/"  : "Фантастика",
+        f"{main_url}/filmy/genre_adventure/page/"  : "Пригоди",
+        f"{main_url}/filmy/genre_comedy/page/"     : "Комедії",
+        f"{main_url}/filmy/genre_detective/page/"  : "Детективи",
+        f"{main_url}/filmy/genre_drama/page/"      : "Драми",
+        f"{main_url}/filmy/genre_horror/page/"     : "Жахи",
+        f"{main_url}/filmy/genre_thriller/page/"   : "Трилери",
+        f"{main_url}/seriesss/page/"               : "Серіали",
+        f"{main_url}/seriesss/doramy/page/"        : "Дорами",
+        f"{main_url}/seriesss/comedy_series/page/" : "Комедійні серіали",
+        f"{main_url}/seriesss/drama_series/page/"  : "Драматичні серіали",
+        f"{main_url}/animeukr/page/"               : "Аніме",
+        f"{main_url}/cartoon/page/"                : "Мультфільми",
+        f"{main_url}/cartoon/cartoonseries/page/"  : "Мультсеріали"
     }
 
     def _fix_file_url(self, url: str) -> str:

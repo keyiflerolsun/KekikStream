@@ -11,11 +11,11 @@ class YabanciDizi(PluginBase):
     description = "Son çıkan yabancı dizi ve filmleri yabancidizi' de izle. En yeni yabancı film ve diziler, türkçe altyazılı yada dublaj olarak 1080p kalitesinde hd izle."
 
     main_page = {
-        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTciXX0=" : "Diziler",
-        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTgiXX0=" : "Filmler",
-        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY291bnRyeSI6eyJLUiI6IktSIn19" : "Kdrama",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTciXX0="                         : "Diziler",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTgiXX0="                         : "Filmler",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY291bnRyeSI6eyJLUiI6IktSIn19"                     : "Kdrama",
         f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY291bnRyeSI6eyJKUCI6IkpQIn0sImNhdGVnb3J5IjpbXX0=" : "Jdrama",
-        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY2F0ZWdvcnkiOnsiMyI6IjMifX0=" : "Animasyon",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY2F0ZWdvcnkiOnsiMyI6IjMifX0="                     : "Animasyon",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -53,7 +53,7 @@ class YabanciDizi(PluginBase):
         )
 
         try:
-            raw = istek.json()
+            raw       = istek.json()
             res_array = raw.get("data", {}).get("result", [])
 
             results = []

@@ -4,6 +4,7 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, get_ytdlp_e
 from urllib.parse     import urlparse
 import yt_dlp, re
 
+
 class YTDLP(ExtractorBase):
     name     = "yt-dlp"
     main_url = ""  # Universal - tüm siteleri destekler
@@ -11,44 +12,65 @@ class YTDLP(ExtractorBase):
     _FAST_DOMAIN_RE = None  # compiled mega-regex (host üstünden)
 
     _POPULAR_TLDS = {
-        "com", "net", "org", "tv", "io", "co", "me", "ly", "ru", "fr", "de", "es", "it",
-        "nl", "be", "ch", "at", "uk", "ca", "au", "jp", "kr", "cn", "in", "br", "mx",
-        "ar", "tr", "gov", "edu", "mil", "int", "info", "biz", "name", "pro", "aero",
-        "coop", "museum", "onion"
+        "com",
+        "net",
+        "org",
+        "tv",
+        "io",
+        "co",
+        "me",
+        "ly",
+        "ru",
+        "fr",
+        "de",
+        "es",
+        "it",
+        "nl",
+        "be",
+        "ch",
+        "at",
+        "uk",
+        "ca",
+        "au",
+        "jp",
+        "kr",
+        "cn",
+        "in",
+        "br",
+        "mx",
+        "ar",
+        "tr",
+        "gov",
+        "edu",
+        "mil",
+        "int",
+        "info",
+        "biz",
+        "name",
+        "pro",
+        "aero",
+        "coop",
+        "museum",
+        "onion",
     }
 
     # 1. Literal TLD Regex: youtube\.com, vimeo\.com
     # sorted by reverse length to prevent partial matches (e.g. 'co' matching 'com')
-    _LITERAL_TLD_RE = re.compile(
-        rf"([a-z0-9][-a-z0-9]*(?:\\\.[-a-z0-9]+)*\\\.(?:{'|'.join(sorted(_POPULAR_TLDS, key=len, reverse=True))}))",
-        re.IGNORECASE
-    )
+    _LITERAL_TLD_RE = re.compile(rf"([a-z0-9][-a-z0-9]*(?:\\\.[-a-z0-9]+)*\\\.(?:{'|'.join(sorted(_POPULAR_TLDS, key=len, reverse=True))}))", re.IGNORECASE)
 
     # 2. Regex TLD Regex: dailymotion\.[a-z]{2,3}
-    _REGEX_TLD_RE = re.compile(
-        r"([a-z0-9][-a-z0-9]*)\\\.\[a-z\]\{?\d*,?\d*\}?",
-        re.IGNORECASE
-    )
+    _REGEX_TLD_RE = re.compile(r"([a-z0-9][-a-z0-9]*)\\\.\[a-z\]\{?\d*,?\d*\}?", re.IGNORECASE)
 
     # 3. Alternation TLD Regex: \.(?:com|net|org)
-    _ALT_TLD_RE = re.compile(
-        r"\\\.\(\?:([a-z|]+)\)",
-        re.IGNORECASE
-    )
+    _ALT_TLD_RE = re.compile(r"\\\.\(\?:([a-z|]+)\)", re.IGNORECASE)
 
     # Kelime yakalayıcı (domain bulmak için)
-    _DOMAIN_WORD_RE = re.compile(
-        r"([a-z0-9][-a-z0-9]*)",
-        re.IGNORECASE
-    )
+    _DOMAIN_WORD_RE = re.compile(r"([a-z0-9][-a-z0-9]*)", re.IGNORECASE)
 
     @classmethod
     def _extract_literal_domains(cls, valid_url: str) -> set[str]:
         """Pattern 1: Literal TLD domainlerini (youtube.com) çıkarır."""
-        return {
-            m.replace(r"\.", ".").lower()
-            for m in cls._LITERAL_TLD_RE.findall(valid_url)
-        }
+        return {m.replace(r"\.", ".").lower() for m in cls._LITERAL_TLD_RE.findall(valid_url)}
 
     @classmethod
     def _extract_regex_tld_domains(cls, valid_url: str) -> set[str]:
@@ -158,7 +180,7 @@ class YTDLP(ExtractorBase):
             "socket_timeout"        : 3,
             "retries"               : 1,
             "noplaylist"            : True,
-            "skip_download"         : True
+            "skip_download"         : True,
         }
 
         # Referer varsa header olarak ekle
@@ -198,12 +220,7 @@ class YTDLP(ExtractorBase):
                 for lang, subs in subtitle_data.items():
                     for sub in subs:
                         if sub_url := sub.get("url"):
-                            subtitles.append(
-                                Subtitle(
-                                    name = f"{lang} ({sub.get('ext', 'unknown')})",
-                                    url  = sub_url
-                                )
-                            )
+                            subtitles.append(Subtitle(name=f"{lang} ({sub.get('ext', 'unknown')})", url=sub_url))
 
             # User-Agent al
             user_agent   = None
@@ -211,14 +228,7 @@ class YTDLP(ExtractorBase):
             if http_headers:
                 user_agent = http_headers.get("User-Agent")
 
-            return ExtractResult(
-                name       = self.name,
-                url        = video_url,
-                referer    = referer or info.get("webpage_url"),
-                user_agent = user_agent,
-                subtitles  = subtitles
-            )
+            return ExtractResult(name=self.name, url=video_url, referer=referer or info.get("webpage_url"), user_agent=user_agent, subtitles=subtitles)
 
     async def close(self):
         """yt-dlp için cleanup gerekmez"""
-        pass

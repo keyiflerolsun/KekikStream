@@ -25,7 +25,8 @@ class MP4Upload(ExtractorBase):
 
         h     = HTMLHelper(html)
         video = (
-            h.regex_first(r'player\.src\(["\']([^"\']+)["\']\)')
+            h.regex_first(r'player\.src\(\s*\{\s*(?:type:.*?,)?\s*src:\s*["\']([^"\']+)["\']')
+            or h.regex_first(r'player\.src\(["\']([^"\']+)["\']\)')
             or h.regex_first(r'file\s*:\s*["\']([^"\']+)["\']')
             or h.regex_first(r'sources\s*:\s*\[\s*["\']([^"\']+)["\']')
         )

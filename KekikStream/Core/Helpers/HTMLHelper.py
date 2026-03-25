@@ -188,7 +188,7 @@ class HTMLHelper:
         if container_selector:
             targets = self.select(container_selector)
         else:
-            body = self.parser.body
+            body    = self.parser.body
             targets = [NodeHelper(body)] if body else []
 
         for root in targets:

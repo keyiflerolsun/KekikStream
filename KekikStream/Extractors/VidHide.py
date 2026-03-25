@@ -3,6 +3,7 @@
 from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper, M3U8_FILE_REGEX
 import re
 
+
 class VidHide(PackedJSExtractor):
     name        = "VidHide"
     main_url    = "https://vidhidepro.com"
@@ -10,10 +11,17 @@ class VidHide(PackedJSExtractor):
 
     # Birden fazla domain destekle
     supported_domains = [
-        "vidhidepro.com", "vidhide.com", "rubyvidhub.com",
-        "vidhidevip.com", "vidhideplus.com", "vidhidepre.com",
-        "movearnpre.com", "oneupload.to",
-        "filelions.live", "filelions.online", "filelions.to",
+        "vidhidepro.com",
+        "vidhide.com",
+        "rubyvidhub.com",
+        "vidhidevip.com",
+        "vidhideplus.com",
+        "vidhidepre.com",
+        "movearnpre.com",
+        "oneupload.to",
+        "filelions.live",
+        "filelions.online",
+        "filelions.to",
         "kinoger.be",
         "smoothpre.com",
         "dhtpre.com",
@@ -47,19 +55,22 @@ class VidHide(PackedJSExtractor):
         }
 
         embed_url = self.get_embed_url(url)
-        istek     = await self.httpx.get(embed_url, headers=headers, follow_redirects=True)
-        text      = istek.text
+        try:
+            istek = await self.httpx.get(embed_url, headers=headers, follow_redirects=True)
+            text  = istek.text
+        except Exception:
+            istek = await self.async_cf_get(embed_url, headers=headers)
+            text  = istek.text
 
         # Silinmiş dosya kontrolü
         if any(x in text for x in ["File is no longer available", "File Not Found", "Video silinmiş"]):
-             raise ValueError(f"{name}: Video silinmiş. {url}")
+            raise ValueError(f"{name}: Video silinmiş. {url}")
 
         # JS Redirect Kontrolü (OneUpload vb.)
-        if js_redirect := HTMLHelper(text).regex_first(r"window\.location\.replace\(['\"]([^'\"]+)['\"]\)") or \
-                          HTMLHelper(text).regex_first(r"window\.location\.href\s*=\s*['\"]([^'\"]+)['\"]"):
+        if js_redirect := HTMLHelper(text).regex_first(r"window\.location\.replace\(['\"]([^'\"]+)['\"]\)") or HTMLHelper(text).regex_first(r"window\.location\.href\s*=\s*['\"]([^'\"]+)['\"]"):
             target_url = js_redirect
             if not target_url.startswith("http"):
-                 target_url = self.fix_url(target_url)
+                target_url = self.fix_url(target_url)
 
             istek = await self.httpx.get(target_url, headers={"Referer": embed_url}, follow_redirects=True)
             text  = istek.text
@@ -77,22 +88,12 @@ class VidHide(PackedJSExtractor):
 
         results = []
         for m3u8 in m3u8_matches:
-            results.append(ExtractResult(
-                name       = name,
-                url        = self.fix_url(m3u8),
-                referer    = f"{base_url}/",
-                user_agent = self.httpx.headers.get("User-Agent", "")
-            ))
+            results.append(ExtractResult(name=name, url=self.fix_url(m3u8), referer=f"{base_url}/", user_agent=self.httpx.headers.get("User-Agent", "")))
 
         if not results:
             # Fallback: sources pattern
             if m3u8_url := sel.regex_first(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"'):
-                results.append(ExtractResult(
-                    name       = name,
-                    url        = self.fix_url(m3u8_url),
-                    referer    = f"{base_url}/",
-                    user_agent = self.httpx.headers.get("User-Agent", "")
-                ))
+                results.append(ExtractResult(name=name, url=self.fix_url(m3u8_url), referer=f"{base_url}/", user_agent=self.httpx.headers.get("User-Agent", "")))
 
         if not results:
             raise ValueError(f"{name}: Video URL bulunamadı. {url}")

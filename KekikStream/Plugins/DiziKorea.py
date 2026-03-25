@@ -11,18 +11,18 @@ class DiziKorea(PluginBase):
     description = "Kore Dizileri izle, Dizikorea size en yeni ve güncel romantik komedi, okul tarzında ki Kore Asya Dizilerini Full HD Türkçe Altyazılı izleme şansı verir."
 
     main_page   = {
-        f"{main_url}/sayfa/tum-kore-dizileri/" : "Kore Dizileri",
-        f"{main_url}/sayfa/kore-filmleri-izle1/": "Kore Filmleri",
-        f"{main_url}/dizi/tur/dram/"           : "Dram Dizileri",
-        f"{main_url}/dizi/tur/komedi/"         : "Komedi Dizileri",
-        f"{main_url}/dizi/tur/romantik/"       : "Romantik Diziler",
-        f"{main_url}/dizi/tur/aksiyon/"        : "Aksiyon Dizileri",
-        f"{main_url}/dizi/tur/gizem/"          : "Gizem Dizileri",
-        f"{main_url}/dizi/tur/suc/"            : "Suç Dizileri",
-        f"{main_url}/sayfa/tayland-dizileri/"   : "Tayland Dizileri",
-        f"{main_url}/sayfa/tayland-filmleri/"   : "Tayland Filmleri",
-        f"{main_url}/sayfa/cin-dizileri/"       : "Çin Dizileri",
-        f"{main_url}/sayfa/cin-filmleri/"       : "Çin Filmleri",
+        f"{main_url}/sayfa/tum-kore-dizileri/"   : "Kore Dizileri",
+        f"{main_url}/sayfa/kore-filmleri-izle1/" : "Kore Filmleri",
+        f"{main_url}/dizi/tur/dram/"             : "Dram Dizileri",
+        f"{main_url}/dizi/tur/komedi/"           : "Komedi Dizileri",
+        f"{main_url}/dizi/tur/romantik/"         : "Romantik Diziler",
+        f"{main_url}/dizi/tur/aksiyon/"          : "Aksiyon Dizileri",
+        f"{main_url}/dizi/tur/gizem/"            : "Gizem Dizileri",
+        f"{main_url}/dizi/tur/suc/"              : "Suç Dizileri",
+        f"{main_url}/sayfa/tayland-dizileri/"    : "Tayland Dizileri",
+        f"{main_url}/sayfa/tayland-filmleri/"    : "Tayland Filmleri",
+        f"{main_url}/sayfa/cin-dizileri/"        : "Çin Dizileri",
+        f"{main_url}/sayfa/cin-filmleri/"        : "Çin Filmleri",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -54,7 +54,7 @@ class DiziKorea(PluginBase):
 
         results = []
         try:
-            data = istek.json()
+            data   = istek.json()
             html   = data.get("theme", "")
             secici = HTMLHelper(html)
 

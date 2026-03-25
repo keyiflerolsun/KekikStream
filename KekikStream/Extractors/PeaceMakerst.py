@@ -19,9 +19,9 @@ class PeaceMakerst(ExtractorBase):
 
         m3u8_url = None
         if "teve2.com.tr" in resp.text:
-            v_id = HTMLHelper(resp.text).regex_first(r"teve2\.com\.tr\\\/embed\\\/(\d+)")
-            t_resp = await self.httpx.get(f"https://www.teve2.com.tr/action/media/{v_id}")
-            t_data = t_resp.json()
+            v_id     = HTMLHelper(resp.text).regex_first(r"teve2\.com\.tr\\\/embed\\\/(\d+)")
+            t_resp   = await self.httpx.get(f"https://www.teve2.com.tr/action/media/{v_id}")
+            t_data   = t_resp.json()
             m3u8_url = f"{t_data['Media']['Link']['ServiceUrl']}//{t_data['Media']['Link']['SecurePath']}"
         elif sources := data.get("videoSources"):
             m3u8_url = sources[-1]["file"]

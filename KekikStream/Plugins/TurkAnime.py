@@ -13,14 +13,14 @@ class TurkAnime(PluginBase):
 
     main_page   = {
         f"{main_url}/anime-turu/1/Aksiyon"    : "Aksiyon",
-        f"{main_url}/anime-turu/8/Dram"        : "Dram",
-        f"{main_url}/anime-turu/10/Fantastik"  : "Fantastik",
-        f"{main_url}/anime-turu/4/Komedi"      : "Komedi",
-        f"{main_url}/anime-turu/14/Korku"      : "Korku",
-        f"{main_url}/anime-turu/2/Macera"      : "Macera",
-        f"{main_url}/anime-turu/22/Romantizm"  : "Romantizm",
-        f"{main_url}/anime-turu/27/Shounen"    : "Shounen",
-        f"{main_url}/anime-turu/30/Spor"       : "Spor",
+        f"{main_url}/anime-turu/8/Dram"       : "Dram",
+        f"{main_url}/anime-turu/10/Fantastik" : "Fantastik",
+        f"{main_url}/anime-turu/4/Komedi"     : "Komedi",
+        f"{main_url}/anime-turu/14/Korku"     : "Korku",
+        f"{main_url}/anime-turu/2/Macera"     : "Macera",
+        f"{main_url}/anime-turu/22/Romantizm" : "Romantizm",
+        f"{main_url}/anime-turu/27/Shounen"   : "Shounen",
+        f"{main_url}/anime-turu/30/Spor"      : "Spor",
     }
 
     _AES_KEY    = "710^8A@3@>T2}#zN5xK?kR7KNKb@-A!LzYL5~M1qU0UfdWsZoBm4UUat%}ueUv6E--*hDPPbH7K2bp9^3o41hw,khL:}Kx8080@M"

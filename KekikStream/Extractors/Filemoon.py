@@ -2,20 +2,14 @@
 
 from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper, M3U8_FILE_REGEX
 
+
 class Filemoon(PackedJSExtractor):
     name        = "Filemoon"
     main_url    = "https://filemoon.to"
     url_pattern = M3U8_FILE_REGEX
 
     # Filemoon'un farklı domainlerini destekle
-    supported_domains = [
-        "filemoon.to",
-        "filemoon.in",
-        "filemoon.sx",
-        "filemoon.nl",
-        "filemoon.com",
-        "bysejikuar.com"
-    ]
+    supported_domains = ["filemoon.to", "filemoon.in", "filemoon.sx", "filemoon.nl", "filemoon.com", "bysejikuar.com", "bysesukior.com"]
 
     _UA = "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0"
 
@@ -34,25 +28,25 @@ class Filemoon(PackedJSExtractor):
             if len(istek.text) < 5000:
                 raise Exception("CF challenge suspected")
         except Exception:
-            istek = await self.async_cf_get(url, headers=headers)
+            istek  = await self.async_cf_get(url, headers=headers)
         secici = HTMLHelper(istek.text)
 
         # iframe varsa takip et
         if iframe_src := secici.select_attr("iframe", "src"):
-            url   = self.fix_url(iframe_src)
+            url = self.fix_url(iframe_src)
             try:
                 istek = await self.httpx.get(url)
                 if len(istek.text) < 5000:
                     raise Exception("CF challenge suspected")
             except Exception:
-                istek = await self.async_cf_get(url, headers=headers)
+                istek  = await self.async_cf_get(url, headers=headers)
             secici = HTMLHelper(istek.text)
 
         m3u8_url = self.unpack_and_find(istek.text)
 
         if not m3u8_url:
-             # Fallback: m3u8 or mp4 check
-             m3u8_url = secici.regex_first(r'file\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']')
+            # Fallback: m3u8 or mp4 check
+            m3u8_url = secici.regex_first(r'file\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']')
 
         if not m3u8_url:
             raise ValueError(f"Filemoon: Video URL bulunamadı. {url}")

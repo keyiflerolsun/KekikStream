@@ -34,9 +34,9 @@ class Coflix(PluginBase):
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         # url is our key (movies, series, etc.)
         api_target = f"{self._api_url}/options/?years=&post_type={url}&genres=&page={page}&sort=1"
-        istek = await self.httpx.get(api_target)
+        istek      = await self.httpx.get(api_target)
         try:
-            data = istek.json()
+            data    = istek.json()
             results = []
             for item in data.get("results", []):
                 title = self.clean_title(item.get("name", "Unknown"))

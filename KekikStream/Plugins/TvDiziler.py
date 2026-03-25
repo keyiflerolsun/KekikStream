@@ -12,22 +12,22 @@ class TvDiziler(PluginBase):
     description = "Ücretsiz yerli dizi izleme sitesi en popüler tv diziler tek parça hd kalitesiyle ve reklamsız olarak son bölüm tv dizileri izleyin."
 
     main_page   = {
-        f"{main_url}"                                  : "Son Bölümler",
-        f"{main_url}/dizi/tur/aile"                    : "Aile",
-        f"{main_url}/dizi/tur/aksiyon"                 : "Aksiyon",
-        f"{main_url}/dizi/tur/aksiyon-macera"          : "Aksiyon-Macera",
-        f"{main_url}/dizi/tur/bilim-kurgu-fantazi"     : "Bilim Kurgu & Fantazi",
-        f"{main_url}/dizi/tur/fantastik"               : "Fantastik",
-        f"{main_url}/dizi/tur/gerilim"                 : "Gerilim",
-        f"{main_url}/dizi/tur/gizem"                   : "Gizem",
-        f"{main_url}/dizi/tur/komedi"                  : "Komedi",
-        f"{main_url}/dizi/tur/korku"                   : "Korku",
-        f"{main_url}/dizi/tur/macera"                  : "Macera",
-        f"{main_url}/dizi/tur/pembe-dizi"              : "Pembe Dizi",
-        f"{main_url}/dizi/tur/romantik"                : "Romantik",
-        f"{main_url}/dizi/tur/savas"                   : "Savaş",
-        f"{main_url}/dizi/tur/suc"                     : "Suç",
-        f"{main_url}/dizi/tur/tarih"                   : "Tarih",
+        f"{main_url}"                              : "Son Bölümler",
+        f"{main_url}/dizi/tur/aile"                : "Aile",
+        f"{main_url}/dizi/tur/aksiyon"             : "Aksiyon",
+        f"{main_url}/dizi/tur/aksiyon-macera"      : "Aksiyon-Macera",
+        f"{main_url}/dizi/tur/bilim-kurgu-fantazi" : "Bilim Kurgu & Fantazi",
+        f"{main_url}/dizi/tur/fantastik"           : "Fantastik",
+        f"{main_url}/dizi/tur/gerilim"             : "Gerilim",
+        f"{main_url}/dizi/tur/gizem"               : "Gizem",
+        f"{main_url}/dizi/tur/komedi"              : "Komedi",
+        f"{main_url}/dizi/tur/korku"               : "Korku",
+        f"{main_url}/dizi/tur/macera"              : "Macera",
+        f"{main_url}/dizi/tur/pembe-dizi"          : "Pembe Dizi",
+        f"{main_url}/dizi/tur/romantik"            : "Romantik",
+        f"{main_url}/dizi/tur/savas"               : "Savaş",
+        f"{main_url}/dizi/tur/suc"                 : "Suç",
+        f"{main_url}/dizi/tur/tarih"               : "Tarih",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -79,7 +79,7 @@ class TvDiziler(PluginBase):
 
         results = []
         try:
-            data = istek.json()
+            data         = istek.json()
             html_content = ""
             if isinstance(data, dict):
                 html_content = data.get("data") or data.get("theme") or data.get("html") or ""

@@ -224,7 +224,7 @@ class KekikStream:
         try:
             if isinstance(choice, dict) and "plugin" in choice:
                 self.current_plugin = self.plugin.select_plugin(choice["plugin"])
-                url = choice["url"]
+                url                 = choice["url"]
             else:
                 url = choice
 
@@ -371,7 +371,7 @@ class KekikStream:
             return await self.handle_no_results()
 
         try:
-            referer = selected.referer or self.current_plugin.main_url
+            referer      = selected.referer or self.current_plugin.main_url
             extract_data = await extractor.extract(url, referer=referer)
         except Exception as e:
             konsol.print(f"[bold red]{extractor.name} hatası: {e}[/bold red]")

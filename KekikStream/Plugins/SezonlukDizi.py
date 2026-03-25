@@ -11,14 +11,14 @@ class SezonlukDizi(PluginBase):
     description = "Güncel ve eski dizileri en iyi görüntü kalitesiyle bulabileceğiniz yabancı dizi izleme siteniz."
 
     main_page   = {
-        f"{main_url}/diziler.asp?siralama_tipi=id&s="          : "Son Eklenenler",
-        f"{main_url}/diziler.asp?siralama_tipi=id&tur=mini&s=" : "Mini Diziler",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=2&s="    : "Yerli Diziler",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=1&s="    : "Yabancı Diziler",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=3&s="    : "Asya Dizileri",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=4&s="    : "Animasyonlar",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=5&s="    : "Animeler",
-        f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="    : "Belgeseller",
+        f"{main_url}/diziler.asp?siralama_tipi=id&s="                : "Son Eklenenler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&tur=mini&s="       : "Mini Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=2&s="          : "Yerli Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=1&s="          : "Yabancı Diziler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=3&s="          : "Asya Dizileri",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=4&s="          : "Animasyonlar",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=5&s="          : "Animeler",
+        f"{main_url}/diziler.asp?siralama_tipi=id&kat=6&s="          : "Belgeseller",
         f"{main_url}/diziler.asp?siralama_tipi=id&tur=aile&s="       : "Aile",
         f"{main_url}/diziler.asp?siralama_tipi=id&tur=aksiyon&s="    : "Aksiyon",
         f"{main_url}/diziler.asp?siralama_tipi=id&tur=bilimkurgu&s=" : "Bilim Kurgu",

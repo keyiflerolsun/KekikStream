@@ -11,23 +11,23 @@ class FilmIzleIlk(PluginBase):
     description = "filmizleilk.biz Yerli ve Yabancı en son Film ve Dizileri Full HD 1080p Bluray Tek Part Full izle"
 
     main_page   = {
-        f"{main_url}/page/"                             : "Son Filmler",
-        f"{main_url}/film/aile-filmleri/page/"          : "Aile",
-        f"{main_url}/film/aksiyon-filmleri/page/"       : "Aksiyon",
-        f"{main_url}/film/animasyon-filmleri/page/"     : "Animasyon",
-        f"{main_url}/film/bilimkurgu-filmleri/page/"    : "Bilim Kurgu",
-        f"{main_url}/film/dram-filmleri/page/"          : "Dram",
-        f"{main_url}/film/fantastik-filmler/page/"      : "Fantastik",
-        f"{main_url}/film/gerilim-filmleri/page/"       : "Gerilim",
-        f"{main_url}/film/gizemli-filmler/page/"        : "Gizem",
-        f"{main_url}/film/komedi-filmleri/page/"        : "Komedi",
-        f"{main_url}/film/korku-filmleri/page/"         : "Korku",
-        f"{main_url}/film/macera-filmleri/page/"        : "Macera",
-        f"{main_url}/film/romantik-filmler/page/"       : "Romantik",
-        f"{main_url}/film/savas-filmleri/page/"         : "Savaş",
-        f"{main_url}/film/suc-filmleri/page/"           : "Suç",
-        f"{main_url}/film/tarihi-filmler/page/"         : "Tarih",
-        f"{main_url}/film/western-filmler/page/"        : "Western",
+        f"{main_url}/page/"                          : "Son Filmler",
+        f"{main_url}/film/aile-filmleri/page/"       : "Aile",
+        f"{main_url}/film/aksiyon-filmleri/page/"    : "Aksiyon",
+        f"{main_url}/film/animasyon-filmleri/page/"  : "Animasyon",
+        f"{main_url}/film/bilimkurgu-filmleri/page/" : "Bilim Kurgu",
+        f"{main_url}/film/dram-filmleri/page/"       : "Dram",
+        f"{main_url}/film/fantastik-filmler/page/"   : "Fantastik",
+        f"{main_url}/film/gerilim-filmleri/page/"    : "Gerilim",
+        f"{main_url}/film/gizemli-filmler/page/"     : "Gizem",
+        f"{main_url}/film/komedi-filmleri/page/"     : "Komedi",
+        f"{main_url}/film/korku-filmleri/page/"      : "Korku",
+        f"{main_url}/film/macera-filmleri/page/"     : "Macera",
+        f"{main_url}/film/romantik-filmler/page/"    : "Romantik",
+        f"{main_url}/film/savas-filmleri/page/"      : "Savaş",
+        f"{main_url}/film/suc-filmleri/page/"        : "Suç",
+        f"{main_url}/film/tarihi-filmler/page/"      : "Tarih",
+        f"{main_url}/film/western-filmler/page/"     : "Western",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -172,8 +172,8 @@ class FilmIzleIlk(PluginBase):
             alt_href = link.attrs.get("href", "")
             if alt_href:
                 try:
-                    alt_resp    = await self.httpx.get(self.fix_url(alt_href))
-                    alt_iframe  = self._get_iframe_from_base64(alt_resp.text)
+                    alt_resp   = await self.httpx.get(self.fix_url(alt_href))
+                    alt_iframe = self._get_iframe_from_base64(alt_resp.text)
                     if alt_iframe:
                         iframes.add(self.fix_url(alt_iframe))
                 except Exception:
