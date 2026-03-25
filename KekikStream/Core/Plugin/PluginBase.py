@@ -224,8 +224,8 @@ class PluginBase(ABC):
         Sonuç listesinden tekrar eden URL'leri kaldırır.
 
         Args:
-            results: ExtractResult listesi
-            key: Deduplicate anahtarı ("url" veya "url+name")
+            results : ExtractResult listesi
+            key     : Deduplicate anahtarı ("url" veya "url+name")
         """
         seen    = set()
         uniques = []

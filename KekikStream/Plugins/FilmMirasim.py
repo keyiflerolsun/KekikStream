@@ -6,7 +6,7 @@ import json
 
 
 class FilmMirasim(PluginBase):
-    name        = "Film Mirasım"
+    name        = "FilmMirasim"
     language    = "tr"
     main_url    = "https://filmmirasim.ktb.gov.tr"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
