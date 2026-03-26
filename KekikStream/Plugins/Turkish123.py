@@ -11,14 +11,14 @@ class Turkish123(PluginBase):
     description = "Turkish123 - Watch Turkish Series with English Subtitles Online for Free without Registration only at our website - turkish123.com"
 
     main_page   = {
-        f"{main_url}/series-list/page/"   : "Series List",
-        f"{main_url}/episodes-list/page/" : "Episodes List",
-        f"{main_url}/genre/action/page/"  : "Action",
-        f"{main_url}/genre/comedy/page/"  : "Comedy",
-        f"{main_url}/genre/drama/page/"   : "Drama",
-        f"{main_url}/genre/history/page/" : "History",
-        f"{main_url}/genre/romance/page/" : "Romance",
-        f"{main_url}/genre/thriller/page/": "Thriller",
+        f"{main_url}/series-list/page/"    : "Series List",
+        f"{main_url}/episodes-list/page/"  : "Episodes List",
+        f"{main_url}/genre/action/page/"   : "Action",
+        f"{main_url}/genre/comedy/page/"   : "Comedy",
+        f"{main_url}/genre/drama/page/"    : "Drama",
+        f"{main_url}/genre/history/page/"  : "History",
+        f"{main_url}/genre/romance/page/"  : "Romance",
+        f"{main_url}/genre/thriller/page/" : "Thriller",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
