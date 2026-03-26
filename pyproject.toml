@@ -1,0 +1,38 @@
+[project]
+name        = "KekikStream"
+version     = "3.0.9"
+description = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir yapı."
+keywords    = ["KekikStream", "KekikAkademi", "keyiflerolsun"]
+license     = { text = "GPLv3+" }
+readme      = "README.md"
+
+authors = [
+    { name = "keyiflerolsun", email = "keyiflerolsun@gmail.com" }
+]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3"
+]
+
+requires-python = ">=3.11"
+dependencies    = [
+    "setuptools",
+    "wheel",
+    "Kekik>=1.9.5",
+    "httpx",
+    "cloudscraper",
+    "curl_cffi",
+    "selectolax",
+    "pydantic",
+    "InquirerPy",
+    "yt-dlp"
+]
+
+[project.scripts]
+KekikStream = "KekikStream:basla"
+
+[build-system]
+requires      = ["hatchling"]
+build-backend = "hatchling.build"
