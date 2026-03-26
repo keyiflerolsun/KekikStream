@@ -7,7 +7,7 @@ import re
 class DiziWatch(PluginBase):
     name        = "DiziWatch"
     language    = "tr"
-    main_url    = "https://diziwatch.to"
+    main_url    = "https://diziwatch.ac"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Yabancı dizi izle, anime izle, en popüler yabancı dizileri ve animeleri ücretsiz olarak diziwatch.tv'de izleyin."
 
