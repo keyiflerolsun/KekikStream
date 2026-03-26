@@ -1,6 +1,6 @@
 [project]
 name        = "KekikStream"
-version     = "3.0.9"
+version     = "3.1.0"
 description = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir yapı."
 keywords    = ["KekikStream", "KekikAkademi", "keyiflerolsun"]
 license     = { text = "GPLv3+" }
@@ -18,8 +18,6 @@ classifiers = [
 
 requires-python = ">=3.11"
 dependencies    = [
-    "setuptools",
-    "wheel",
     "Kekik>=1.9.5",
     "httpx",
     "cloudscraper",
@@ -29,6 +27,11 @@ dependencies    = [
     "InquirerPy",
     "yt-dlp"
 ]
+
+[project.urls]
+Homepage   = "https://github.com/keyiflerolsun/KekikStream"
+Repository = "https://github.com/keyiflerolsun/KekikStream.git"
+Issues     = "https://github.com/keyiflerolsun/KekikStream/issues"
 
 [project.scripts]
 KekikStream = "KekikStream:basla"
