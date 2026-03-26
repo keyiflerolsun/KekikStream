@@ -43,21 +43,35 @@ class MainUrlGuncelleyici:
             dosya.truncate()
 
     def _setup_surum_guncelle(self):
-        """setup.py içindeki sürüm numarasını artırır."""
-        setup_dosyasi = os.path.join(self.ana_dizin, "setup.py")
-        with open(setup_dosyasi, "r+", encoding="utf-8") as dosya:
-            icerik = dosya.read()
-            if surum_eslesmesi := re.search(r'(version\s*=\s*)(["\'])(\d+)\.(\d+)\.(\d+)(\2)', icerik):
-                ana, ara, yama = map(int, surum_eslesmesi.groups()[2:5])
-                eski_surum = f"{ana}.{ara}.{yama}"
-                yeni_surum = f"{ana}.{ara}.{yama + 1}"
-                icerik     = icerik.replace(eski_surum, yeni_surum)
+        """pyproject.toml içindeki sürüm numarasını artırır."""
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib
 
-                dosya.seek(0)
+        pyproject_dosyasi = os.path.join(self.ana_dizin, "pyproject.toml")
+
+        with open(pyproject_dosyasi, "rb") as dosya:
+            veri = tomllib.load(dosya)
+
+        surum = veri["project"]["version"]
+        surum_eslesmesi = re.match(r'(\d+)\.(\d+)\.(\d+)', surum)
+
+        if surum_eslesmesi:
+            ana, ara, yama = map(int, surum_eslesmesi.groups())
+            eski_surum = f"{ana}.{ara}.{yama}"
+            yeni_surum = f"{ana}.{ara}.{yama + 1}"
+
+            with open(pyproject_dosyasi, "r", encoding="utf-8") as dosya:
+                icerik = dosya.read()
+
+            icerik = icerik.replace(f'version     = "{eski_surum}"', f'version     = "{yeni_surum}"')
+
+            with open(pyproject_dosyasi, "w", encoding="utf-8") as dosya:
                 dosya.write(icerik)
-                dosya.truncate()
-                konsol.print()
-                konsol.log(f"[»] Sürüm güncellendi: {eski_surum} -> {yeni_surum}")
+
+            konsol.print()
+            konsol.log(f"[»] Sürüm güncellendi: {eski_surum} -> {yeni_surum}")
 
     def guncelle(self):
         """Tüm plugin dosyalarını kontrol eder ve gerekirse main_url günceller."""
