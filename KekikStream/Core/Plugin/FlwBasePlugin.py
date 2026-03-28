@@ -21,8 +21,9 @@ class FlwBasePlugin(PluginBase):
     """
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.async_cf_get(f"{url}{page}")
-        secici = HTMLHelper(istek.text)
+        full_url = url if page <= 1 else f"{url}{page}"
+        istek    = await self.async_cf_get(full_url)
+        secici   = HTMLHelper(istek.text)
 
         return [
             MainPageResult(
