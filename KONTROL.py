@@ -54,7 +54,7 @@ class MainUrlGuncelleyici:
         with open(pyproject_dosyasi, "rb") as dosya:
             veri = tomllib.load(dosya)
 
-        surum = veri["project"]["version"]
+        surum           = veri["project"]["version"]
         surum_eslesmesi = re.match(r'(\d+)\.(\d+)\.(\d+)', surum)
 
         if surum_eslesmesi:
