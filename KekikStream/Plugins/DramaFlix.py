@@ -15,7 +15,15 @@ class DramaFlix(PluginBase):
 
     _api_url = f"{main_url}/api/series"
 
-    main_page = {"DramaWave": "DramaWave", "ShortMax": "ShortMax", "DramaBite": "DramaBite", "NetShort": "NetShort"}
+    main_page = {
+        "DramaWave" : "DramaWave",
+        "ShortMax"  : "ShortMax",
+        "DramaBite" : "DramaBite",
+        "NetShort"  : "NetShort",
+        "DramaBox"  : "DramaBox",
+        "FlexTV"    : "FlexTV",
+        "ReelShort" : "ReelShort",
+    }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         limit  = 25

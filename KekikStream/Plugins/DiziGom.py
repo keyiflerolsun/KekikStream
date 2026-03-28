@@ -23,7 +23,6 @@ class DiziGom(PluginBase):
         f"{main_url}/tur/komedi/"      : "Komedi",
         f"{main_url}/tur/korku/"       : "Korku",
         f"{main_url}/tur/macera/"      : "Macera",
-        f"{main_url}/tur/polisiye/"    : "Polisiye",
         f"{main_url}/tur/romantik/"    : "Romantik",
         f"{main_url}/tur/savas/"       : "Savaş",
         f"{main_url}/tur/suc/"         : "Suç",

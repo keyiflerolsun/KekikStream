@@ -276,13 +276,13 @@ class HTMLHelper:
         last_idx = match.lastindex or 0
         return match.group(group) if last_idx >= group else match.group(0)
 
-    def regex_all(self, pattern: str, target: str | int | None = None) -> list[str] | list[tuple]:
+    def regex_all(self, pattern: str, target: str | int | None = None, flags: int = 0) -> list[str] | list[tuple]:
         """Regex ile tüm eşleşmeleri döndür."""
-        return re.findall(pattern, self._regex_source(target))
+        return re.findall(pattern, self._regex_source(target), flags=flags)
 
-    def regex_replace(self, pattern: str, repl: str, target: str | int | None = None) -> str:
+    def regex_replace(self, pattern: str, repl: str, target: str | int | None = None, flags: int = 0) -> str:
         """Regex ile replace yap."""
-        return re.sub(pattern, repl, self._regex_source(target))
+        return re.sub(pattern, repl, self._regex_source(target), flags=flags)
 
     # ========================
     # ÖZEL AYIKLAYICILAR

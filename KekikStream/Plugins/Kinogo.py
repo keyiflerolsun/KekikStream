@@ -17,8 +17,6 @@ class Kinogo(PluginBase):
         f"{main_url}/serialy/page/"          : "Сериалы",
         f"{main_url}/multfilmy/page/"        : "Мультфильмы",
         f"{main_url}/anime/page/"            : "Аниме",
-        f"{main_url}/tv-peredachi/page/"     : "ТВ Передачи",
-        f"{main_url}/pod-borki/page/"        : "Подборки",
         f"{main_url}/novinki/page/"          : "Новинки",
         f"{main_url}/fantastika/page/"       : "Фантастика",
         f"{main_url}/fjentezi/page/"         : "Фэнтези",

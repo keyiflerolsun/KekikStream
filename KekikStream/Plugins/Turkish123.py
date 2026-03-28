@@ -6,24 +6,29 @@ import re
 class Turkish123(PluginBase):
     name        = "Turkish123"
     language    = "tr"
-    main_url    = "https://ahs.turkish123.com"
+    main_url    = "https://turkish123.ac"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Turkish123 - Watch Turkish Series with English Subtitles Online for Free without Registration only at our website - turkish123.com"
+    description = "Turkish123 - Watch Turkish Series with English Subtitles Online for Free without Registration only at our website - turkish123.ac"
 
     main_page   = {
-        f"{main_url}/series-list/page/"    : "Series List",
-        f"{main_url}/episodes-list/page/"  : "Episodes List",
-        f"{main_url}/genre/action/page/"   : "Action",
-        f"{main_url}/genre/comedy/page/"   : "Comedy",
-        f"{main_url}/genre/drama/page/"    : "Drama",
-        f"{main_url}/genre/history/page/"  : "History",
-        f"{main_url}/genre/romance/page/"  : "Romance",
-        f"{main_url}/genre/thriller/page/" : "Thriller",
+        f"{main_url}/series-list/page/"     : "Series List",
+        f"{main_url}/episodes-list/page/"   : "Episodes List",
+        f"{main_url}/genre/action/page/"    : "Action",
+        f"{main_url}/genre/adventure/page/" : "Adventure",
+        f"{main_url}/genre/comedy/page/"    : "Comedy",
+        f"{main_url}/genre/crime/page/"     : "Crime",
+        f"{main_url}/genre/drama/page/"     : "Drama",
+        f"{main_url}/genre/family/page/"    : "Family",
+        f"{main_url}/genre/history/page/"   : "History",
+        f"{main_url}/genre/mystery/page/"   : "Mystery",
+        f"{main_url}/genre/romance/page/"   : "Romance",
+        f"{main_url}/genre/thriller/page/"  : "Thriller",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
-        secici = HTMLHelper(istek.text)
+        full_url = f"{url}{page}"
+        istek    = await self.httpx.get(full_url)
+        secici   = HTMLHelper(istek.text)
 
         results = []
         for veri in secici.select("div.movies-list div.ml-item"):

@@ -11,36 +11,30 @@ class Sinefy(PluginBase):
     description = "Yabancı film izle olarak vizyondaki en yeni yabancı filmleri türkçe dublaj ve altyazılı olarak en hızlı şekilde full hd olarak sizlere sunuyoruz."
 
     main_page = {
-        f"{main_url}/page/"                      : "Son Eklenenler",
-        f"{main_url}/en-yenifilmler"             : "Yeni Filmler",
         f"{main_url}/netflix-filmleri-izle"      : "Netflix Filmleri",
-        f"{main_url}/dizi-izle/netflix"          : "Netflix Dizileri",
         f"{main_url}/gozat/filmler/animasyon"    : "Animasyon",
-        f"{main_url}/gozat/filmler/komedi"       : "Komedi",
-        f"{main_url}/gozat/filmler/suc"          : "Suç",
         f"{main_url}/gozat/filmler/aile"         : "Aile",
-        f"{main_url}/gozat/filmler/aksiyon"      : "Aksiyon",
-        f"{main_url}/gozat/filmler/macera"       : "Macera",
         f"{main_url}/gozat/filmler/fantastik"    : "Fantastik",
         f"{main_url}/gozat/filmler/korku"        : "Korku",
         f"{main_url}/gozat/filmler/romantik"     : "Romantik",
-        f"{main_url}/gozat/filmler/savas"        : "Savaş",
         f"{main_url}/gozat/filmler/gerilim"      : "Gerilim",
         f"{main_url}/gozat/filmler/bilim-kurgu"  : "Bilim Kurgu",
         f"{main_url}/gozat/filmler/dram"         : "Dram",
-        f"{main_url}/gozat/filmler/gizem"        : "Gizem",
         f"{main_url}/gozat/filmler/western"      : "Western",
         f"{main_url}/gozat/filmler/ulke/turkiye" : "Türk Filmleri",
         f"{main_url}/gozat/filmler/ulke/kore"    : "Kore Filmleri"
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        if "page/" in url:
+        if page <= 1:
+            full_url = url
+        elif "page/" in url:
             full_url = f"{url}{page}"
         elif "en-yenifilmler" in url or "netflix" in url:
             full_url = f"{url}/{page}"
         else:
-            full_url = f"{url}&page={page}"
+            sep      = "&" if "?" in url else "?"
+            full_url = f"{url.rstrip('/')}{sep}page={page}"
 
         istek  = await self.httpx.get(full_url)
         secici = HTMLHelper(istek.text)

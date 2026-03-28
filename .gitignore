@@ -163,3 +163,4 @@ cython_debug/
 
 extractor*.csv
 uv.lock
+*results.json

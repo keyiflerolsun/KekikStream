@@ -11,26 +11,41 @@ class AnimeAV(PluginBase):
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Disfruta de los últimos episodios y animes agregados en HD y Sub Español. Miles de series, películas y OVAs disponibles para ver online totalmente gratis."
 
-    category_url = f"{main_url}/catalogo"
-
     main_page = {
-        main_url: "Episodios Actualizados",
-        "?order=latest_released": "Últimos Estrenos",
-        "?genre=Acción": "Acción",
-        "?genre=Aventura": "Aventura",
-        "?genre=Fantasía": "Fantasía",
-        "?genre=Comedia": "Comedia",
-        "?genre=Escolares": "Escolares",
-        "?genre=Sobrenatural": "Sobrenatural",
+        f"{main_url}"                                : "Episodios Actualizados",
+        f"{main_url}/catalogo?order=latest_released" : "Últimos Estrenos",
+        f"{main_url}/catalogo?genre=accion"          : "Acción",
+        f"{main_url}/catalogo?genre=aventura"        : "Aventura",
+        f"{main_url}/catalogo?genre=ciencia-ficcion" : "Ciencia Ficción",
+        f"{main_url}/catalogo?genre=comedia"         : "Comedia",
+        f"{main_url}/catalogo?genre=drama"           : "Drama",
+        f"{main_url}/catalogo?genre=fantasia"        : "Fantasía",
+        f"{main_url}/catalogo?genre=misterio"        : "Misterio",
+        f"{main_url}/catalogo?genre=romance"         : "Romance",
+        f"{main_url}/catalogo?genre=seinen"          : "Seinen",
+        f"{main_url}/catalogo?genre=shoujo"          : "Shoujo",
+        f"{main_url}/catalogo?genre=shounen"         : "Shounen",
+        f"{main_url}/catalogo?genre=sobrenatural"    : "Sobrenatural",
+        f"{main_url}/catalogo?genre=suspenso"        : "Suspenso",
+        f"{main_url}/catalogo?genre=terror"          : "Terror",
+        f"{main_url}/catalogo?genre=artes-marciales" : "Artes Marciales",
+        f"{main_url}/catalogo?genre=ecchi"           : "Ecchi",
+        f"{main_url}/catalogo?genre=escolares"       : "Escolares",
+        f"{main_url}/catalogo?genre=gore"            : "Gore",
+        f"{main_url}/catalogo?genre=harem"           : "Harem",
+        f"{main_url}/catalogo?genre=isekai"          : "Isekai",
+        f"{main_url}/catalogo?genre=mecha"           : "Mecha",
+        f"{main_url}/catalogo?genre=psicologico"     : "Psicológico",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        if url == self.main_url:
-            full_url = url
+        if page > 1:
+            if "catalogo" in url:
+                full_url = f"{url}&page={page}"
+            else:
+                full_url = f"{url}?page={page}"
         else:
-            full_url = f"{self.category_url}{url}"
-            if page > 1:
-                full_url = f"{full_url}&page={page}"
+            full_url = url
 
         istek  = await self.httpx.get(full_url)
         secici = HTMLHelper(istek.text)

@@ -14,7 +14,8 @@ class DDizi(PluginBase):
         f"{main_url}/yeni-eklenenler7"  : "Son Eklenen Bölümler",
         f"{main_url}/yabanci-dizi-izle" : "Yabancı Diziler",
         f"{main_url}/eski.diziler"      : "Eski Diziler",
-        f"{main_url}/yerli-diziler"     : "Yerli Diziler"
+        f"{main_url}/dizi-izle"         : "Güncel Diziler",
+        f"{main_url}/programlar"        : "Programlar",
     }
 
     async def get_articles(self, secici: HTMLHelper) -> list[dict]:

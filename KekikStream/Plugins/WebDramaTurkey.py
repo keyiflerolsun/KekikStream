@@ -11,12 +11,28 @@ class WebDramaTurkey(PluginBase):
     description = "Kore dizisi izle, çin dizisi izle, japon dizisi izle, kore dizileri izle, kore filmleri, asya dizileri, çin filmleri, japon filmleri, bl dizi izle, asya dizisi izle, web drama izle."
 
     main_page   = {
-        f"{main_url}/"             : "Son Bölümler",
-        f"{main_url}/diziler"      : "Diziler",
-        f"{main_url}/filmler"      : "Filmler",
-        f"{main_url}/anime"        : "Animeler",
-        f"{main_url}/tur/romantik" : "Romantik",
-        f"{main_url}/tur/lise"     : "Lise",
+        f"{main_url}/"                : "Son Bölümler",
+        f"{main_url}/diziler"         : "Diziler",
+        f"{main_url}/filmler"         : "Filmler",
+        f"{main_url}/anime"           : "Animeler",
+        f"{main_url}/tur/romantik"    : "Romantik",
+        f"{main_url}/tur/fantastik"   : "Fantastik",
+        f"{main_url}/tur/dram"        : "Dram",
+        f"{main_url}/tur/korku"       : "Korku",
+        f"{main_url}/tur/gerilim"     : "Gerilim",
+        f"{main_url}/tur/komedi"      : "Komedi",
+        f"{main_url}/tur/muzik"       : "Müzik",
+        f"{main_url}/tur/gizem"       : "Gizem",
+        f"{main_url}/tur/bl"          : "BL",
+        f"{main_url}/tur/genclik"     : "Gençlik",
+        f"{main_url}/tur/web-drama"   : "Web Drama",
+        f"{main_url}/tur/aksiyon"     : "Aksiyon",
+        f"{main_url}/tur/tarihi"      : "Tarihi",
+        f"{main_url}/tur/bilim-kurgu" : "Bilim Kurgu",
+        f"{main_url}/tur/wuxia"       : "Wuxia",
+        f"{main_url}/tur/xianxia"     : "Xianxia",
+        f"{main_url}/tur/aile"        : "Aile",
+        f"{main_url}/tur/suc"         : "Suç",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

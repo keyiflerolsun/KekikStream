@@ -16,13 +16,16 @@ class AsyaAnimeleri(PluginBase):
         f"{main_url}/series/"      : "Son Eklenenler",
         f"{main_url}/tur/anime/"   : "Animeler",
         f"{main_url}/tur/donghua/" : "Donghualar",
+        f"{main_url}/tur/isekai/"  : "Isekai",
+        f"{main_url}/tur/mecha/"   : "Mecha",
+        f"{main_url}/tur/oyun/"    : "Oyun",
+        f"{main_url}/tur/vampir/"  : "Vampir",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         if page == 1:
             full_url = url
         else:
-
             if "/page/" in url:
                 full_url = re.sub(r"/page/\d+/?", f"/page/{page}/", url)
             else:
@@ -128,7 +131,6 @@ class AsyaAnimeleri(PluginBase):
                 continue
 
             try:
-
                 decoded_bytes = base64.b64decode(val)
                 decoded_str   = decoded_bytes.decode("utf-8")
 

@@ -34,6 +34,7 @@ class SinemaCX(PluginBase):
         f"{main_url}/izle/suc-filmleri/page/SAYFA"         : "Suç Filmleri",
         f"{main_url}/izle/tarihi-filmler/page/SAYFA"       : "Tarih Filmler",
         f"{main_url}/izle/western-filmleri/page/SAYFA"     : "Western Filmler",
+        f"{main_url}/izle/yetiskin-filmler/page/SAYFA"     : "Yetişkin Filmler",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

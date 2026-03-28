@@ -11,7 +11,11 @@ class KoreanTurk(PluginBase):
     description = "Güney Kore sevdalılarının vazgeçemediği ve Türkiye'nin en çok ziyaret edilen Güney Kore Portalı; Koreantürk'e hoşgeldiniz!"
 
     main_page   = {
-        f"{main_url}/bolumler/page/" : "Son Eklenenler",
+        f"{main_url}/bolumler/page/"      : "Son Eklenenler",
+        f"{main_url}/kore-dizileri/page/" : "Kore Dizileri",
+        f"{main_url}/kore-filmleri/page/" : "Kore Filmleri",
+        f"{main_url}/asyadizileri/page/"  : "Asya Dizileri",
+        f"{main_url}/programlar/page/"    : "Programlar",
     }
 
     def _strip_episode(self, url: str) -> str:

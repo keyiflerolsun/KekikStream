@@ -11,6 +11,13 @@ class WFilmIzle(PluginBase):
 
     main_page   = {
         f"{main_url}/"                                    : "Son Eklenenler",
+        f"{main_url}/film-arsiv/"                         : "Film Arşivi",
+        f"{main_url}/yerli-yapim-filmler-izle/"           : "Yerli Filmler",
+        f"{main_url}/turkce-dublaj-film-izle/"            : "Türkçe Dublaj",
+        f"{main_url}/turkce-altyazili-film-izle/"         : "Türkçe Altyazılı",
+        f"{main_url}/filmizle/netfliix-filmleri-izle/"    : "Netflix Filmleri",
+        f"{main_url}/filmizle/efsanee-filmler-izle/"      : "Efsane Filmler",
+        f"{main_url}/filmizle/hint-filmleri-izle/"        : "Hint Filmleri",
         f"{main_url}/filmizle/aile-filmleri-izle-hd/"     : "Aile",
         f"{main_url}/filmizle/aksiyon-filmleri-izle-hd/"  : "Aksiyon",
         f"{main_url}/filmizle/animasyon-filmleri-izle/"   : "Animasyon",
@@ -23,7 +30,9 @@ class WFilmIzle(PluginBase):
         f"{main_url}/filmizle/komedi-filmleri-izle-hd/"   : "Komedi",
         f"{main_url}/filmizle/korkuu-filmleri-izle/"      : "Korku",
         f"{main_url}/filmizle/macera-filmleri-izle-hd/"   : "Macera",
+        f"{main_url}/filmizle/muzikal-filmler-izle-hd/"   : "Müzikal",
         f"{main_url}/filmizle/polisiye-filmleri-izle-hd/" : "Polisiye",
+        f"{main_url}/filmizle/poolitik-filmler-izle/"     : "Politik",
         f"{main_url}/filmizle/romantik-filmler-izle/"     : "Romantik",
         f"{main_url}/filmizle/savas-filmmleri-izle/"      : "Savaş",
         f"{main_url}/filmizle/sporr-filmleri-izle/"       : "Spor",

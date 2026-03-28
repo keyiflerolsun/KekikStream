@@ -15,7 +15,12 @@ class YabanciDizi(PluginBase):
         f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTgiXX0="                         : "Filmler",
         f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY291bnRyeSI6eyJLUiI6IktSIn19"                     : "Kdrama",
         f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY291bnRyeSI6eyJKUCI6IkpQIn0sImNhdGVnb3J5IjpbXX0=" : "Jdrama",
-        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwiY2F0ZWdvcnkiOnsiMyI6IjMifX0="                     : "Animasyon",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOnsiMyI6IjMifX0="                     : "Animasyon",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMSJdfQ=="                         : "Aksiyon",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiNCJdfQ=="                         : "Komedi",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiNiJdfQ=="                         : "Dram",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTMiXX0="                         : "Bilim Kurgu",
+        f"{main_url}/kesfet/eyJvcmRlciI6ImRhdGVfYm90dG9tIiwia2F0ZWdvcnkiOlsiMTUiXX0="                         : "Gerilim",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

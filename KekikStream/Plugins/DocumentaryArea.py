@@ -26,7 +26,6 @@ class DocumentaryArea(PluginBase):
         f"{main_url}/category/Architecture/" : "Architecture",
         f"{main_url}/category/Environment/"  : "Environment",
         f"{main_url}/category/Health/"       : "Health",
-        f"{main_url}/category/Mystery/"      : "Mystery",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

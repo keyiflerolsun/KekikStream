@@ -11,14 +11,21 @@ class RoketDizi(PluginBase):
     description = "Türkiye'nin en tatlış yabancı dizi izleme sitesi. Türkçe dublaj, altyazılı, eski ve yeni yabancı dizilerin yanı sıra kore (asya) dizileri izleyebilirsiniz."
 
     main_page = {
-       f"{main_url}/dizi/tur/aksiyon"     : "Aksiyon",
-       f"{main_url}/dizi/tur/bilim-kurgu" : "Bilim Kurgu",
-       f"{main_url}/dizi/tur/gerilim"     : "Gerilim",
-       f"{main_url}/dizi/tur/fantastik"   : "Fantastik",
-       f"{main_url}/dizi/tur/komedi"      : "Komedi",
-       f"{main_url}/dizi/tur/korku"       : "Korku",
-       f"{main_url}/dizi/tur/macera"      : "Macera",
-       f"{main_url}/dizi/tur/suc"         : "Suç"
+       f"{main_url}/dizi/tur/aksiyon"       : "Aksiyon",
+       f"{main_url}/dizi/tur/animasyon"     : "Animasyon",
+       f"{main_url}/dizi/tur/belgesel"      : "Belgesel",
+       f"{main_url}/dizi/tur/bilim-kurgu"   : "Bilim Kurgu",
+       f"{main_url}/dizi/tur/dram"          : "Dram",
+       f"{main_url}/dizi/tur/fantastik"     : "Fantastik",
+       f"{main_url}/dizi/tur/gerilim"       : "Gerilim",
+       f"{main_url}/dizi/tur/gizem"         : "Gizem",
+       f"{main_url}/dizi/tur/komedi"        : "Komedi",
+       f"{main_url}/dizi/tur/kore-dizileri" : "Kore Dizileri",
+       f"{main_url}/dizi/tur/korku"         : "Korku",
+       f"{main_url}/dizi/tur/macera"        : "Macera",
+       f"{main_url}/dizi/tur/romantik"      : "Romantik",
+       f"{main_url}/dizi/tur/suc"           : "Suç",
+       f"{main_url}/dizi/tur/tarih"         : "Tarih",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

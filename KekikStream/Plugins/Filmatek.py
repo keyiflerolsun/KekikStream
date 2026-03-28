@@ -34,8 +34,6 @@ class Filmatek(PluginBase):
         f"{main_url}/tur/suc/page"                   : "Suç",
         f"{main_url}/tur/tarih/page"                 : "Tarih",
         f"{main_url}/tur/vahsi-bati/page"            : "Vahşi Batı",
-        f"{main_url}/tur/yerli-filmler/page"         : "Yerli Filmler",
-        f"{main_url}/film-arsivi/page"               : "Tüm Filmler",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

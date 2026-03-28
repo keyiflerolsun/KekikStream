@@ -14,14 +14,18 @@ class AsyaWatch(PluginBase):
         f"{main_url}/tum-bolumler" : "Yeni Bölümler",
         "15"                       : "Aile",
         "9"                        : "Aksiyon",
+        "17"                       : "Animasyon",
         "5"                        : "Bilim Kurgu",
         "2"                        : "Dram",
         "12"                       : "Fantastik",
         "18"                       : "Gerilim",
         "3"                        : "Gizem",
-        "8"                        : "Korku",
         "4"                        : "Komedi",
+        "8"                        : "Korku",
+        "24"                       : "Macera",
         "7"                        : "Romantik",
+        "26"                       : "Savaş",
+        "1"                        : "Suç",
     }
 
     def _fix_poster(self, url: str) -> str:

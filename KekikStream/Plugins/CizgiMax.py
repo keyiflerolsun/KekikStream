@@ -14,11 +14,16 @@ class CizgiMax(PluginBase):
         f"{main_url}/diziler?s_type&tur[0]=aile&orderby=date&order=DESC"                : "Aile",
         f"{main_url}/diziler?s_type&tur[0]=aksiyon-macera&orderby=date&order=DESC"      : "Aksiyon & Macera",
         f"{main_url}/diziler?s_type&tur[0]=animasyon&orderby=date&order=DESC"           : "Animasyon",
+        f"{main_url}/diziler?s_type&tur[0]=belgesel&orderby=date&order=DESC"            : "Belgesel",
         f"{main_url}/diziler?s_type&tur[0]=bilim-kurgu-fantazi&orderby=date&order=DESC" : "Bilim Kurgu & Fantazi",
         f"{main_url}/diziler?s_type&tur[0]=cocuklar&orderby=date&order=DESC"            : "Çocuklar",
         f"{main_url}/diziler?s_type&tur[0]=dram&orderby=date&order=DESC"                : "Dram",
+        f"{main_url}/diziler?s_type&tur[0]=gizem&orderby=date&order=DESC"               : "Gizem",
         f"{main_url}/diziler?s_type&tur[0]=komedi&orderby=date&order=DESC"              : "Komedi",
+        f"{main_url}/diziler?s_type&tur[0]=pembe-dizi&orderby=date&order=DESC"          : "Pembe Dizi",
         f"{main_url}/diziler?s_type&tur[0]=suc&orderby=date&order=DESC"                 : "Suç",
+        f"{main_url}/diziler?s_type&tur[0]=talk&orderby=date&order=DESC"                : "Talk",
+        f"{main_url}/diziler?s_type&tur[0]=vahsi-bati&orderby=date&order=DESC"          : "Vahşi Batı",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

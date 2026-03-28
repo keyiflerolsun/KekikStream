@@ -47,7 +47,6 @@ class RecTV(PluginBase):
         f"{main_url}/api/movie/by/filtres/24/created/SAYFA/{sw_key}/" : "Müzik",
         f"{main_url}/api/movie/by/filtres/25/created/SAYFA/{sw_key}/" : "Western",
         f"{main_url}/api/movie/by/filtres/32/created/SAYFA/{sw_key}/" : "Savaş",
-        f"{main_url}/api/movie/by/filtres/34/created/SAYFA/{sw_key}/" : "Çocuklar",
     }
 
     async def _make_headers(self, method: str, path: str, body: bytes = b"") -> dict:

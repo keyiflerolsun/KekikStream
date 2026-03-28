@@ -18,8 +18,13 @@ class YoTurkish(PluginBase):
         f"{main_url}/genre/romance/"   : "Romance",
         f"{main_url}/genre/drama/"     : "Drama",
         f"{main_url}/genre/comedy/"    : "Comedy",
-        f"{main_url}/genre/history/"   : "History",
+        f"{main_url}/genre/crime/"     : "Crime",
         f"{main_url}/genre/family/"    : "Family",
+        f"{main_url}/genre/history/"   : "History",
+        f"{main_url}/genre/mystery/"   : "Mystery",
+        f"{main_url}/genre/thriller/"  : "Thriller",
+        f"{main_url}/genre/war/"       : "War",
+        f"{main_url}/genre/horror/"    : "Horror",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

@@ -12,7 +12,6 @@ class Dramacool(PluginBase):
     description = "Asian Drama Lover, Watch drama asian Online for free releases in Korean, Taiwanese, Thailand, Japanese and Chinese with English subtitles on Dramacool."
 
     main_page   = {
-        f"{main_url}/recently-added-drama" : "Yeni Dizi Bölümleri",
         f"{main_url}/recently-added-kshow" : "Yeni Program Bölümleri",
         f"{main_url}/country/korean"       : "Korean Drama",
         f"{main_url}/country/chinese"      : "Chinese Drama",
@@ -21,7 +20,6 @@ class Dramacool(PluginBase):
         f"{main_url}/country/taiwanese"    : "Taiwanese Drama",
         f"{main_url}/country/hong-kong"    : "Hong Kong Drama",
         f"{main_url}/country/american"     : "American Drama",
-        f"{main_url}/country/indian"       : "Indian Drama",
         f"{main_url}/country/philippines"  : "Philippines Drama",
     }
 

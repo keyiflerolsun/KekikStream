@@ -11,9 +11,18 @@ class AnimeciX(PluginBase):
     description = "AnimeciX - Türkçe anime izleme platformu."
 
     main_page   = {
-        f"{main_url}/secure/last-episodes"                          : "Son Eklenen Bölümler",
-        f"{main_url}/secure/titles?type=series&onlyStreamable=true" : "Seriler",
-        f"{main_url}/secure/titles?type=movie&onlyStreamable=true"  : "Filmler",
+        f"{main_url}/secure/last-episodes"                                    : "Son Eklenen Bölümler",
+        f"{main_url}/secure/titles?type=series&onlyStreamable=true"           : "Anime Serileri",
+        f"{main_url}/secure/titles?type=movie&onlyStreamable=true"            : "Anime Filmleri",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=action"          : "Aksiyon",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=adventure"       : "Macera",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=comedy"          : "Komedi",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=fantasy"         : "Fantastik",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=horror"          : "Korku",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=mystery"         : "Gizem",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=romance"         : "Romantik",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=science fiction" : "Bilim Kurgu",
+        f"{main_url}/secure/titles?onlyStreamable=true&genre=thriller"        : "Gerilim",
     }
 
     _XEH = "7Y2ozlO+QysR5w9Q6Tupmtvl9jJp7ThFH8SB+Lo7NvZjgjqRSqOgcT2v4ISM9sP10LmnlYI8WQ==.xrlyOBFS5BHjQ2Lk"

@@ -17,6 +17,7 @@ class RealFilmIzle(PluginBase):
         f"{main_url}/dizi/belgeseler-filmleri/page"  : "Belgeseler",
         f"{main_url}/dizi/bilim-kurgu-filmleri/page" : "Bilim-Kurgu",
         f"{main_url}/dizi/biyografi-filmleri/page"   : "Biyoğrafi",
+        f"{main_url}/dizi/dizi-izle/page"            : "Diziler",
         f"{main_url}/dizi/dram-filmleri/page"        : "Dram",
         f"{main_url}/dizi/erotik-filmleri/page"      : "Erotik",
         f"{main_url}/dizi/fantastik-filmleri/page"   : "Fantastik",

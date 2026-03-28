@@ -12,9 +12,34 @@ class Henaojara(PluginBase):
     description = "Ver anime online, subtitulado y/o doblado al español latino HD y completamente gratis. Aquí podrás ver y descargar todas tus series preferidas sin anuncios."
 
     main_page = {
-        main_url: "Episodios Nuevos",
-        f"{main_url}/animes?tipo=anime"    : "Animes",
-        f"{main_url}/animes?tipo=pelicula" : "Películas",
+        main_url                                           : "Episodios Nuevos",
+        f"{main_url}/animes?tipo=anime"             : "Animes",
+        f"{main_url}/animes?tipo=pelicula"          : "Películas",
+        f"{main_url}/animes?genero=accion"          : "Acción",
+        f"{main_url}/animes?genero=artes-marciales" : "Artes Marciales",
+        f"{main_url}/animes?genero=aventura"        : "Aventura",
+        f"{main_url}/animes?genero=ciencia-ficcion" : "Ciencia Ficción",
+        f"{main_url}/animes?genero=comedia"         : "Comedia",
+        f"{main_url}/animes?genero=cyberpunk"       : "Cyberpunk",
+        f"{main_url}/animes?genero=demonios"        : "Demonios",
+        f"{main_url}/animes?genero=deportes"        : "Deportes",
+        f"{main_url}/animes?genero=drama"           : "Drama",
+        f"{main_url}/animes?genero=ecchi"           : "Ecchi",
+        f"{main_url}/animes?genero=escuela"         : "Escuela",
+        f"{main_url}/animes?genero=fantasia"        : "Fantasía",
+        f"{main_url}/animes?genero=gore"            : "Gore",
+        f"{main_url}/animes?genero=harem"           : "Harem",
+        f"{main_url}/animes?genero=horror"          : "Horror",
+        f"{main_url}/animes?genero=isekai"          : "Isekai",
+        f"{main_url}/animes?genero=magia"           : "Magia",
+        f"{main_url}/animes?genero=mecha"           : "Mecha",
+        f"{main_url}/animes?genero=misterio"        : "Misterio",
+        f"{main_url}/animes?genero=psicologico"     : "Psicológico",
+        f"{main_url}/animes?genero=romance"         : "Romance",
+        f"{main_url}/animes?genero=seinen"          : "Seinen",
+        f"{main_url}/animes?genero=shounen"         : "Shounen",
+        f"{main_url}/animes?genero=sobrenatural"    : "Sobrenatural",
+        f"{main_url}/animes?genero=suspenso"        : "Suspenso",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

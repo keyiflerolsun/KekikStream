@@ -11,11 +11,27 @@ class YeniWatch(PluginBase):
     description = "Yeni diziwatch yani Yeniwatch. Yabancı dizi izle, anime izle, en popüler yabancı dizileri ve animeleri ücretsiz olarak yeniwatch.net.tr'te izleyin."
 
     main_page   = {
-        f"{main_url}/episodes/page/1/"                                                              : "Yeni Bölümler",
-        f"{main_url}/anime-arsivi/page/1/"                                                          : "Tüm Animeler",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Aksiyon" : "Aksiyon",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Komedi"  : "Komedi",
-        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=İsekai"  : "İsekai",
+        f"{main_url}/episodes/page/1/"                                                                  : "Yeni Bölümler",
+        f"{main_url}/anime-arsivi/page/1/"                                                              : "Tüm Animeler",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Aksiyon"     : "Aksiyon",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=İsekai"      : "İsekai",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Ecchi"       : "Ecchi",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Harem"       : "Harem",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Bilim+Kurgu" : "Bilim Kurgu",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Okul"        : "Okul",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Dram"        : "Dram",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Fantastik"   : "Fantastik",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Oyun"        : "Oyun",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Gerilim"     : "Gerilim",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Gizem"       : "Gizem",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Komedi"      : "Komedi",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Seinen"      : "Seinen",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Macera"      : "Macera",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Polisiye"    : "Polisiye",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Romantizm"   : "Romantizm",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Shounen"     : "Shounen",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Spor"        : "Spor",
+        f"{main_url}/anime-arsivi/page/1/?filtrele=imdb&sirala=DESC&yil=&imdb=&kelime=&tur=Tarihi"      : "Tarihi",
     }
 
     def _episode_to_category_url(self, url: str) -> str:

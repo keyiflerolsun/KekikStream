@@ -12,15 +12,28 @@ class TurkAnime(PluginBase):
     description = "Türk Anime TV - Türkiye'nin Online Anime izleme sitesi."
 
     main_page   = {
-        f"{main_url}/anime-turu/1/Aksiyon"    : "Aksiyon",
-        f"{main_url}/anime-turu/8/Dram"       : "Dram",
-        f"{main_url}/anime-turu/10/Fantastik" : "Fantastik",
-        f"{main_url}/anime-turu/4/Komedi"     : "Komedi",
-        f"{main_url}/anime-turu/14/Korku"     : "Korku",
-        f"{main_url}/anime-turu/2/Macera"     : "Macera",
-        f"{main_url}/anime-turu/22/Romantizm" : "Romantizm",
-        f"{main_url}/anime-turu/27/Shounen"   : "Shounen",
-        f"{main_url}/anime-turu/30/Spor"      : "Spor",
+        f"{main_url}/anime-turu/1/Aksiyon"            : "Aksiyon",
+        f"{main_url}/anime-turu/38/Askeri"            : "Askeri",
+        f"{main_url}/anime-turu/24/Bilim_Kurgu"       : "Bilim Kurgu",
+        f"{main_url}/anime-turu/16/Büyü"              : "Büyü",
+        f"{main_url}/anime-turu/37/Doğaüstü_Güçler"   : "Doğaüstü Güçler",
+        f"{main_url}/anime-turu/17/Dövüş_Sanatları"   : "Dövüş Sanatları",
+        f"{main_url}/anime-turu/8/Dram"               : "Dram",
+        f"{main_url}/anime-turu/9/Ecchi"              : "Ecchi",
+        f"{main_url}/anime-turu/10/Fantastik"         : "Fantastik",
+        f"{main_url}/anime-turu/41/Gerilim"           : "Gerilim",
+        f"{main_url}/anime-turu/7/Gizem"              : "Gizem",
+        f"{main_url}/anime-turu/35/Harem"             : "Harem",
+        f"{main_url}/anime-turu/4/Komedi"             : "Komedi",
+        f"{main_url}/anime-turu/14/Korku"             : "Korku",
+        f"{main_url}/anime-turu/2/Macera"             : "Macera",
+        f"{main_url}/anime-turu/18/Mecha"             : "Mecha",
+        f"{main_url}/anime-turu/23/Okul"              : "Okul",
+        f"{main_url}/anime-turu/40/Psikolojik"        : "Psikolojik",
+        f"{main_url}/anime-turu/22/Romantizm"         : "Romantizm",
+        f"{main_url}/anime-turu/42/Seinen"            : "Seinen",
+        f"{main_url}/anime-turu/27/Shounen"           : "Shounen",
+        f"{main_url}/anime-turu/36/Yaşamdan_Kesitler" : "Yaşamdan Kesitler",
     }
 
     _AES_KEY    = "710^8A@3@>T2}#zN5xK?kR7KNKb@-A!LzYL5~M1qU0UfdWsZoBm4UUat%}ueUv6E--*hDPPbH7K2bp9^3o41hw,khL:}Kx8080@M"

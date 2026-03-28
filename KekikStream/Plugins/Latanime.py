@@ -1,15 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import (
-    PluginBase,
-    MainPageResult,
-    SearchResult,
-    MovieInfo,
-    SeriesInfo,
-    Episode,
-    ExtractResult,
-    HTMLHelper,
-)
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 import base64
 
 
@@ -21,10 +12,25 @@ class Latanime(PluginBase):
     description = "Latanime - Ver anime online gratis en español latino y subtitulado. La mejor calidad en streaming para los amantes del anime."
 
     main_page = {
-        "animes?fecha=false&genero=false&letra=false&categoria=anime": "Anime",
-        "animes?fecha=false&genero=false&letra=false&categoria=Película": "Película",
-        "animes?fecha=false&genero=false&letra=false&categoria=especial": "Especial",
-        "animes?fecha=false&genero=false&letra=false&categoria=donghua": "Donghua",
+        "animes?fecha=false&genero=false&letra=false&categoria=anime"               : "Anime",
+        "animes?fecha=false&genero=false&letra=false&categoria=ova"                 : "Ova",
+        "animes?fecha=false&genero=false&letra=false&categoria=Película"            : "Película",
+        "animes?fecha=false&genero=false&letra=false&categoria=especial"            : "Especial",
+        "animes?fecha=false&genero=false&letra=false&categoria=corto"               : "Corto",
+        "animes?fecha=false&genero=false&letra=false&categoria=ona"                 : "Ona",
+        "animes?fecha=false&genero=false&letra=false&categoria=donghua"             : "Donghua",
+        "animes?fecha=false&genero=false&letra=false&categoria=sin-censura"         : "Sin Censura",
+        "animes?fecha=false&genero=false&letra=false&categoria=pelicula-1080p"      : "Pelicula 1080p",
+        "animes?fecha=false&genero=false&letra=false&categoria=latino"              : "Latino",
+        "animes?fecha=false&genero=false&letra=false&categoria=Película Latino"     : "Pelicula Latino",
+        "animes?fecha=false&genero=false&letra=false&categoria=castellano"          : "Castellano",
+        "animes?fecha=false&genero=false&letra=false&categoria=Película Castellano" : "Pelicula Castellano",
+        "animes?fecha=false&genero=false&letra=false&categoria=ova-latino"          : "Ova Latino",
+        "animes?fecha=false&genero=false&letra=false&categoria=ova-castellano"      : "Ova Castellano",
+        "animes?fecha=false&genero=false&letra=false&categoria=latino-sin-censura"  : "Latino Sin Censura",
+        "animes?fecha=false&genero=false&letra=false&categoria=live-action"         : "Live Action",
+        "animes?fecha=false&genero=false&letra=false&categoria=Cartoon"             : "Cartoon",
+        "animes?fecha=false&genero=false&letra=false&categoria=catalan"             : "Catalán",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:

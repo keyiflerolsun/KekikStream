@@ -50,19 +50,27 @@ class ShowFlix(PluginBase):
             return {}
 
     main_page = {
-        "movie" : "Movies",
-        "tv"    : "TV Shows"
+        "movie"          : "Movies",
+        "tv"             : "TV Shows",
+        "movie_trending" : "Trending Movies",
+        "tv_trending"    : "Trending TV Shows"
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        api_url = self.movie_api if url == "movie" else self.tv_api
-        skip    = (page - 1) * 20
+        item_type = "movie" if "movie" in url else "tv"
+        api_url   = self.movie_api if item_type == "movie" else self.tv_api
+        skip      = (page - 1) * 20
 
-        payload = self.get_payload({
+        extra_payload = {
             "limit" : 20,
             "skip"  : skip,
             "order" : "-updatedAt"
-        })
+        }
+
+        if "trending" in url:
+            extra_payload["order"] = "-rating"
+
+        payload = self.get_payload(extra_payload)
 
         istek = await self.httpx.post(api_url, json=payload)
         data  = istek.json().get("results", [])
