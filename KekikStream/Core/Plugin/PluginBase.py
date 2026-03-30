@@ -367,6 +367,8 @@ class PluginBase(ABC):
             if isinstance(data, list):
                 for item in data:
                     item.extractor = extractor.name
+                    if not item.user_agent:
+                        item.user_agent = extractor.httpx.headers.get("User-Agent")
                     if name_override:
                         item.name = name_override
                     elif prefix and item.name:
@@ -378,6 +380,8 @@ class PluginBase(ABC):
 
             # Tekil öğe ise
             data.extractor = extractor.name
+            if not data.user_agent:
+                data.user_agent = extractor.httpx.headers.get("User-Agent")
             if name_override:
                 data.name = name_override
             elif prefix and data.name:

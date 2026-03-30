@@ -27,7 +27,7 @@ PACKED_REGEX    = r'(eval\s*\(\s*function[\s\S]+?)<\/script>'
 FILE_REGEX      = r'file\s*:\s*["\']([^"\']+)["\']'
 SOURCES_REGEX   = r'sources\s*:\s*\[\s*\{\s*file\s*:\s*["\']([^"\']+)["\']'
 M3U8_FILE_REGEX = r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']'
-BEPLAYER_REGEX  = r"bePlayer\('([^']+)',\s*'(\{[^}]+\})'\);"
+BEPLAYER_REGEX  = r"bePlayer\(['\"]([^'\"]+)['\"],\s*['\"](\{[^}]+\})['\"]\);"
 CAPTIONS_REGEX  = r'captions","file":"([^\"]+)","label":"([^\"]+)"'
 PLAYERJS_SUB_RE = r'\[(.*?)\](https?://[^\s\",]+)'
 
@@ -50,7 +50,16 @@ class SecuredLinkExtractor(ExtractorBase):
 
     def _parse_video_id(self, url: str) -> str:
         """URL'den video ID'sini çıkar."""
-        return url.split("video/")[-1] if "video/" in url else url.split("?data=")[-1]
+        if "video/" in url:
+            return url.split("video/")[-1].split("?")[0]
+        if "hdplayer/" in url:
+            return url.split("hdplayer/")[-1].split("?")[0]
+        if "player/" in url:
+            return url.split("player/")[-1].split("?")[0]
+        if "?data=" in url:
+            return url.split("?data=")[-1].split("&")[0]
+
+        return url.rstrip("/").split("/")[-1].split("?")[0]
 
     def _get_base_url(self, url: str) -> str:
         """URL'den base URL'yi çıkar (scheme + domain)."""
@@ -301,16 +310,32 @@ class NonceDecryptExtractor(ExtractorBase):
         sel = HTMLHelper(html_text)
 
         # 1. meta tag
-        if nonce := sel.select_attr("meta[name='_gg_fb']", "content"):
+        if nonce := sel.select_attr("meta[name='_gg_fb']", "content") or sel.select_attr("meta[name='nonce']", "content"):
             return nonce
 
-        # 2. 48 karakterlik token
+        # 2. window.nonce / const nonce / var nonce
+        if nonce := sel.regex_first(r'window\.nonce\s*=\s*["\']([^"\']+)["\']') or \
+                    sel.regex_first(r'(?:const|var|let)\s+nonce\s*=\s*["\']([^"\']+)["\']') or \
+                    sel.regex_first(r'["\']nonce["\']\s*:\s*["\']([^"\']+)["\']'):
+            return nonce
+
+        # 3. _lk_db = {x: "...", y: "...", z: "..."} şeklinde 16x3 parçalı nonce
+        lk_parts = re.search(
+            r'_lk_db\s*=\s*\{\s*x:\s*["\']([A-Za-z0-9]{16})["\']\s*,\s*y:\s*["\']([A-Za-z0-9]{16})["\']\s*,\s*z:\s*["\']([A-Za-z0-9]{16})["\']',
+            html_text,
+        )
+        if lk_parts:
+            return lk_parts.group(1) + lk_parts.group(2) + lk_parts.group(3)
+
+        # 4. 48 karakterlik token (En yaygın MegaCloud/Videostr pattern'i)
         if nonce := sel.regex_first(r"\b[a-zA-Z0-9]{48}\b"):
             return nonce
 
-        # 3. 16x3 birleştirme
-        if m := re.search(r"\b([a-zA-Z0-9]{16})\b.*?\b([a-zA-Z0-9]{16})\b.*?\b([a-zA-Z0-9]{16})\b", html_text, re.DOTALL):
-            return m.group(1) + m.group(2) + m.group(3)
+        # 5. 16x3 birleştirme (Bazı obfuscated versiyonlar)
+        if m := re.findall(r"\b([a-zA-Z0-9]{16})\b", html_text):
+            if len(m) >= 3:
+                # Analytics gibi alakasız tokenlar öne gelebilir; son 3 parça daha güvenilir.
+                return m[-3] + m[-2] + m[-1]
 
         return None
 
@@ -364,7 +389,12 @@ class NonceDecryptExtractor(ExtractorBase):
         base_url = self.get_base_url(url)
         headers  = {"Referer": base_url, "X-Requested-With": "XMLHttpRequest"}
 
-        resp = await self.httpx.get(url, headers=headers, follow_redirects=True)
+        try:
+            resp = await self.httpx.get(url, headers=headers, follow_redirects=True)
+            if len(resp.text) < 500:
+                raise Exception("Possible CF challenge")
+        except Exception:
+            resp = await self.async_cf_get(url, headers=headers)
 
         nonce = self._find_nonce(resp.text)
         if not nonce:
@@ -374,8 +404,14 @@ class NonceDecryptExtractor(ExtractorBase):
         embed_match = re.search(r"(embed-\d+/v\d+/e-\d+)", url)
         path        = embed_match.group(1) if embed_match else self.embed_path
 
-        api_resp = await self.httpx.get(f"{base_url}/{path}/getSources?id={v_id}&_k={nonce}", headers=headers)
-        data     = api_resp.json()
+        try:
+            api_resp = await self.httpx.get(f"{base_url}/{path}/getSources?id={v_id}&_k={nonce}", headers=headers)
+            if api_resp.status_code != 200:
+                raise Exception("API error")
+            data = api_resp.json()
+        except Exception:
+            api_resp = await self.async_cf_get(f"{base_url}/{path}/getSources?id={v_id}&_k={nonce}", headers=headers)
+            data     = api_resp.json()
 
         enc_file = data.get("sources", [{}])[0].get("file")
         if not enc_file:
