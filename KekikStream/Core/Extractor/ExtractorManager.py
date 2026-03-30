@@ -47,13 +47,19 @@ class ExtractorManager:
         # URL netloc index'i oluştur (O(1) arama için)
         self._netloc_index = {}
         for instance in self._extractor_instances:
-            if instance.main_url:
+            domains = getattr(instance, "supported_domains", [])
+            if not domains and instance.main_url:
                 try:
                     netloc = urlparse(instance.main_url).netloc
-                    if netloc and netloc not in self._netloc_index:
-                        self._netloc_index[netloc] = instance
-                except Exception:
+                    if netloc:
+                        domains = [netloc]
+                except:
                     pass
+
+            for domain in domains:
+                clean_domain = domain.replace("https://", "").replace("http://", "").split("/")[0]
+                if clean_domain not in self._netloc_index:
+                    self._netloc_index[clean_domain] = instance
 
         self._initialized = True
 
@@ -61,6 +67,9 @@ class ExtractorManager:
         """
         Verilen bağlantıyı işleyebilecek çıkarıcıyı bul.
         """
+        if not link or not isinstance(link, str) or link == "about:blank" or link.startswith("javascript:"):
+            return None
+
         # Lazy loading: İlk kullanımda extractorları initialize et
         self._ensure_initialized()
 

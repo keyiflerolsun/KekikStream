@@ -48,25 +48,37 @@ class DoodStream(ExtractorBase):
             raise ValueError(f"{self.name}: Video silinmiş.")
 
         # DoodStream token/key parsing
-        pass_key = re.search(r"/pass_md5/([^']+)", html)
+        pass_key = re.search(r"/(?:pass_md5|pass_key)/([^'\"]+)", html)
+        if not pass_key:
+            # Try alternative pattern
+            pass_key = re.search(r"\$\.get\(['\"]/([^'\"]+)['\"]", html)
+
         if not pass_key:
             # /d/ sürümünde bulamazsak /e/ sürümünü dene (tekrar döngüye girme)
             if "/d/" in url and "/e/" in original_url:
                 raise ValueError(f"{self.name}: Pass key bulunamadı.")
             if "/d/" in url:
                 return await self.extract(url.replace("/d/", "/e/"), referer=referer)
+            if "/e/" in url:
+                return await self.extract(url.replace("/e/", "/d/"), referer=referer)
             raise ValueError(f"{self.name}: Pass key bulunamadı.")
 
-        pass_url = f"{base}/pass_md5/{pass_key.group(1)}"
+        pk_val   = pass_key.group(1)
+        pass_url = f"{base}/{pk_val.lstrip('/')}"
 
         # Second request to get the final link part
         pass_resp = await self.httpx.get(pass_url, headers={"Referer": url})
 
+        if not pass_resp.text:
+             raise ValueError(f"{self.name}: Pass response empty.")
+
         # Final URL construction: pass_resp.text + some characters + token
         # DoodStream logic usually: data + "789...?" + token
-        token  = pass_key.group(1).split("/")[-1]
+        token  = pk_val.split("/")[-1]
         expiry = int(time.time() * 1000)
 
+        # DoodStream usually appends some random characters
+        # The number of characters can vary, but 10 is common
         final_url = f"{pass_resp.text}1234567890?token={token}&expiry={expiry}"
 
         return ExtractResult(name=self.name, url=final_url, referer=url)

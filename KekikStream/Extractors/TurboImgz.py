@@ -3,8 +3,9 @@
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class TurboImgz(ExtractorBase):
-    name     = "TurboImgz"
-    main_url = "https://turbo.imgz.me"
+    name              = "TurboImgz"
+    main_url          = "https://turbo.imgz.me"
+    supported_domains = ["turbo.imgz.me", "lvturbo.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         self.httpx.headers.update({"Referer": referer or url})

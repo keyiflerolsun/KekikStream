@@ -20,9 +20,15 @@ class MolyStream(ExtractorBase):
         }
         self.httpx.headers.update(headers)
 
-        istek  = await self.httpx.get(url, follow_redirects=True)
+        try:
+            istek = await self.async_cf_get(url, headers=headers, follow_redirects=True)
+        except Exception:
+            istek = await self.httpx.get(url, follow_redirects=True)
         html   = istek.text
         secici = HTMLHelper(html)
+
+        if "Attention Required! | Cloudflare" in html or "Sorry, you have been blocked" in html:
+            raise ValueError(f"MolyStream: Cloudflare erişim engeli tespit edildi. {url}")
 
         # video#sheplayer source ile doğrudan video URL
         v_url = secici.select_attr("video#sheplayer source", "src")
@@ -31,17 +37,20 @@ class MolyStream(ExtractorBase):
         if not v_url:
             v_url = secici.regex_first(r'(?:file|source)\s*[:=]\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']')
 
+        if not v_url:
+            v_url = secici.regex_first(r'"(?:file|src)"\s*:\s*"([^"]+\.(?:m3u8|mp4)[^"]*)"')
+
         # Altyazılar
         subtitles = []
         for s_url, s_name in secici.regex_all(r"addSrtFile\(['\"]([^'\"]+\.srt)['\"]\s*,\s*['\"][a-z]{2}['\"]\s*,\s*['\"]([^'\"]+)['\"]"):
             subtitles.append(Subtitle(name=s_name, url=self.fix_url(s_url)))
 
-        # Video URL bulunamadıysa embed URL'yi WebView için döndür
-        final_url = v_url or url
+        if not v_url:
+            raise ValueError(f"MolyStream: Oynatılabilir medya URL'si bulunamadı. {url}")
 
         return ExtractResult(
             name       = self.name,
-            url        = final_url,
+            url        = self.fix_url(v_url),
             referer    = referer or self.main_url,
             user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:101.0) Gecko/20100101 Firefox/101.0",
             subtitles  = subtitles

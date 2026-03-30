@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
-import base64
+import base64, re
 
 
 class Latanime(PluginBase):
@@ -127,7 +127,8 @@ class Latanime(PluginBase):
                 try:
                     # Base64 decode ve içinden linki ayıkla
                     decoded = base64.b64decode(encoded).decode("utf-8")
-                    target  = decoded.split("=")[-1] if "=" in decoded else decoded
+                    match   = re.search(r"https?://[^\s\"'<>]+", decoded)
+                    target  = match.group(0).rstrip(",") if match else decoded.strip().rstrip(",")
 
                     if target.startswith("http"):
                         data = await self.extract(target, referer=url)

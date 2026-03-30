@@ -23,10 +23,14 @@ class ContentX(ExtractorBase):
 
     async def _fetch_source_file(self, base_url: str, content_url: str, vid: str) -> str | None:
         """source2/source endpoint varyasyonlarını dener."""
-        for endpoint in ("source2.php", "source.php"):
-            resp = await self.httpx.get(f"{base_url}/{endpoint}?v={vid}", headers={"Referer": content_url})
-            if file_link := HTMLHelper(resp.text).regex_first(r'file":"([^\"]+)"'):
-                return self._normalize_link(file_link)
+        for endpoint in ("source2.php", "source.php", "source3.php", "get_source.php"):
+            try:
+                resp = await self.httpx.get(f"{base_url}/{endpoint}?v={vid}", headers={"Referer": content_url})
+                if resp.status_code == 200:
+                    if file_link := HTMLHelper(resp.text).regex_first(r'file":"([^\"]+)"'):
+                        return self._normalize_link(file_link)
+            except:
+                continue
         return None
 
     async def extract(self, url: str, referer: str = None) -> list[ExtractResult] | ExtractResult:

@@ -45,6 +45,7 @@ class YTDLP(ExtractorBase):
         "pw",
         "ws",
         "to",
+        "ac",
         "eu",
         "ag",
         "bz",

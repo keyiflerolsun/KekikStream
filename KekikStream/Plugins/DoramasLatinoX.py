@@ -157,9 +157,10 @@ class DoramasLatinoX(PluginBase):
                     if link_match:
                         raw    = link_match.group(1).strip()
                         target = re.sub(r'^(https?:)/([^/])', r'\1//\2', raw)
+                        target = target.rstrip(",")
                         target = self.fix_url(target)
                     elif embed_url.startswith("http"):
-                        target = self.fix_url(embed_url)
+                        target = self.fix_url(embed_url.rstrip(","))
                     else:
                         return None
 

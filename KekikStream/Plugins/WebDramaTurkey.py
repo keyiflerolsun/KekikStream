@@ -98,7 +98,7 @@ class WebDramaTurkey(PluginBase):
             href   = veri.select_attr("a", "href")
             poster = veri.select_attr("div.media.media-cover", "data-src")
 
-            if title and href:
+            if title and href and any(part in href for part in ("/dizi/", "/film/", "/anime/")):
                 results.append(SearchResult(
                     title  = title.strip(),
                     url    = self.fix_url(href),
@@ -115,6 +115,33 @@ class WebDramaTurkey(PluginBase):
         poster      = secici.select_attr("div.media.media-cover", "data-src")
         description = secici.select_text("div.text-content") or secici.select_text("div.video-attr:nth-child(4) > div:nth-child(2)")
         tags        = secici.select_texts("div.categories a") or secici.select_texts("div.category a")
+        actors      = None
+
+        actors_block = re.search(
+            r'<div class="row row-cols-7 list-story" id="actorsList">([\s\S]+?)<div class="text-center mt-2 d-none d-md-block">',
+            istek.text,
+            re.S,
+        )
+        if actors_block:
+            actor_items   = []
+            actor_matches = re.findall(
+                r'<div class="list-title">\s*([\s\S]*?)\s*</div>\s*<div class="list-description">\s*([\s\S]*?)\s*</div>',
+                actors_block.group(1),
+                re.S,
+            )
+
+            for actor_name, actor_role in actor_matches:
+                actor_name = re.sub(r"<[^>]+>", " ", actor_name)
+                actor_role = re.sub(r"<[^>]+>", " ", actor_role)
+                actor_name = " ".join(actor_name.split()).strip()
+                actor_role = " ".join(actor_role.split()).strip()
+
+                if not actor_name:
+                    continue
+
+                actor_items.append(f"{actor_name} ({actor_role})" if actor_role else actor_name)
+
+            actors = actor_items or None
 
         year = secici.extract_year("div.featured-attr:nth-child(1) > div:nth-child(2)", "div.video-attr:nth-child(3) > div:nth-child(2)")
 
@@ -125,6 +152,7 @@ class WebDramaTurkey(PluginBase):
                 title       = title,
                 description = description,
                 tags        = tags,
+                actors      = actors,
                 year        = year,
             )
 
@@ -159,6 +187,7 @@ class WebDramaTurkey(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
+            actors      = actors,
             year        = year,
             episodes    = episodes,
         )
@@ -228,6 +257,16 @@ class WebDramaTurkey(PluginBase):
                 if not iframe_src:
                     return None
 
+                iframe_src = self.fix_url(iframe_src)
+
+                # video.php hash sayfası artık gerçek iframe'i doğrudan döndürüyor.
+                if "/video.php?hash=" in iframe_src:
+                    player_resp = await self.httpx.get(iframe_src, headers={"Referer": url})
+                    player_sel  = HTMLHelper(player_resp.text)
+                    nested_src  = player_sel.select_attr("iframe", "src")
+                    if nested_src:
+                        iframe_src = self.fix_url(nested_src)
+
                 # İkinci iframe katmanı
                 if_resp   = await self.httpx.get(iframe_src, headers={"Referer": url})
                 if_secici = HTMLHelper(if_resp.text)
@@ -238,6 +277,16 @@ class WebDramaTurkey(PluginBase):
                     final_src = iframe_src
 
                 final_src = self.fix_url(final_src)
+
+                # Boş homepage shell URL'leri gerçek kaynak değil; hata gürültüsü üretmesin.
+                if final_src.rstrip("/") in {
+                    "https://webdrama.upns.online",
+                    "https://webdrama.playerp2p.com",
+                }:
+                    return None
+
+                if "/yok.html" in final_src or final_src.rstrip("/").endswith("webdrama.net/yok.html"):
+                    return None
 
                 if "dtpasn.asia/video/" in final_src:
                     return await self._handle_dtpasn(final_src, url)

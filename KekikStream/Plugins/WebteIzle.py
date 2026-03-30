@@ -93,8 +93,8 @@ class WebteIzle(PluginBase):
     async def load_item(self, url: str) -> MovieInfo:
         secici = HTMLHelper(await self._request(url))
         title  = secici.select_text("h1 a") or secici.select_text("h1")
-        if title and title.lower().endswith("izle"):
-            title = title[:-4].strip()
+        if title:
+            title = re.sub(r"\s*izle\s*$", "", title, flags=re.I).strip()
 
         return MovieInfo(
             url         = url,

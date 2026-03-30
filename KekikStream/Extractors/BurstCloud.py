@@ -11,8 +11,9 @@ class BurstCloud(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         headers = {
-            "Referer"    : referer or self.main_url,
-            "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            "Referer"          : referer or self.main_url,
+            "User-Agent"       : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "X-Requested-With" : "XMLHttpRequest",
         }
 
         resp   = await self.httpx.get(url, headers=headers)

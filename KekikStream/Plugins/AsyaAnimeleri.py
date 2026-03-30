@@ -139,6 +139,8 @@ class AsyaAnimeleri(PluginBase):
                     src = match.group(1)
                     if src.startswith("//"):
                         src = "https:" + src
+                    if "gdplayer.to/" in src and "/embed/" in src:
+                        src = src.replace("gdplayer.to/embed/", "vidmoly.to/embed-") + ".html"
 
                     data = await self.extract(src, referer=self.main_url)
                     self.collect_results(links, data)

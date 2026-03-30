@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import re
 
 class DiziMom(PluginBase):
     name        = "DiziMom"
@@ -81,6 +82,9 @@ class DiziMom(PluginBase):
         year        = secici.extract_year("div.category_text")
         actors      = secici.meta_list("Oyuncular", container_selector="div  #icerikcat2")
 
+        if not rating:
+            rating = secici.regex_first(r'"aggregateRating"\s*:\s*\{[\s\S]*?"ratingValue"\s*:\s*"([\d\.]+)"')
+
         episodes = []
         for item in secici.select("div.bolumust"):
             name = item.select_text("div.baslik")
@@ -131,10 +135,18 @@ class DiziMom(PluginBase):
         # Aktif kaynağın (main iframe) adını bul
         current_name = secici.select_text("div.sources span.current_dil") or ""
         main_iframe  = secici.select_attr("iframe[src]", "src")
+        if main_iframe == "about:blank":
+            main_iframe = None
 
         # Bazen iframe doğrudan video p içinde olabilir
         if not main_iframe:
             main_iframe = secici.select_attr("div.video p iframe", "src")
+
+        if main_iframe == "about:blank":
+            main_iframe = None
+
+        if not main_iframe:
+            main_iframe = secici.regex_first(r'<iframe[^>]+src=["\'](?!about:blank)([^"\']+)')
 
         if main_iframe:
             iframe_data.append((main_iframe, current_name or "Varsayılan"))
@@ -150,11 +162,19 @@ class DiziMom(PluginBase):
                 sub_helper = HTMLHelper(sub_istek.text)
                 sub_iframe = sub_helper.select_attr("div.video p iframe", "src") or sub_helper.select_attr("iframe[src]", "src")
 
+                if sub_iframe == "about:blank":
+                    sub_iframe = None
+
+                if not sub_iframe:
+                    sub_iframe = sub_helper.regex_first(r'<iframe[^>]+src=["\'](?!about:blank)([^"\']+)')
+
                 if sub_iframe:
                     iframe_data.append((sub_iframe, name or f"{len(iframe_data)+1}.Kısım"))
 
         async def _extract_or_fallback(iframe_url, source_name):
             iframe_url = self.fix_url(iframe_url)
+            if not iframe_url or iframe_url == "about:blank" or iframe_url.startswith("javascript:"):
+                return None
             result = await self.extract(iframe_url, name_override=source_name)
             if result:
                 return result

@@ -7,7 +7,8 @@ class KentFilm(ExtractorBase):
     main_url = "https://kentfilmizle.xyz"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        istek  = await self.httpx.get(url, headers={"Referer": referer})
+        ref    = referer or self.main_url
+        istek  = await self.async_cf_get(url, headers={"Referer": ref})
         helper = HTMLHelper(istek.text)
 
         # HTMLHelper.regex_first otomatik olarak ilk grubu döndürür

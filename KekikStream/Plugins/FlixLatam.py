@@ -1,16 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import (
-    PluginBase,
-    MainPageResult,
-    SearchResult,
-    MovieInfo,
-    SeriesInfo,
-    Episode,
-    ExtractResult,
-    HTMLHelper,
-)
-import re
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import json, re
 
 
 class FlixLatam(PluginBase):
@@ -165,6 +156,47 @@ class FlixLatam(PluginBase):
             r    = await self.httpx.get(url, headers={"Referer": referer})
             html = r.text
 
+            data_link_json = None
+            data_link_mark = "const dataLink = "
+            data_link_pos  = html.find(data_link_mark)
+            if data_link_pos != -1:
+                data_link_pos += len(data_link_mark)
+                data_link_end  = html.find(";", data_link_pos)
+                if data_link_end != -1:
+                    data_link_json = html[data_link_pos:data_link_end].strip()
+
+            if data_link_json:
+                payload = json.loads(data_link_json)
+                embeds  = payload.get("data", {}).get("embeds", [])
+                tokens  = [item.get("link") for item in embeds if isinstance(item, dict) and item.get("link")]
+
+                if tokens:
+                    decrypt_api = f"{self.get_base_url(url)}/api/decrypt"
+                    r_dec       = await self.httpx.post(
+                        decrypt_api,
+                        headers = {"Content-Type": "application/json", "Referer": url, "X-Requested-With": "XMLHttpRequest"},
+                        json    = {"links": tokens},
+                    )
+
+                    if r_dec.status_code == 200:
+                        data = r_dec.json()
+                        if data.get("success"):
+                            for item in data.get("links", []):
+                                link = item.get("link") if isinstance(item, dict) else str(item)
+                                link = self.fix_url(link.replace("`", "").strip())
+
+                                if not link or any(x in link.lower() for x in ["google", "facebook", "ads", "bio", "data:image"]):
+                                    continue
+
+                                link = link.replace("dintezuvio.com", "vidhide.com").replace("minochinos.com", "vidhide.com")
+
+                                try:
+                                    data = await self.extract(link, referer=url)
+                                    self.collect_results(response, data)
+                                except Exception:
+                                    continue
+                            return
+
             tokens = list(set(re.findall(r"eyJ[a-zA-Z0-9._-]+", html)))
             tokens = [t for t in tokens if len(t) > 50]
 
@@ -193,9 +225,12 @@ class FlixLatam(PluginBase):
                                     continue
 
                                 # Bilinen hostları düzelt
-                                link = link.replace("dintezuvio.com", "vidhide.com").replace("hglink.to", "streamwish.to").replace("minochinos.com", "vidhide.com").replace("ghbrisk.com", "streamwish.to")
+                                link = link.replace("dintezuvio.com", "vidhide.com").replace("minochinos.com", "vidhide.com")
 
-                                data = await self.extract(link, referer=url)
-                                self.collect_results(response, data)
+                                try:
+                                    data = await self.extract(link, referer=url)
+                                    self.collect_results(response, data)
+                                except Exception:
+                                    continue
         except:
             pass

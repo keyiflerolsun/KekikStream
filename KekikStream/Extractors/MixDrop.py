@@ -9,6 +9,7 @@ class MixDrop(ExtractorBase):
 
     supported_domains = [
         "mixdrop.co", "mixdrop.to", "mixdrop.ps", "mixdrop.ag", "mixdrop.club",
+        "mxdrop.to", "mxdrop.ag", "mxdrop.co",
     ]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
@@ -30,6 +31,7 @@ class MixDrop(ExtractorBase):
             h.regex_first(r'(?:vsr|wurl)\s*=\s*["\']([^"\']+)["\']')
             or h.regex_first(r'sources\s*:\s*\[\s*["\']([^"\']+)["\']')
             or h.regex_first(r'file\s*:\s*["\']([^"\']+)["\']')
+            or h.regex_first(r'MDCore\.wurl\s*=\s*["\']([^"\']+)["\']')
         )
 
         if not video:

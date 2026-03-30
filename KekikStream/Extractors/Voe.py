@@ -1,15 +1,36 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-import base64
-import json
+from urllib.parse     import urlparse
+import base64, json, re
 
 
 class Voe(ExtractorBase):
     name     = "Voe"
     main_url = "https://voe.sx"
 
-    supported_domains = ["voe.sx", "yip.su", "metagnathtuggers.com", "graceaddresscommunity.com", "sethniceletter.com", "maxfinishseveral.com", "lauradaydo.com"]
+    supported_domains = [
+        "voe.sx",
+        "yip.su",
+        "metagnathtuggers.com",
+        "graceaddresscommunity.com",
+        "sethniceletter.com",
+        "maxfinishseveral.com",
+        "lauradaydo.com",
+        "dianaavoidthey.com",
+        "lancewhosedifficult.com",
+        "donaldlineelse.com",
+        "tubelessceliolymph.com",
+        "simpulumlamerop.com",
+        "urochsunloath.com",
+        "nathanfromsubject.com",
+    ]
+
+    denied_markers = [
+        "File access denied",
+        "Dosya erişimi reddedildi",
+        "Bu dosyanın sahibi ülkenize erişimi kısıtlamıştır",
+    ]
 
     @staticmethod
     def _decode_base64_json(raw: str) -> str | None:
@@ -31,37 +52,118 @@ class Voe(ExtractorBase):
 
         return None
 
-    async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        if "/download/" in url:
-            url = url.replace("/download/", "/e/")
-        elif url.rstrip("/").endswith("/download"):
-            url  = url.rstrip("/").rsplit("/download", 1)[0]
-            v_id = url.split("/")[-1]
-            url  = f"https://voe.sx/e/{v_id}"
-        elif "/e/" not in url and "voe.sx" in url:
-            v_id = url.split("/")[-1]
-            url  = f"https://voe.sx/e/{v_id}"
+    @staticmethod
+    def _rot13(text: str) -> str:
+        result = []
+        for char in text:
+            if "a" <= char <= "z":
+                result.append(chr((ord(char) - ord("a") + 13) % 26 + ord("a")))
+            elif "A" <= char <= "Z":
+                result.append(chr((ord(char) - ord("A") + 13) % 26 + ord("A")))
+            else:
+                result.append(char)
+        return "".join(result)
+
+    @staticmethod
+    def _char_shift(text: str, shift: int) -> str:
+        return "".join(chr(ord(char) - shift) for char in text)
+
+    @classmethod
+    def _decrypt_f7(cls, encoded: str) -> dict | None:
+        if not encoded:
+            return None
 
         try:
-            # Voe often uses protection (DDG, etc.), use cloudscraper async wrapper
-            resp    = await self.async_cf_get(url, headers={"Referer": referer or self.main_url})
-            content = resp.text
+            value = cls._rot13(encoded.strip())
+            for pattern in ("@$", "^^", "~@", "%?", "*~", "!!", "#&"):
+                value = value.replace(pattern, "_")
+            value = value.replace("_", "")
+
+            first = cls._decode_base64_json(value)
+            if not first:
+                return None
+
+            shifted = cls._char_shift(first, 3)
+            second  = cls._decode_base64_json(shifted[::-1])
+            if not second:
+                return None
+
+            data = json.loads(second)
+            return data if isinstance(data, dict) else None
         except Exception:
-            resp    = await self.httpx.get(url, headers={"Referer": referer or self.main_url})
-            content = resp.text
+            return None
 
-        secici = HTMLHelper(content)
+    @staticmethod
+    def _extract_application_json(content: str) -> str | None:
+        match = re.search(
+            r'<script[^>]+type=["\']application/json["\'][^>]*>\s*\["(.+?)"\]\s*</script>',
+            content,
+            re.DOTALL,
+        )
+        if not match:
+            return None
 
-        # JS redirect takibi
-        js_redirect = secici.regex_first(r"window\.location\.(?:href|replace)\s*(?:=|\()\s*['\"](https?://[^'\"]+)['\"]")
-        if js_redirect and "Redirecting" in content:
-            try:
-                resp    = await self.async_cf_get(js_redirect, headers={"Referer": url})
-                content = resp.text
-            except Exception:
-                resp    = await self.httpx.get(js_redirect, headers={"Referer": url})
-                content = resp.text
+        return match.group(1).replace('\\"', '"')
+
+    @staticmethod
+    def _normalize_url(url: str) -> str:
+        parsed = urlparse(url)
+        host   = parsed.netloc or "voe.sx"
+        path   = parsed.path.rstrip("/")
+
+        if "/download/" in path:
+            path = path.replace("/download/", "/e/")
+        elif path.endswith("/download"):
+            video_id = path.rsplit("/download", 1)[0].split("/")[-1]
+            path     = f"/e/{video_id}"
+        elif "/e/" not in path:
+            video_id = path.split("/")[-1]
+            path     = f"/e/{video_id}"
+
+        if not host:
+            host = "voe.sx"
+
+        return f"https://{host}{path}"
+
+    async def _fetch_page(self, url: str, referer: str | None) -> str:
+        headers = {"Referer": referer or self.main_url}
+        try:
+            resp = await self.async_cf_get(url, headers=headers)
+        except Exception:
+            resp = await self.httpx.get(url, headers=headers)
+        return resp.text
+
+    @classmethod
+    def _detect_denied_reason(cls, content: str) -> str | None:
+        lowered = content.lower()
+        for marker in cls.denied_markers:
+            if marker.lower() in lowered:
+                return marker
+        return None
+
+    async def extract(self, url: str, referer: str = None) -> ExtractResult:
+        url     = self._normalize_url(url)
+        content = await self._fetch_page(url, referer)
+        secici  = HTMLHelper(content)
+
+        for _ in range(2):
+            js_redirect = secici.regex_first(r"window\.location\.(?:href|replace)\s*(?:=|\()\s*['\"](https?://[^'\"]+)['\"]")
+            if not js_redirect:
+                break
+            content = await self._fetch_page(js_redirect, url)
             secici  = HTMLHelper(content)
+
+        denied_reason = self._detect_denied_reason(content)
+        if denied_reason:
+            raise ValueError(f"Voe: Bölgesel/erişim engeli tespit edildi. {url}")
+
+        encoded_json = self._extract_application_json(content)
+        if encoded_json:
+            payload = self._decrypt_f7(encoded_json)
+            if payload:
+                video_url = payload.get("source") or payload.get("direct_access_url") or payload.get("file") or payload.get("hls")
+                if video_url:
+                    return ExtractResult(name=self.name, url=video_url.replace("\\/", "/").replace("&amp;", "&"), referer=url)
 
         # Method 1: wc0 base64 encoded JSON
         script_val = secici.regex_first(r"(?:var|let|const)?\s*wc0\s*=\s*['\"]([^'\"]+)['\"]")

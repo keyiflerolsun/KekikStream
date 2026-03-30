@@ -10,6 +10,7 @@ Bu siteler aynı frontend template'i kullanır:
 """
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import re
 
 
 class FlwBasePlugin(PluginBase):
@@ -57,11 +58,30 @@ class FlwBasePlugin(PluginBase):
         name        = details.select_text("h2.heading-name > a") if details else ""
         poster      = details.select_poster("div.film-poster > img") if details else None
         description = details.select_text("div.description") if details else ""
-        year        = str(secici.extract_year())
+        year        = None
         tags        = secici.meta_list("Genre", container_selector="div.row-line")
         rating      = secici.select_text("button.btn-imdb")
         rating      = rating.replace("N/A", "").split(":")[-1].strip() if rating else None
         actors      = secici.meta_list("Casts", container_selector="div.row-line")
+        duration    = None
+
+        for row in secici.select("div.row-line"):
+            text = row.text() if hasattr(row, "text") else ""
+            text = " ".join(text.split())
+
+            if not year and "Released:" in text:
+                released_match = re.search(r"Released:\s*(\d{4})", text)
+                if released_match:
+                    year = released_match.group(1)
+
+            if duration is None and "Duration:" in text:
+                duration_match = re.search(r"Duration:\s*(\d+)", text)
+                if duration_match:
+                    duration = int(duration_match.group(1))
+
+        if not year:
+            extracted_year = secici.extract_year()
+            year           = str(extracted_year) if extracted_year else None
 
         common_info = {
             "url"         : url,
@@ -71,7 +91,8 @@ class FlwBasePlugin(PluginBase):
             "tags"        : tags,
             "rating"      : rating,
             "year"        : year,
-            "actors"      : actors
+            "actors"      : actors,
+            "duration"    : duration,
         }
 
         if "movie" in url:

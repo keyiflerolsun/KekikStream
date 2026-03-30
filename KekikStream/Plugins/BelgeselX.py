@@ -351,6 +351,10 @@ class BelgeselX(PluginBase):
                 extracted_urls.append(self.fix_url(file_url))
 
             for extracted_url in extracted_urls:
+                # Bazı endpointler medya yerine galeri/photo URL döndürüyor; extractor'a göndermiyoruz.
+                if "/photo/" in extracted_url or extracted_url.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+                    continue
+
                 if "belgeselx.php" in extracted_url or "belgeselx2.php" in extracted_url:
                     with suppress(Exception):
                         resp          = await self.httpx.head(extracted_url, headers={"Referer": main_url}, follow_redirects=True)

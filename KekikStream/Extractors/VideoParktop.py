@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 from urllib.parse     import urlparse, parse_qs
 
 class VideoParktop(ExtractorBase):
@@ -22,11 +22,27 @@ class VideoParktop(ExtractorBase):
         if not vid_id:
             raise ValueError(f"VideoParktop: ID bulunamadı. {url}")
 
-        base_url = self.get_base_url(url)
-        api_url  = f"{base_url}/oplayer/reload.php?id={vid_id}&nocache=1"
+        parsed   = urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
 
-        resp = await self.httpx.get(api_url, headers={"Referer": url})
-        data = resp.json()
+        # Titan path handling
+        api_path = "/oplayer/reload.php"
+        if "/titan/" in url:
+            api_path = "/titan/oplayer/reload.php"
+
+        api_url  = f"{base_url}{api_path}?id={vid_id}&nocache=1"
+
+        try:
+            resp = await self.async_cf_get(api_url, headers={"Referer": url})
+            data = resp.json()
+        except:
+            # Fallback to direct text search if JSON fails
+            resp = await self.async_cf_get(url, headers={"Referer": referer or self.main_url})
+            sel  = HTMLHelper(resp.text)
+            m3u8 = sel.regex_first(r'["\']?file["\']?\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']')
+            if m3u8:
+                return ExtractResult(name=self.name, url=self.fix_url(m3u8), referer=url)
+            raise ValueError(f"VideoParktop: Video linki bulunamadı. {url}")
 
         if data.get("error"):
             raise ValueError(f"VideoParktop: API hatası — {data['error']}. {url}")

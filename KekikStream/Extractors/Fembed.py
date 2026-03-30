@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+from urllib.parse     import urlencode
 import re, json
 
 class Fembed(ExtractorBase):
@@ -9,11 +10,14 @@ class Fembed(ExtractorBase):
     supported_domains = ["fembed.online", "fembed.net", "fembed.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        resp = await self.httpx.get(
-            url     = url,
-            headers = {"Referer": referer or self.main_url}
-        )
-        html = resp.text
+        headers = {"Referer": referer or self.main_url}
+
+        try:
+            resp = await self.async_cf_get(url, headers=headers)
+            html = resp.text
+        except Exception:
+            resp = await self.httpx.get(url=url, headers=headers)
+            html = resp.text
         sel  = HTMLHelper(html)
 
         m3u8_url = None
@@ -35,6 +39,72 @@ class Fembed(ExtractorBase):
         if not m3u8_url:
             m3u8_url = sel.regex_first(r'"file"\s*:\s*"([^"]+\.m3u8[^"]*)"')
 
+        # Yeni JetFilmizle shell'i kaynakları worker API üzerinden yüklüyor.
+        if not m3u8_url:
+            async_config = sel.regex_first(r"var\s+asyncConfig\s*=\s*(\{.*?\});", group=1)
+            if async_config:
+                try:
+                    config = json.loads(async_config)
+                    params = urlencode({
+                        "tmdb"    : config.get("tmdbId"),
+                        "type"    : config.get("type"),
+                        "season"  : config.get("season", 1),
+                        "episode" : config.get("episode", 1),
+                    })
+                    base_url = self.get_base_url(url)
+
+                    api_urls = [
+                        f"{base_url}/api_proxy.php?{params}",
+                        f"{config.get('workerUrl', '').rstrip('/')}/api/sources?{params}",
+                    ]
+
+                    for api_url in api_urls:
+                        if not api_url or "None" in api_url:
+                            continue
+
+                        try:
+                            api_resp = await self.async_cf_get(api_url, headers={"Referer": url})
+                        except Exception:
+                            api_resp = await self.httpx.get(api_url, headers={"Referer": url})
+
+                        with_sources = api_resp.json() if api_resp.status_code == 200 else None
+                        if not isinstance(with_sources, dict):
+                            continue
+
+                        sources = with_sources.get("sources") or []
+                        if not sources:
+                            continue
+
+                        first_source = sources[0]
+                        first_url    = first_source.get("url", "")
+                        is_mp4       = ".mp4" in first_url or "/mp4/" in first_url
+                        worker_url   = (config.get("workerUrl") or "").rstrip("/")
+
+                        if is_mp4:
+                            m3u8_url = first_url
+                        elif len(sources) > 1 and worker_url:
+                            qualities = []
+                            streams   = []
+                            for source in sources:
+                                qualities.append(source.get("quality") or "720p")
+                                source_url = source.get("url") or ""
+                                # Worker endpointten gelen /stream/ENCRYPTED yolları koru.
+                                stream_key = re.sub(r"^.*?/stream/", "", source_url)
+                                if not stream_key and source_url.startswith("http"):
+                                    stream_key = source_url
+                                if stream_key:
+                                    streams.append(stream_key)
+
+                            if qualities and streams:
+                                m3u8_url = f"{worker_url}/master.m3u8?q={','.join(qualities)}&s={','.join(streams)}"
+                        else:
+                            m3u8_url = first_url
+
+                        if m3u8_url:
+                            break
+                except Exception:
+                    pass
+
         if not m3u8_url:
             raise ValueError(f"{self.name}: Video URL bulunamadı. {url}")
 
@@ -53,9 +123,36 @@ class Fembed(ExtractorBase):
             except Exception:
                 pass
 
+        if not subtitles:
+            async_config = sel.regex_first(r"var\s+asyncConfig\s*=\s*(\{.*?\});", group=1)
+            if async_config:
+                try:
+                    config     = json.loads(async_config)
+                    worker_url = (config.get("workerUrl") or "").rstrip("/")
+                    if worker_url:
+                        sub_url = (
+                            f"{worker_url}/api/subtitles?id={config.get('tmdbId')}&type={config.get('type')}"
+                            f"&season={config.get('season', 1)}&episode={config.get('episode', 1)}"
+                        )
+
+                        try:
+                            sub_resp = await self.async_cf_get(sub_url, headers={"Referer": url})
+                        except Exception:
+                            sub_resp = await self.httpx.get(sub_url, headers={"Referer": url})
+
+                        sub_data = sub_resp.json() if sub_resp.status_code == 200 else {}
+                        for sub in sub_data.get("tracks", []):
+                            s_file  = sub.get("file", "")
+                            s_label = sub.get("label", "Altyazı")
+                            if s_file:
+                                subtitles.append(Subtitle(name=s_label, url=self.fix_url(s_file)))
+                except Exception:
+                    pass
+
         return ExtractResult(
-            name      = self.name,
-            url       = m3u8_url,
-            referer   = self.main_url,
-            subtitles = subtitles,
+            name       = self.name,
+            url        = self.fix_url(m3u8_url),
+            referer    = self.get_base_url(url),
+            user_agent = self.httpx.headers.get("User-Agent"),
+            subtitles  = subtitles,
         )

@@ -4,6 +4,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInf
 import re
 import base64
 import json
+from urllib.parse import urlencode
 
 
 class AnimeYTX(PluginBase):
@@ -132,6 +133,48 @@ class AnimeYTX(PluginBase):
         response = []
         tasks    = []
 
+        async def resolve_internal_player(player_url: str):
+            fixed_url = self.fix_url(player_url)
+            if not fixed_url or fixed_url.startswith("data:") or fixed_url.startswith("javascript:"):
+                return None
+
+            if "/new/redirector.php" in fixed_url or "/new/redirector2.php" in fixed_url:
+                try:
+                    redirect_resp = await self.async_cf_get(fixed_url, headers={"Referer": url})
+                    redirect_html = redirect_resp.text
+                    target_url    = HTMLHelper(redirect_html).regex_first(r"window\.location\.href\s*=\s*'([^']+)'")
+                    if target_url:
+                        target_url = target_url.replace(" ", "+")
+                        return await self.extract(self.fix_url(target_url), referer=url)
+                except Exception:
+                    return None
+
+            if "/new/play/one.php" not in fixed_url:
+                return await self.extract(fixed_url, referer=url)
+
+            parsed = re.search(r"server=([^&]+)&value=([^&]+)", fixed_url)
+            if not parsed:
+                return None
+
+            payload = {
+                "server" : parsed.group(1),
+                "value"  : parsed.group(2),
+            }
+            try:
+                ajax_resp = await self.async_cf_get(
+                    f"{self.main_url}/new/play/one.php?{urlencode(payload)}",
+                    headers={"Referer": url, "X-Requested-With": "XMLHttpRequest"},
+                )
+                body = ajax_resp.text
+            except Exception:
+                return None
+
+            iframe_src = HTMLHelper(body).select_attr("iframe", "src") or HTMLHelper(body).regex_first(r'src=["\']([^"\']+)["\']')
+            if not iframe_src:
+                return None
+
+            return await self.extract(self.fix_url(iframe_src), referer=url)
+
         # Find players in select menu (Base64 encoded iframes)
         for opt in secici.select("select.mirror option"):
             val = opt.attrs.get("value")
@@ -143,7 +186,7 @@ class AnimeYTX(PluginBase):
                 iframe_src = re.search(r'src=["\']([^"\']+)["\']', decoded)
                 if iframe_src:
                     src = iframe_src.group(1)
-                    tasks.append(self.extract(self.fix_url(src), referer=url))
+                    tasks.append(resolve_internal_player(src))
             except:
                 continue
 
@@ -153,13 +196,13 @@ class AnimeYTX(PluginBase):
             for p in players:
                 urls = re.findall(r'url["\']\s*:\s*["\']([^"\']+)["\']', p)
                 for u in urls:
-                    tasks.append(self.extract(self.fix_url(u.replace("\\/", "/")), referer=url))
+                    tasks.append(resolve_internal_player(u.replace("\\/", "/")))
 
         # Check iframes
         for iframe in secici.select("iframe"):
             src = iframe.select_attr(None, "src")
             if src and not any(x in src.lower() for x in ["facebook", "google", "ads", "bio", "data:image"]):
-                tasks.append(self.extract(src, referer=url))
+                tasks.append(resolve_internal_player(src))
 
         results = await self.gather_with_limit(tasks)
         for res in results:

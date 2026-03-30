@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+import re
 
 class RealFilmIzle(PluginBase):
     name        = "RealFilmIzle"
@@ -85,8 +86,14 @@ class RealFilmIzle(PluginBase):
         # Metadata extraction
         rating = secici.meta_value("IMDb")
         # 1080p gibi değerleri yıl sanmaması için regex'i daraltalım
-        year   = secici.extract_year("div.metadata span a[href*='/yapim/']")
-        actors = secici.meta_list("Oyuncular")
+        year     = secici.extract_year("div.metadata span a[href*='/yapim/']")
+        actors   = secici.meta_list("Oyuncular")
+        duration = None
+
+        if not duration:
+            duration_match = re.search(r"(\d+)\s*dakika", istek.text, re.I)
+            if duration_match:
+                duration = int(duration_match.group(1))
 
         # Fallback: Eğer meta_value/list bulamadıysa sınıf listesine bak
         meta_node = secici.select_first(".post")
@@ -116,7 +123,8 @@ class RealFilmIzle(PluginBase):
             year        = str(year) if year else None,
             rating      = str(rating) if rating else None,
             tags        = tags,
-            actors      = actors
+            actors      = actors,
+            duration    = duration,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
@@ -124,10 +132,19 @@ class RealFilmIzle(PluginBase):
         secici = HTMLHelper(istek.text)
 
         iframe = secici.select_attr("div.video-content iframe", "src")
+        if iframe == "about:blank":
+            iframe = None
+
+        if not iframe:
+            iframe = secici.regex_first(r'<iframe[^>]+src=["\'](?!about:blank)([^"\']+)')
+
         if not iframe:
             return []
 
         iframe = self.fix_url(iframe)
+        if iframe == "about:blank" or iframe.startswith("javascript:"):
+            return []
+
         result = await self.extract(iframe)
 
         return [result] if result else []

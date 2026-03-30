@@ -15,7 +15,7 @@ class VidStack(ExtractorBase):
         "vidstack.io", "server1.uns.bio", "upns.one", "upn.one",
         "webdrama.upns.online", "webdrama.playerp2p.com",
         "player4me.vip", "vidplayer.live", "rpmvid.com", "rpmshare.com",
-        "rpmplayer.com", "ytplay.rpmvid.com"
+        "rpmplayer.com", "ytplay.rpmvid.com", "rpmvip.com"
     ]
 
     def decrypt_aes(self, input_hex: str, key: str, iv: bytes) -> str:
@@ -29,21 +29,46 @@ class VidStack(ExtractorBase):
             return None
 
     def _extract_id(self, url: str) -> str:
-        # ?id=XXX query parametresini dene
+        # 1. Query parameter
         qs = parse_qs(urlparse(url).query)
         if "id" in qs:
             return qs["id"][0]
-        # Fragment veya son path parçası (#hash ya da /path/hash)
-        fragment = url.split("#")[-1]
-        return fragment.split("/")[-1]
+
+        # 2. Fragment (common in vidstack)
+        if "#" in url:
+            fragment = url.split("#")[-1]
+            if fragment and "/" in fragment:
+                fragment = fragment.split("/")[-1]
+            if fragment:
+                return fragment.strip()
+
+        # 3. Path tail
+        path = urlparse(url).path.rstrip("/")
+        if path:
+            return path.split("/")[-1]
+
+        return ""
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult | list[ExtractResult]:
-        headers = {
+        hash_val = self._extract_id(url)
+        if not hash_val:
+             # Try to load the page and find the ID or hash in script
+             try:
+                 resp = await self.httpx.get(url, headers={"Referer": referer or self.main_url})
+                 # var hash = '...'; or const id = '...';
+                 if m := re.search(r'(?:var|const|let)\s+(?:hash|id)\s*=\s*["\']([^"\']+)["\']', resp.text):
+                     hash_val = m.group(1)
+             except:
+                 pass
+
+        if not hash_val:
+            raise ValueError(f"VidStack: ID bulunamadı. {url}")
+
+        base_url = self.get_base_url(url)
+        headers  = {
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0",
             "Referer"    : url
         }
-
-        hash_val = self._extract_id(url)
         base_url = self.get_base_url(url)
 
         # API İsteği (Video veya Info endpointini dene)
@@ -64,12 +89,15 @@ class VidStack(ExtractorBase):
             raise ValueError(f"VidStack: API yanıtı alınamadı. {url}")
 
         # AES Çözme — sıfır IV (webdrama), ardından bilinen IV'lar
-        key = "kiemtienmua911ca"
-        ivs = [b"\x00" * 16, b"1234567890oiuytr", b"0123456789abcdef"]
+        keys = ["kiemtienmua911ca", "46ed6256db0ca41ec"]
+        ivs  = [b"\x00" * 16, b"1234567890oiuytr", b"0123456789abcdef"]
 
         decrypted_text = None
-        for iv in ivs:
-            decrypted_text = self.decrypt_aes(encoded_data, key, iv)
+        for key in keys:
+            for iv in ivs:
+                decrypted_text = self.decrypt_aes(encoded_data, key, iv)
+                if decrypted_text and '"source":' in decrypted_text:
+                    break
             if decrypted_text and '"source":' in decrypted_text:
                 break
 

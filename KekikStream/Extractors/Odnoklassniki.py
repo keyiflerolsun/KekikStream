@@ -9,6 +9,21 @@ class Odnoklassniki(ExtractorBase):
 
     supported_domains = ["odnoklassniki.ru", "ok.ru", "vkvideo.ru", "vk.com"]
 
+    @staticmethod
+    def _extract_metadata_from_data_options(sel: HTMLHelper) -> dict | None:
+        raw_options = sel.select_attr("[data-module='OKVideo']", "data-options")
+        if not raw_options:
+            return None
+
+        try:
+            options   = json.loads(html.unescape(raw_options))
+            flashvars = options.get("flashvars") or {}
+            metadata  = flashvars.get("metadata")
+            parsed_md = json.loads(metadata) if metadata else None
+            return parsed_md if isinstance(parsed_md, dict) else None
+        except Exception:
+            return None
+
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         # href.li redirect wrapper'ını soy
         if "href.li/?" in url:
@@ -25,10 +40,48 @@ class Odnoklassniki(ExtractorBase):
         resp = await self.httpx.get(url, follow_redirects=True)
         sel  = HTMLHelper(resp.text)
 
+        if metadata := self._extract_metadata_from_data_options(sel):
+            best_url = metadata.get("ondemandHls") or metadata.get("ondemandDash")
+            videos   = metadata.get("videos") or []
+
+            if not best_url:
+                order = ["ULTRA", "QUAD", "FULL", "HD", "SD", "LOW", "MOBILE"]
+                for q in order:
+                    best_url = next((v.get("url") for v in videos if v.get("name", "").upper() == q), None)
+                    if best_url:
+                        break
+
+            if not best_url and videos:
+                best_url = videos[0].get("url")
+
+            if best_url:
+                best_url = html.unescape(best_url).replace("u0026", "&").replace("\\u0026", "&")
+                if "\\u" in best_url:
+                    best_url = best_url.encode().decode("unicode-escape")
+
+                return ExtractResult(
+                    name       = self.name,
+                    url        = self.fix_url(best_url),
+                    referer    = url,
+                    user_agent = self.httpx.headers.get("User-Agent")
+                )
+
         # Metadata içinden videos array'ini al (esnek regex)
-        v_data = sel.regex_first(r'videos[^:]+:(\[.*?\])')
+        # Bazen "videos": [...] bazen metadata: { ..., "videos": [...] }
+        v_data = sel.regex_first(r'["\']?videos["\']?\s*[:=]\s*(\[.*?\])') or \
+                 sel.regex_first(r'["\']?metadata["\']?\s*[:=]\s*["\']?(\{.*?\})["\']?')
+
+        if v_data and v_data.startswith("{"):
+            # If we found metadata object, try to extract videos from it
+            try:
+                meta_json = json.loads(v_data)
+                videos    = meta_json.get("videos")
+                v_data    = json.dumps(videos) if videos else None
+            except:
+                v_data = HTMLHelper(v_data).regex_first(r'["\']?videos["\']?\s*[:]\s*(\[.*?\])')
+
         if not v_data:
-            if "Видео заблокировано" in resp.text or "copyrightsRestricted" in resp.text:
+            if "Видео заблокировано" in resp.text or "copyrightsRestricted" in resp.text or "not_found" in resp.text:
                 raise ValueError("Odnoklassniki: Video telif nedeniyle silinmiş/erişilemiyor.")
             raise ValueError(f"Odnoklassniki: Video verisi bulunamadı. {url}")
 

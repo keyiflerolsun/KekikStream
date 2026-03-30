@@ -10,6 +10,4 @@ class MegaNZ(ExtractorBase):
     supported_domains = ["mega.nz", "mega.co.nz"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        # MegaNZ embed linkleri direkt döndürülebilir (bazı player'lar destekler)
-        # veya downloader eklentisi tarafından ele alınabilir.
-        return ExtractResult(name=self.name, url=url, referer=referer or url)
+        raise ValueError(f"MegaNZ: Doğrudan medya URL'si alınamıyor, sadece web player embed'i mevcut. {url}")

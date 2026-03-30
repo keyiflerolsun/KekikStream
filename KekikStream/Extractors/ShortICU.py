@@ -7,7 +7,7 @@ class ShortICU(ExtractorBase):
     name     = "ShortICU"
     main_url = "https://short.icu"
 
-    supported_domains = ["short.icu", "short.ink", "go.animeyt2.es"]
+    supported_domains = ["short.icu", "short.ink", "go.animeyt2.es", "animeyt2.es"]
 
     async def extract(self, url: str, referer: str = None) -> list[ExtractResult]:
         # Short.icu is usually a redirector

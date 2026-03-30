@@ -18,4 +18,9 @@ class MailRu(ExtractorBase):
         if not v_url:
             raise ValueError(f"MailRu: Video URL bulunamadı. {url}")
 
-        return ExtractResult(name=self.name, url=self.fix_url(v_url), referer=self.main_url)
+        return ExtractResult(
+            name       = self.name,
+            url        = self.fix_url(v_url),
+            referer    = self.main_url,
+            user_agent = self.httpx.headers.get("User-Agent"),
+        )
