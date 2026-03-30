@@ -246,9 +246,18 @@ class PluginBase(ABC):
             results = await self.gather_with_limit(tasks, limit=5)
         """
         sem = asyncio.Semaphore(limit)
+
         async def limited(coro):
-            async with sem:
-                return await coro
+            entered = False
+            try:
+                async with sem:
+                    entered = True
+                    return await coro
+            except asyncio.CancelledError:
+                if not entered and asyncio.iscoroutine(coro):
+                    coro.close()
+                raise
+
         return await asyncio.gather(*(limited(t) for t in tasks))
 
     async def async_cf_get(self, url: str, **kwargs):
