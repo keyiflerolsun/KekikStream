@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import asyncio
 
 class DiziPal(PluginBase):
     name        = "DiziPal"
@@ -70,6 +71,28 @@ class DiziPal(PluginBase):
 
         return results
 
+    def parse_episodes(self, secici: HTMLHelper) -> list[Episode]:
+        episodes = []
+        for ep in secici.select("div.episode-item"):
+            name       = ep.select_text("h4 a")
+            href       = ep.select_attr("a", "href")
+            link_title = ep.select_attr("a", "title")
+
+            h4_texts = ep.select_texts("h4")
+            text     = h4_texts[1] if len(h4_texts) > 1 else (h4_texts[0] if h4_texts else "")
+
+            full_text = f"{text} {link_title}" if link_title else text
+
+            if name and href:
+                s, e = secici.extract_season_episode(full_text or "")
+                episodes.append(Episode(
+                    season  = s,
+                    episode = e,
+                    title   = name,
+                    url     = self.fix_url(href)
+                ))
+        return episodes
+
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
@@ -102,25 +125,20 @@ class DiziPal(PluginBase):
             actors = secici.select_attrs("div.swiper-slide a", "title")
 
         if "/dizi/" in url:
-            episodes = []
-            for ep in secici.select("div.episode-item"):
-                name       = ep.select_text("h4 a")
-                href       = ep.select_attr("a", "href")
-                link_title = ep.select_attr("a", "title")
+            season_links = secici.select("#season-options-list ul li a")
+            if season_links:
+                tasks     = [self.httpx.get(self.fix_url(s.select_attr("a", "href"))) for s in season_links]
+                responses = await asyncio.gather(*tasks)
 
-                h4_texts = ep.select_texts("h4")
-                text     = h4_texts[1] if len(h4_texts) > 1 else (h4_texts[0] if h4_texts else "")
+                episodes_map = {}
+                for resp in responses:
+                    s_secici = HTMLHelper(resp.text)
+                    for ep in self.parse_episodes(s_secici):
+                        episodes_map[(ep.season, ep.episode)] = ep
 
-                full_text = f"{text} {link_title}" if link_title else text
-
-                if name and href:
-                    s, e = secici.extract_season_episode(full_text or "")
-                    episodes.append(Episode(
-                        season  = s,
-                        episode = e,
-                        title   = name,
-                        url     = self.fix_url(href)
-                    ))
+                episodes = sorted(episodes_map.values(), key=lambda x: (x.season, x.episode))
+            else:
+                episodes = self.parse_episodes(secici)
 
             return SeriesInfo(
                 url         = url,
