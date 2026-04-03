@@ -6,7 +6,7 @@ import re
 class RealFilmIzle(PluginBase):
     name        = "RealFilmIzle"
     language    = "tr"
-    main_url    = "https://filmizlefullhd.live"
+    main_url    = "http://filmcenneti.cc"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Film Makinesi ile en yeni filmleri online Türkçe dublaj Full HD izleyin. Aksiyon, komedi, korku ve dram kategorilerinde kesintisiz film keyfi burada!"
 
