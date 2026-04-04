@@ -6,7 +6,7 @@ import re
 class SineWix(PluginBase):
     name        = "SineWix"
     language    = "tr"
-    main_url    = "http://10.0.0.2:2585"
+    main_url    = "http://10.0.0.8:2585"
     favicon     = "https://play-lh.googleusercontent.com/brwGNmr7IjA_MKk_TTPs0va10hdKE_bD_a1lnKoiMuCayW98EHpRv55edA6aEoJlmwfX"
     description = "Sinewix | Ücretsiz Film - Dizi - Anime İzleme Uygulaması"
 
