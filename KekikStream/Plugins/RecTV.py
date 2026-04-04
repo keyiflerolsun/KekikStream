@@ -51,7 +51,7 @@ class RecTV(PluginBase):
 
     async def _make_headers(self, method: str, path: str, body: bytes = b"") -> dict:
         try:
-            response = await self.httpx.get(f"http://10.0.0.8:2585/api/v1/rectv?method={method}&path={path}&body={body.decode() if body else ''}")
+            response = await self.httpx.get(f"http://sv2-webservisler:2585/api/v1/rectv?method={method}&path={path}&body={body.decode() if body else ''}")
             veriler  = response.json()
             if veriler.get("success"):
                 headers = veriler.get("headers")
