@@ -1,13 +1,13 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
-import json
+import json, re
 
 class InatBox(PluginBase):
     name        = "InatBox"
     language    = "tr"
     main_url    = "https://diziboxen.help"
-    favicon     = "https://inatboxindir.org/wp-content/uploads/2023/01/cropped-inat-box-logo-1-192x192.png"
+    favicon     = "https://gitlab.com/uploads/-/system/project/avatar/67327262/removebg.png"
     description = "Inat Box APK, Türkiye'nin en popüler canlı TV ve dijital platform içeriklerini sunan uygulamasıdır."
 
     _api_url = "http://sv2-webservisler:2585/api/v1/inatbox"
@@ -25,9 +25,9 @@ class InatBox(PluginBase):
         "yerli-dizi"   : "Yerli Diziler",
     }
 
-    async def _api_request(self, q: str) -> str:
+    async def _api_request(self, q: str, **extra_params) -> str:
         try:
-            istek = await self.httpx.get(self._api_url, params={"q": q})
+            istek = await self.httpx.get(self._api_url, params={"q": q, **extra_params})
             if istek.status_code == 200:
                 return istek.json().get("result", "")
         except Exception:
@@ -43,7 +43,7 @@ class InatBox(PluginBase):
             veriler = json.loads(json_resp)
             results = []
             for veri in veriler:
-                if veri.get("diziType") == "link" or veri.get("chType") in ("link", "link_mode"):
+                if veri.get("diziType") in ("link", "link_mode") or veri.get("chType") in ("link", "link_mode"):
                     continue
                 title  = veri.get("diziName") or veri.get("chName")
                 poster = veri.get("diziImg")  or veri.get("chImg")
@@ -176,10 +176,52 @@ class InatBox(PluginBase):
 
             ch_type = it.get("chType", "")
             if ch_type in ("tekli_regex_lb_sh_3", "tekli_regex_lb_sh_3_mode"):
-                json_resp = await self._api_request(it.get("chUrl"))
+                ch_url   = it.get("chUrl", "")
+                ch_reg   = it.get("chReg")
+                ch_hdrs  = it.get("chHeaders")
+                ch_name  = it.get("chName") or it.get("diziName") or self.name
+
+                regex1  = None
+                ua_req  = ""
+                ref_req = ""
+                xrw_req = "XMLHttpRequest"
+
+                if ch_reg and ch_reg != "null":
+                    try:
+                        r_json = json.loads(ch_reg) if isinstance(ch_reg, str) else ch_reg
+                        if isinstance(r_json, list) and r_json:
+                            regex1 = r_json[0].get("Regex1")
+                    except Exception:
+                        pass
+
+                if ch_hdrs and ch_hdrs != "null":
+                    try:
+                        h_json = json.loads(ch_hdrs) if isinstance(ch_hdrs, str) else ch_hdrs
+                        if isinstance(h_json, list) and h_json:
+                            ua_req  = h_json[0].get("UserAgent") or h_json[0].get("User-Agent") or ""
+                            ref_req = h_json[0].get("Referer")  or ""
+                            xrw_req = h_json[0].get("XRequestedWith") or "XMLHttpRequest"
+                    except Exception:
+                        pass
+
+                if not regex1:
+                    continue
+
+                extra = {"regex1": regex1}
+                if ua_req:
+                    extra["user_agent"] = ua_req
+                if ref_req:
+                    extra["referer"] = ref_req
+                if xrw_req != "XMLHttpRequest":
+                    extra["xrw"] = xrw_req
+
+                json_resp = await self._api_request(ch_url, **extra)
                 if json_resp:
                     try:
                         it = json.loads(json_resp)
+                        it["chName"] = ch_name
+                        if ua_req or ref_req:
+                            it["chHeaders"] = [{"UserAgent": ua_req, "Referer": ref_req, "XRequestedWith": xrw_req}]
                     except Exception:
                         pass
 
@@ -215,6 +257,36 @@ class InatBox(PluginBase):
 
             ua  = headers.get("UserAgent") or headers.get("User-Agent")
             ref = headers.get("Referer")
+
+            if ch_type in ("tekli_regex", "tekli_regex_mode"):
+                regex = "(.*)"
+                if ch_reg and ch_reg != "null":
+                    try:
+                        r_json = json.loads(ch_reg) if isinstance(ch_reg, str) else ch_reg
+                        if isinstance(r_json, list) and r_json:
+                            regex = r_json[0].get("Regex1", "(.*)")
+                    except Exception:
+                        pass
+
+                try:
+                    fetch_headers = {
+                        "User-Agent"       : ua or "",
+                        "Referer"          : ref or "",
+                        "X-Requested-With" : headers.get("XRequestedWith", ""),
+                    }
+                    yanıt   = await self.httpx.get(kaynak_url, headers=fetch_headers)
+                    eslesen = re.search(regex, yanıt.text.strip(), re.DOTALL)
+                    if eslesen:
+                        results.append(ExtractResult(
+                            url        = eslesen.group(1).strip(),
+                            name       = it.get("chName"),
+                            referer    = ref,
+                            user_agent = ua,
+                        ))
+                except Exception:
+                    pass
+
+                continue
 
             extracted = await self.extract(kaynak_url, referer=ref)
             if extracted:

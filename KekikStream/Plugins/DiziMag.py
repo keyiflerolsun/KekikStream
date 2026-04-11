@@ -7,7 +7,7 @@ class DiziMag(PluginBase):
     name        = "DiziMag"
     language    = "tr"
     main_url    = "https://dizimag.onl"
-    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
+    favicon     = "https://pbs.twimg.com/profile_images/428213918045970432/0YyV2All_400x400.jpeg"
     description = "DiziMag ile yabancı dizi izle ve film izle keyfi! Full HD 1080p kalite, güncel içerikler ve geniş arşivle sinema deneyimini yaşa."
 
     main_page = {

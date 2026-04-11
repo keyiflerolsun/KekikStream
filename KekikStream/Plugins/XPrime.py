@@ -6,7 +6,7 @@ class XPrime(PluginBase):
     name        = "XPrime"
     language    = "tr"
     main_url    = "https://api.themoviedb.org/3"
-    favicon     = "https://xprime.stream/favicon.ico"
+    favicon     = "https://xprime.stream/favicon/favicon-xmas.ico"
     description = "XPrime - Primenet, EEK ve diğer sunucular üzerinden yüksek kaliteli film izleme platformu."
 
     _api_key      = "84259f99204eeb7d45c7e3d8e36c6123"
