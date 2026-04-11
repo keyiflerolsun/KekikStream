@@ -151,9 +151,6 @@ class TLC(PluginBase):
             poster      = self.fix_url(poster),
             title       = title,
             description = description,
-            year        = "2026",
-            tags        = ["Yaşam", "Eğlence", "Belgesel"],
-            actors      = ["TLC Sunucuları"],
             episodes    = episodes,
         )
 

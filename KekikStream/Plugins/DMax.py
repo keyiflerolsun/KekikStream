@@ -151,9 +151,6 @@ class DMax(PluginBase):
             poster      = self.fix_url(poster),
             title       = title,
             description = description,
-            year        = "2026",
-            tags        = ["Belgesel", "Macera", "Eğlence"],
-            actors      = ["DMAX Sunucuları"],
             episodes    = episodes,
         )
 

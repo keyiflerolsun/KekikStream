@@ -13,8 +13,6 @@ class InatBox(PluginBase):
     _api_url = "http://sv2-webservisler:2585/api/v1/inatbox"
 
     main_page = {
-        "sinema"       : "Sinema Kanalları",
-        "dini"         : "Dini Kanallar",
         "gain"         : "Gain",
         "netflix"      : "Netflix",
         "disney"       : "Disney+",
@@ -23,7 +21,21 @@ class InatBox(PluginBase):
         "tabii"        : "Tabii",
         "yabanci-dizi" : "Yabancı Diziler",
         "yerli-dizi"   : "Yerli Diziler",
+        "aksiyon"      : "Aksiyon / Macera",
+        "korku"        : "Korku / Gerilim",
+        "komedi"       : "Komedi",
+        "bilim-kurgu"  : "Bilim Kurgu",
+        "fantastik"    : "Fantastik",
+        "dram"         : "Dram",
+        "suc"          : "Suç / Polisiye",
+        "animasyon"    : "Animasyon",
+        "romantik"     : "Romantik",
     }
+
+    _arama_sluglari = [
+        "gain", "netflix", "disney", "amazon", "hbo", "tabii",
+        "yabanci-dizi", "yerli-dizi",
+    ]
 
     async def _api_request(self, q: str, **extra_params) -> str:
         try:
@@ -43,7 +55,7 @@ class InatBox(PluginBase):
             veriler = json.loads(json_resp)
             results = []
             for veri in veriler:
-                if veri.get("diziType") in ("link", "link_mode") or veri.get("chType") in ("link", "link_mode"):
+                if veri.get("diziType") in ("link", "link_mode") or veri.get("chType") in ("link", "link_mode", "live_url_mode"):
                     continue
                 title  = veri.get("diziName") or veri.get("chName")
                 poster = veri.get("diziImg")  or veri.get("chImg")
@@ -60,7 +72,7 @@ class InatBox(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         query    = query.lower()
-        tasks    = [self._api_request(slug) for slug in self.main_page]
+        tasks    = [self._api_request(slug) for slug in self._arama_sluglari]
         yanıtlar = await self.gather_with_limit(tasks)
 
         results = []
@@ -84,12 +96,7 @@ class InatBox(PluginBase):
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
         veri       = json.loads(url)
-        ortak_meta = {
-            "year"   : "2026",
-            "tags"   : ["InatBox", "Dijital"],
-            "actors" : ["Inat Sunucuları"],
-            "rating" : "10",
-        }
+        ortak_meta = {}  # API yıl / tür / oyuncu bilgisi döndürmüyor
 
         if veri.get("diziType") in ("dizi", "dizi_mode"):
             title  = veri.get("diziName")
@@ -176,10 +183,10 @@ class InatBox(PluginBase):
 
             ch_type = it.get("chType", "")
             if ch_type in ("tekli_regex_lb_sh_3", "tekli_regex_lb_sh_3_mode"):
-                ch_url   = it.get("chUrl", "")
-                ch_reg   = it.get("chReg")
-                ch_hdrs  = it.get("chHeaders")
-                ch_name  = it.get("chName") or it.get("diziName") or self.name
+                ch_url  = it.get("chUrl", "")
+                ch_reg  = it.get("chReg")
+                ch_hdrs = it.get("chHeaders")
+                ch_name = it.get("chName") or it.get("diziName") or self.name
 
                 regex1  = None
                 ua_req  = ""
