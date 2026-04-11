@@ -31,8 +31,6 @@ class TLC(PluginBase):
         f"{main_url}/kesfet/yemek"              : "Yemek",
         f"{main_url}/kesfet/belgesel"           : "Belgesel",
         f"{main_url}/kesfet/korelendik"         : "Korelendik",
-        f"{main_url}/kesfet/saglik-guzellik"    : "Sağlık & Güzellik",
-        f"{main_url}/kesfet/gizem-gerilim"      : "Gizem & Gerilim",
     }
 
     def _extract_title(self, item: HTMLHelper) -> str | None:
@@ -49,14 +47,10 @@ class TLC(PluginBase):
         return title.strip() if title else None
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        if page > 1:
-            ajax_url = f"{self.main_url}/ajax/more"
-            payload  = {"type": "discover", "slug": url.split("/")[-1], "page": str(page)}
-            istek    = await self.httpx.post(ajax_url, data=payload, headers=self._headers)
-            html     = istek.text
-        else:
-            istek = await self.httpx.get(url)
-            html  = istek.text
+        ajax_url = f"{self.main_url}/ajax/more"
+        payload  = {"type": "discover", "slug": url.split("/")[-1], "page": str(page - 1)}
+        istek    = await self.httpx.post(ajax_url, data=payload, headers=self._headers)
+        html     = istek.text
 
         secici  = HTMLHelper(html)
         results = []
