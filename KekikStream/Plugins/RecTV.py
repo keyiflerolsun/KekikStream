@@ -14,7 +14,7 @@ class RecTV(PluginBase):
     name        = "RecTV"
     language    = "tr"
     main_url    = "https://a.prectv67.lol"
-    favicon     = "https://rectvapk.cc/wp-content/uploads/2023/02/Rec-TV.webp"
+    favicon     = "https://pbs.twimg.com/profile_images/1757857744034402304/8RYRb9mZ_400x400.png"
     description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
     sw_key = "4F5A9C3D9A86FA54EACEDDD635185/c3c5bd17-e37b-4b94-a944-8a3688a30452"

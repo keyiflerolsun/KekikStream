@@ -99,7 +99,8 @@ class AnimeYTX(PluginBase):
         # WPManga/AnimeXT Teması bölüm listesi
         for item in secici.select("div.eplister ul li, ul.clstyle li"):
             ep_url = item.select_attr("a", "href")
-            if not ep_url: continue
+            if not ep_url:
+                continue
 
             ep_num_text = item.select_text("div.epl-num") or item.select_text("span.leftoff")
             ep_title    = item.select_text("div.epl-title") or item.select_text("span.leftat")
@@ -178,7 +179,8 @@ class AnimeYTX(PluginBase):
         # Find players in select menu (Base64 encoded iframes)
         for opt in secici.select("select.mirror option"):
             val = opt.attrs.get("value")
-            if not val: continue
+            if not val:
+                continue
 
             try:
                 decoded = base64.b64decode(val).decode("utf-8")

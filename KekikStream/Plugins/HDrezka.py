@@ -336,7 +336,8 @@ class HDrezka(PluginBase):
                 links   = match.group(2).split(" or ")
                 for link in links:
                     link = link.strip()
-                    if not link: continue
+                    if not link:
+                        continue
 
                     label = f"{source_name} | {quality}"
                     if ".m3u8" in link:

@@ -218,7 +218,9 @@ class TvDiziler(PluginBase):
 
                 for btn in group.select("button[data-hhs]"):
                     data_hhs_raw = btn.select_attr(None, "data-hhs")
-                    if not data_hhs_raw: continue
+                    if not data_hhs_raw:
+                        continue
+
                     for src in data_hhs_raw.split(","):
                         if not src or "404.html" in src or src in seen_srcs:
                             continue
@@ -241,7 +243,9 @@ class TvDiziler(PluginBase):
         else:
             for btn in secici.select("button[data-hhs]"):
                 data_hhs_raw = btn.select_attr(None, "data-hhs")
-                if not data_hhs_raw: continue
+                if not data_hhs_raw:
+                    continue
+
                 for src in data_hhs_raw.split(","):
                     if not src or "404.html" in src or src in seen_srcs:
                         continue
