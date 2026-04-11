@@ -97,7 +97,7 @@ class DiziPal(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        poster      = self.fix_url(secici.regex_first(r'"thumbnailUrl":"(https?://[^"]+)"'))
+        poster      = self.fix_url(secici.select_attr("[property='og:image']", "content"))
         description = secici.select_attr("meta[property='og:description']", "content")
         title       = secici.select_text("h1")
 
@@ -142,7 +142,7 @@ class DiziPal(PluginBase):
 
             return SeriesInfo(
                 url         = url,
-                poster      = poster.replace("https://test4test.online", self.main_url),
+                poster      = poster,
                 title       = title,
                 description = description,
                 tags        = tags,
@@ -155,7 +155,7 @@ class DiziPal(PluginBase):
 
         return MovieInfo(
             url         = url,
-            poster      = poster.replace("https://test4test.online", self.main_url),
+            poster      = poster,
             title       = title,
             description = description,
             tags        = tags,
