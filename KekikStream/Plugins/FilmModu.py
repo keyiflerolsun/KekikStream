@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class FilmModu(PluginBase):
     name        = "FilmModu"
     language    = "tr"
-    main_url    = "https://www.filmmodu.nl"
+    main_url    = "https://www.filmmodu.one"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Film modun geldiyse yüksek kalitede hd film izle, 1080p izleyebileceğiniz reklamsız ve hızlı film sitesi."
 
