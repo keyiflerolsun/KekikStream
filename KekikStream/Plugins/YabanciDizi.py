@@ -6,7 +6,7 @@ import time
 class YabanciDizi(PluginBase):
     name        = "YabanciDizi"
     language    = "tr"
-    main_url    = "https://yabancidizi.so"
+    main_url    = "https://yabancidizi.life"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Son çıkan yabancı dizi ve filmleri yabancidizi' de izle. En yeni yabancı film ve diziler, türkçe altyazılı yada dublaj olarak 1080p kalitesinde hd izle."
 

@@ -12,7 +12,7 @@ class XPrime(PluginBase):
     _api_key      = "84259f99204eeb7d45c7e3d8e36c6123"
     _img_url      = "https://image.tmdb.org/t/p/w500"
     _back_img_url = "https://image.tmdb.org/t/p/w780"
-    _api_url      = "http://sv2-webservisler:2585/api/v1/xprime"
+    _api_url      = "http://px-webservisler:2585/api/v1/xprime"
 
     main_page = {
         f"{main_url}/trending/movie/week?api_key={_api_key}&language=tr-TR&page=SAYFA" : "Haftanın Popülerleri",
