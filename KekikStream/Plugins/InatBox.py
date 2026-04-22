@@ -10,7 +10,7 @@ class InatBox(PluginBase):
     favicon     = "https://gitlab.com/uploads/-/system/project/avatar/67327262/removebg.png"
     description = "Inat Box APK, Türkiye'nin en popüler canlı TV ve dijital platform içeriklerini sunan uygulamasıdır."
 
-    _api_url = "http://100.100.1.101:2585/api/v1/inatbox"
+    _api_url = "http://px-webservisler:2585/api/v1/inatbox"
 
     main_page = {
         "gain"         : "Gain",
