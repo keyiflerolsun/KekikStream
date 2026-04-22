@@ -13,7 +13,7 @@ def _decode_unicode(text: str | None) -> str | None:
 class RecTV(PluginBase):
     name        = "RecTV"
     language    = "tr"
-    main_url    = "https://a.prectv67.lol"
+    main_url    = "https://a.prectv70.lol"
     favicon     = "https://pbs.twimg.com/profile_images/1757857744034402304/8RYRb9mZ_400x400.png"
     description = "RecTv APK, Türkiye’deki en popüler Çevrimiçi Medya Akış platformlarından biridir. Filmlerin, Canlı Sporların, Web Dizilerinin ve çok daha fazlasının keyfini ücretsiz çıkarın."
 
@@ -51,7 +51,7 @@ class RecTV(PluginBase):
 
     async def _make_headers(self, method: str, path: str, body: bytes = b"") -> dict:
         try:
-            response = await self.httpx.get(f"http://px-webservisler:2585/api/v1/rectv?method={method}&path={path}&body={body.decode() if body else ''}")
+            response = await self.httpx.get(f"http://100.100.1.101:2585/api/v1/rectv?method={method}&path={path}&body={body.decode() if body else ''}")
             veriler  = response.json()
             if veriler.get("success"):
                 headers = veriler.get("headers")
