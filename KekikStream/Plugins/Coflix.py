@@ -6,7 +6,7 @@ import base64, re, json
 class Coflix(PluginBase):
     name        = "Coflix"
     language    = "fr"
-    main_url    = "https://coflix.wales"
+    main_url    = "https://coflix.click"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Regarder des Films en ligne Coflix✓ Voir Série en ligne Complète Films et séries coflix en haute qualité.qualité full HD"
 
