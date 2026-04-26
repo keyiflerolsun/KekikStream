@@ -6,7 +6,7 @@ import re
 class DoramasLatinoX(PluginBase):
     name        = "DoramasLatinoX"
     language    = "mx"
-    main_url    = "https://doramaslatinox.com"
+    main_url    = "https://doramafox.es"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Doramas en Audio Español Latino y Subtitulado"
 
