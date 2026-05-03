@@ -1,10 +1,10 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ...CLI      import konsol, cikis_yap
-from .PluginBase import PluginBase
-from pathlib     import Path
-import os, importlib.util, traceback
+from ...CLI                       import konsol, cikis_yap
+from .PluginBase                  import PluginBase
+from pathlib                      import Path
 from ..Extractor.ExtractorManager import ExtractorManager
+import os, importlib.util, traceback
 
 class PluginLoader:
     def __init__(self, plugins_dir: str, ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
