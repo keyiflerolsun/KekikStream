@@ -2,15 +2,14 @@
 
 from ...CLI                       import konsol
 from abc                          import ABC, abstractmethod
-from curl_cffi.requests           import AsyncSession
-from httpx                        import AsyncClient
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
 from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
 from ..Helpers.MethodCache        import method_cache
+from ..Helpers.FallbackClients    import FallbackHTTPX, FallbackCF
 from urllib.parse                 import urljoin
-import asyncio
+import asyncio, httpx, curl_cffi
 
 class PluginBase(ABC):
     name        = "Plugin"
@@ -31,7 +30,7 @@ class PluginBase(ABC):
 
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
-        self._cf_session = AsyncSession(impersonate="chrome")
+        self._cf_session = FallbackCF(impersonate="chrome")
         self._cf_session.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -41,22 +40,31 @@ class PluginBase(ABC):
             proxy_str                = proxy if isinstance(proxy, str) else (proxy.get("https") or proxy.get("http"))
             self._cf_session.proxies = {"http": proxy_str, "https": proxy_str}
 
+            cf_fallback = curl_cffi.AsyncSession(impersonate="chrome")
+            cf_fallback.headers.update(self._cf_session.headers)
+            self._cf_session.set_fallback(cf_fallback)
+
         # Convert dict proxy to string for httpx if necessary
         httpx_proxy = proxy
         if isinstance(proxy, dict):
             httpx_proxy = proxy.get("https") or proxy.get("http")
 
         # httpx - lightweight and safe for most HTTP requests
-        self.httpx = AsyncClient(
+        self.httpx = FallbackHTTPX(
             timeout          = 10,
             follow_redirects = True,
-            proxy            = httpx_proxy
+            proxy            = httpx_proxy,
         )
         self.httpx.headers.update(self._cf_session.headers)
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         })
+
+        if httpx_proxy:
+            httpx_fallback = httpx.AsyncClient(timeout=10, follow_redirects=True)
+            httpx_fallback.headers.update(self.httpx.headers)
+            self.httpx.set_fallback(httpx_fallback)
 
         self.media_handler = MediaHandler()
 
