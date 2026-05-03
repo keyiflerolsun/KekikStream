@@ -1,6 +1,6 @@
 [project]
 name        = "KekikStream"
-version     = "3.3.4"
+version     = "3.3.5"
 description = "terminal üzerinden medya içeriği aramanızı ve VLC/MPV gibi popüler medya oynatıcılar aracılığıyla doğrudan izlemenizi sağlayan modüler ve genişletilebilir bir yapı."
 keywords    = ["KekikStream", "KekikAkademi", "keyiflerolsun"]
 license     = { text = "GPLv3+" }
