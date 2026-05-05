@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 class AnimeYTX(PluginBase):
     name        = "AnimeYTX"
     language    = "mx"
-    main_url    = "https://animeytx.net"
+    main_url    = "https://wwv.animeytx.net"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Únete a la familia de AnimeYT.es y disfruta del anime online gratis. Disfruta con tus amigos del contenido más popular de la animación japonesa."
 

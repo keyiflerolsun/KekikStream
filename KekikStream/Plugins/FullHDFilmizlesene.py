@@ -7,7 +7,7 @@ import json
 class FullHDFilmizlesene(PluginBase):
     name        = "FullHDFilmizlesene"
     language    = "tr"
-    main_url    = "https://www.fullhdfilmizlesene.live"
+    main_url    = "https://www.fullhdfilmizlesene.life"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Fullhdfilmizlesene’de güncel yerli ve yabancı filmleri Full HD kalitede keşfedin. Tür, yıl ve puana göre filtreleyin; mobilde hızlı, kesintisiz izleyin."
 

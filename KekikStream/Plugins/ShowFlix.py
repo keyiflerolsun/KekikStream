@@ -6,7 +6,7 @@ import json
 class ShowFlix(PluginBase):
     name        = "ShowFlix"
     language    = "en"
-    main_url    = "https://showflix.store"
+    main_url    = "https://showflix.online"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Showflix - Watch and Download Latest Movies and TV Shows for Free. Stream in HD with No Ads!"
 
