@@ -1,7 +1,9 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
-from urllib.parse     import urlparse, parse_qs
+from KekikStream.Core                           import ExtractorBase, ExtractResult, HTMLHelper
+from KekikStream.Core.Extractor.ExtractorModels import Subtitle
+from urllib.parse                               import urlparse, parse_qs
+import json
 
 class VideoParktop(ExtractorBase):
     name     = "VideoParktop"
@@ -10,59 +12,36 @@ class VideoParktop(ExtractorBase):
     supported_domains = ["videopark.top"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        qs     = parse_qs(urlparse(url).query)
-        vid_id = qs.get("id", [None])[0]
+        resp   = await self.async_cf_get(url, headers={"Referer": referer or self.main_url})
+        secici = HTMLHelper(resp.text)
 
-        # /titan/w/{code} formatı için path'den ID çıkar
-        if not vid_id:
-            path_parts = urlparse(url).path.rstrip("/").split("/")
-            if len(path_parts) >= 3 and path_parts[-2] == "w":
-                vid_id = path_parts[-1]
-
-        if not vid_id:
-            raise ValueError(f"VideoParktop: ID bulunamadı. {url}")
-
-        parsed   = urlparse(url)
-        base_url = f"{parsed.scheme}://{parsed.netloc}"
-
-        # Titan path handling
-        api_path = "/oplayer/reload.php"
-        if "/titan/" in url:
-            api_path = "/titan/oplayer/reload.php"
-
-        api_url  = f"{base_url}{api_path}?id={vid_id}&nocache=1"
+        # var _sd = {...} formatını yakala
+        sd_data = secici.regex_first(r'var\s+_sd\s*=\s*({.*?});', resp.text)
+        if not sd_data:
+            # Alternatif: playerConfig içindeki source
+            stream_url = secici.regex_first(r'file:\s*(_sd\.stream_url|["\']([^"\']+)["\'])')
+            if not stream_url or "_sd" in stream_url:
+                 raise ValueError(f"VideoParktop: stream_url bulunamadı. {url}")
+            return ExtractResult(name=self.name, url=self.fix_url(stream_url), referer=url)
 
         try:
-            resp = await self.async_cf_get(api_url, headers={"Referer": url})
-            data = resp.json()
-        except:
-            # Fallback to direct text search if JSON fails
-            resp = await self.async_cf_get(url, headers={"Referer": referer or self.main_url})
-            sel  = HTMLHelper(resp.text)
-            m3u8 = sel.regex_first(r'["\']?file["\']?\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']')
-            if m3u8:
-                return ExtractResult(name=self.name, url=self.fix_url(m3u8), referer=url)
-            raise ValueError(f"VideoParktop: Video linki bulunamadı. {url}")
+            data       = json.loads(sd_data)
+            stream_url = data.get("stream_url")
+            if not stream_url:
+                raise ValueError("stream_url not in _sd")
 
-        if data.get("error"):
-            raise ValueError(f"VideoParktop: API hatası — {data['error']}. {url}")
+            subtitles = []
+            for sub in data.get("subtitles", []):
+                subtitles.append(Subtitle(
+                    url  = self.fix_url(sub.get("file")),
+                    name = sub.get("label", "Altyazı")
+                ))
 
-        # HLS tercih et, yoksa ilk MP4
-        hls = (data.get("hlsSource") or {}).get("file")
-        if hls:
             return ExtractResult(
-                name    = self.name,
-                url     = self.fix_url(hls),
-                referer = base_url + "/",
+                name      = self.name,
+                url       = self.fix_url(stream_url),
+                referer   = url,
+                subtitles = subtitles
             )
-
-        mp4_sources = data.get("mp4Sources") or []
-        if mp4_sources:
-            best = sorted(mp4_sources, key=lambda x: x.get("height", 0), reverse=True)[0]
-            return ExtractResult(
-                name    = self.name,
-                url     = self.fix_url(best["file"]),
-                referer = base_url + "/",
-            )
-
-        raise ValueError(f"VideoParktop: Video linki bulunamadı. {url}")
+        except Exception as e:
+             raise ValueError(f"VideoParktop: JSON decode hatası: {e}. {url}")

@@ -32,7 +32,7 @@ class HDrezka(PluginBase):
         query = parts[1] if len(parts) > 1 else ""
 
         target_url = f"{base}page/{page}/?{query}"
-        istek      = await self.httpx.get(target_url)
+        istek      = await self.async_cf_get(target_url)
         secici     = HTMLHelper(istek.text)
 
         results = []
@@ -52,7 +52,7 @@ class HDrezka(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         link   = f"{self.main_url}/search/?do=search&subaction=search&q={query}"
-        istek  = await self.httpx.get(link)
+        istek  = await self.async_cf_get(link)
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -70,7 +70,7 @@ class HDrezka(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         doc_id = url.split("/")[-1].split("-")[0]
@@ -140,7 +140,7 @@ class HDrezka(PluginBase):
 
                     # Fetch episodes for this season
                     ep_ajax_url = f"{self.main_url}/ajax/get_cdn_series/?id={doc_id}&translator_id={t_id}&season={s_id}&episode=0&action=get_episodes"
-                    ep_istek    = await self.httpx.post(
+                    ep_istek    = await self.async_cf_post(
                         ep_ajax_url,
                         data    = {"id": doc_id, "translator_id": t_id, "season": s_id, "episode": 0, "action": "get_episodes"},
                         headers = {"X-Requested-With": "XMLHttpRequest", "Referer": url}
@@ -231,11 +231,11 @@ class HDrezka(PluginBase):
 
         if not res.get("server"):
             # Local Movie Link
-            istek  = await self.httpx.get(res["ref"])
+            istek  = await self.async_cf_get(res["ref"])
             secici = HTMLHelper(istek.text)
 
             # Look for script data
-            script_match = re.search(r"sof\.tv\.initCDNMoviesEvents\(.+?false,\s*({.+?})\);", istek.text, re.DOTALL)
+            script_match = re.search(r"sof\.tv\.initCDNMoviesEvents\(.+?false,\s*(?:false,\s*)?({.+?})\);", istek.text, re.DOTALL)
             if script_match:
                 try:
                     source_data = json.loads(script_match.group(1))
@@ -263,7 +263,7 @@ class HDrezka(PluginBase):
 
                         timestamp = int(time.time() * 1000)
                         api_url   = f"{self.main_url}/ajax/get_cdn_series/?t={timestamp}"
-                        istek_api = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
+                        istek_api = await self.async_cf_post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
                         try:
                             api_data = istek_api.json()
                             if api_data.get("url"):
@@ -279,7 +279,7 @@ class HDrezka(PluginBase):
                                     f_s_id  = first_ep_li.attrs.get("data-season_id") or res.get("season") or "1"
                                     # Recursive-ish call for the first episode
                                     payload.update({"action": "get_stream", "season": f_s_id, "episode": f_ep_id})
-                                    istek_f = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
+                                    istek_f = await self.async_cf_post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
                                     f_data = istek_f.json()
                                     if f_data.get("url"):
                                         results.extend(self._invoke_sources("Default", f_data["url"]))
@@ -310,7 +310,7 @@ class HDrezka(PluginBase):
 
                 timestamp = int(time.time() * 1000)
                 api_url   = f"{self.main_url}/ajax/get_cdn_series/?t={timestamp}"
-                istek     = await self.httpx.post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
+                istek     = await self.async_cf_post(api_url, data=payload, headers={"Referer": res["ref"], "X-Requested-With": "XMLHttpRequest"})
 
                 try:
                     data = istek.json()
@@ -322,7 +322,11 @@ class HDrezka(PluginBase):
         return results
 
     def _invoke_sources(self, source_name: str, encrypted_url: str) -> list[ExtractResult]:
-        decrypted = self._decrypt_stream_url(encrypted_url)
+        if encrypted_url.startswith("[") or encrypted_url.startswith("http"):
+            decrypted = encrypted_url
+        else:
+            decrypted = self._decrypt_stream_url(encrypted_url)
+
         if not decrypted:
             return []
 
@@ -330,9 +334,9 @@ class HDrezka(PluginBase):
         # Format: [720p]https://... or [1080p]https://...
         # Split by comma
         for part in decrypted.split(","):
-            match = re.search(r"\[(\d+p.*?)\](.*)", part)
+            match = re.search(r"\[(.*?)\](.*)", part)
             if match:
-                quality = match.group(1)
+                quality = re.sub(r"<[^>]+>", "", match.group(1)).strip()
                 links   = match.group(2).split(" or ")
                 for link in links:
                     link = link.strip()

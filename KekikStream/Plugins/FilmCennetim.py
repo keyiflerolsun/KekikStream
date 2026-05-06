@@ -6,37 +6,37 @@ import re
 class FilmCennetim(PluginBase):
     name        = "FilmCennetim"
     language    = "tr"
-    main_url    = "http://filmcennetim.com"
+    main_url    = "https://filmcennetim.com"
     favicon     = "https://filmcennetim.com/wp-content/uploads/2026/02/film-cenneti-logo.png"
     description = "Film Cenneti, Türkçe dublaj ve 1080p kalitede en yeni filmleri HD izleyebileceğiniz bir platformdur. Hızlı, reklamsız ve kesintisiz sinema keyfi!."
 
     main_page   = {
-        f"{main_url}/dizi/aile-filmleri/page"        : "Aile",
-        f"{main_url}/dizi/aksiyon-filmleri/page"     : "Aksiyon",
-        f"{main_url}/dizi/animasyon-filmleri/page"   : "Animasyon",
-        f"{main_url}/dizi/anime-filmleri/page"       : "Anime",
-        f"{main_url}/dizi/belgeseler-filmleri/page"  : "Belgeseler",
-        f"{main_url}/dizi/bilim-kurgu-filmleri/page" : "Bilim-Kurgu",
-        f"{main_url}/dizi/biyografi-filmleri/page"   : "Biyoğrafi",
-        f"{main_url}/dizi/dizi-izle/page"            : "Diziler",
-        f"{main_url}/dizi/dram-filmleri/page"        : "Dram",
-        f"{main_url}/dizi/erotik-filmleri/page"      : "Erotik",
-        f"{main_url}/dizi/fantastik-filmleri/page"   : "Fantastik",
-        f"{main_url}/dizi/gerilim-filmleri/page"     : "Gerilim",
-        f"{main_url}/dizi/gizem-filmleri/page"       : "Gizem",
-        f"{main_url}/dizi/hint-filmleri/page"        : "Hint",
-        f"{main_url}/dizi/komedi-filmleri/page"      : "Komedi",
-        f"{main_url}/dizi/korku-filmleri/page"       : "Korku",
-        f"{main_url}/dizi/macera-filmleri/page"      : "Macera",
-        f"{main_url}/dizi/muzikal-filmleri/page"     : "Müzikal",
-        f"{main_url}/dizi/netflix-filmleri/page"     : "Netflix",
-        f"{main_url}/dizi/romantik-filmleri/page"    : "Romantik",
-        f"{main_url}/dizi/savas-filmleri/page"       : "Savaş",
-        f"{main_url}/dizi/spor-filmleri/page"        : "Spor",
-        f"{main_url}/dizi/suc-filmleri/page"         : "Suç",
-        f"{main_url}/dizi/tarihi-filmleri/page"      : "Tarihi",
-        f"{main_url}/dizi/western-filmleri/page"     : "Western",
-        f"{main_url}/dizi/yerli-filmleri/page"       : "Yerli",
+        f"{main_url}/Kategori/tur/aile-filmleri"        : "Aile",
+        f"{main_url}/Kategori/tur/aksiyon-filmleri"     : "Aksiyon",
+        f"{main_url}/Kategori/tur/animasyon-filmleri"   : "Animasyon",
+        f"{main_url}/Kategori/tur/anime-filmleri"       : "Anime",
+        f"{main_url}/Kategori/tur/belgeseler-filmleri"  : "Belgeseler",
+        f"{main_url}/Kategori/tur/bilim-kurgu-filmleri" : "Bilim-Kurgu",
+        f"{main_url}/Kategori/tur/biyografi-filmleri"   : "Biyoğrafi",
+        f"{main_url}/Kategori/dizi-izle"                : "Diziler",
+        f"{main_url}/Kategori/tur/dram-filmleri-hd"     : "Dram",
+        f"{main_url}/Kategori/tur/erotik-filmleri"      : "Erotik",
+        f"{main_url}/Kategori/tur/fantastik-filmler"    : "Fantastik",
+        f"{main_url}/Kategori/tur/gerilim-filmleri-hd"  : "Gerilim",
+        f"{main_url}/Kategori/tur/gizem-filmleri"       : "Gizem",
+        f"{main_url}/Kategori/tur/hint-filmleri"        : "Hint",
+        f"{main_url}/Kategori/tur/komedi-filmleri"      : "Komedi",
+        f"{main_url}/Kategori/tur/korku-filmleri"       : "Korku",
+        f"{main_url}/Kategori/tur/macera-filmleri"      : "Macera",
+        f"{main_url}/Kategori/tur/muzikal-filmleri"     : "Müzikal",
+        f"{main_url}/Kategori/tur/netflix-filmleri"     : "Netflix",
+        f"{main_url}/Kategori/tur/romantik-filmleri"    : "Romantik",
+        f"{main_url}/Kategori/tur/savas-filmleri"       : "Savaş",
+        f"{main_url}/Kategori/tur/spor-filmleri"        : "Spor",
+        f"{main_url}/Kategori/tur/suc-filmleri"         : "Suç",
+        f"{main_url}/Kategori/tur/tarihi-filmleri"      : "Tarihi",
+        f"{main_url}/Kategori/tur/western-filmleri"     : "Western",
+        f"{main_url}/Kategori/tur/yerli-filmleri"       : "Yerli",
     }
 
     async def get_articles(self, secici: HTMLHelper) -> list[dict]:

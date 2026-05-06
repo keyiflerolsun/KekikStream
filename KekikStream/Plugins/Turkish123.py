@@ -27,7 +27,7 @@ class Turkish123(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = f"{url}{page}"
-        istek    = await self.httpx.get(full_url)
+        istek    = await self.async_cf_get(full_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -51,7 +51,7 @@ class Turkish123(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -73,7 +73,7 @@ class Turkish123(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo | MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1[itemprop=name]")
@@ -120,7 +120,7 @@ class Turkish123(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
 
         # Regex for iframe: <iframe.*src=["|'](\S+)["|']\s
         iframes = re.findall(r'<iframe.*?src=["\'](\S+?)["\']', istek.text)

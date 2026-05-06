@@ -23,7 +23,7 @@ class KoreanTurk(PluginBase):
         return re.sub(r"-[0-9]+(-final)?-bolum-izle\.html", "", url)
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.async_cf_get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -50,7 +50,7 @@ class KoreanTurk(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/")
+        istek  = await self.async_cf_get(f"{self.main_url}/")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -69,7 +69,7 @@ class KoreanTurk(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h3") or ""
@@ -102,7 +102,7 @@ class KoreanTurk(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         urls = []

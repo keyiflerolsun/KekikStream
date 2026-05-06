@@ -29,7 +29,7 @@ class YoTurkish(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = url if page <= 1 else f"{url.rstrip('/')}/page/{page}/"
-        istek    = await self.httpx.get(full_url)
+        istek    = await self.async_cf_get(full_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -46,7 +46,7 @@ class YoTurkish(PluginBase):
 
     async def search(self, query: str) -> list[SearchResult]:
         full_url = f"{self.main_url}/?s={query}"
-        istek    = await self.httpx.get(full_url)
+        istek    = await self.async_cf_get(full_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -62,7 +62,7 @@ class YoTurkish(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1")
@@ -111,7 +111,7 @@ class YoTurkish(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         text   = istek.text
         secici = HTMLHelper(text)
 
