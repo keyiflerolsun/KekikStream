@@ -50,7 +50,7 @@ class FlwBasePlugin(PluginBase):
         ]
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         content_id  = secici.select_attr("div.detail_page-watch", "data-id")
@@ -98,7 +98,7 @@ class FlwBasePlugin(PluginBase):
         if "movie" in url:
             return MovieInfo(**common_info)
 
-        seasons_resp = await self.httpx.get(f"{self.main_url}/ajax/season/list/{content_id}")
+        seasons_resp = await self.async_cf_get(f"{self.main_url}/ajax/season/list/{content_id}")
         sh           = HTMLHelper(seasons_resp.text)
 
         episodes = []
@@ -106,7 +106,7 @@ class FlwBasePlugin(PluginBase):
             season_id = season.attrs.get("data-id")
             s_val, _  = sh.extract_season_episode(season.text())
 
-            e_resp = await self.httpx.get(f"{self.main_url}/ajax/season/episodes/{season_id}")
+            e_resp = await self.async_cf_get(f"{self.main_url}/ajax/season/episodes/{season_id}")
             eh     = HTMLHelper(e_resp.text)
 
             for ep in eh.select(".eps-item"):
@@ -129,7 +129,7 @@ class FlwBasePlugin(PluginBase):
         elif "list/" in url:
             servers_url = f"list/{url.split('/')[-1]}"
         else:
-            istek      = await self.httpx.get(url)
+            istek      = await self.async_cf_get(url)
             secici     = HTMLHelper(istek.text)
             content_id = secici.select_attr("div.detail_page-watch", "data-id")
             if not content_id:
@@ -137,7 +137,7 @@ class FlwBasePlugin(PluginBase):
 
             servers_url = f"list/{content_id}"
 
-        servers_resp = await self.httpx.get(f"{self.main_url}/ajax/episode/{servers_url}")
+        servers_resp = await self.async_cf_get(f"{self.main_url}/ajax/episode/{servers_url}")
         sh           = HTMLHelper(servers_resp.text)
 
         results = []
@@ -145,7 +145,7 @@ class FlwBasePlugin(PluginBase):
             server_name = server.text(strip=True)
             link_id     = server.attrs.get("data-linkid") or server.attrs.get("data-id")
             try:
-                source_resp = await self.httpx.get(f"{self.main_url}/ajax/episode/sources/{link_id}")
+                source_resp = await self.async_cf_get(f"{self.main_url}/ajax/episode/sources/{link_id}")
                 video_url   = source_resp.json().get("link")
             except Exception:
                 video_url = None
