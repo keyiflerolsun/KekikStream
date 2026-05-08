@@ -6,7 +6,7 @@ import re
 class DiziMom(PluginBase):
     name        = "DiziMom"
     language    = "tr"
-    main_url    = "https://www.dizimom.fit"
+    main_url    = "https://www.dizimom.org/home"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Binlerce yerli yabancı dizi arşivi, tüm sezonlar, kesintisiz bölümler. Sadece dizi izle, Dizimom heryerde seninle!"
 
