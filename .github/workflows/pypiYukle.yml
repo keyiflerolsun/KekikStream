@@ -14,7 +14,7 @@ on:
 
 jobs:
   PyPIYukleyici:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name : Depo Kontrolü
