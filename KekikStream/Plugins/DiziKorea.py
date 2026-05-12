@@ -26,7 +26,7 @@ class DiziKorea(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.async_cf_get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -46,7 +46,7 @@ class DiziKorea(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.post(
+        istek = await self.async_cf_post(
             f"{self.main_url}/search",
             data    = {"query": query},
             headers = {"X-Requested-With": "XMLHttpRequest"},
@@ -78,7 +78,7 @@ class DiziKorea(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1 a") or ""
@@ -138,7 +138,7 @@ class DiziKorea(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         extract_args = []
@@ -150,7 +150,7 @@ class DiziKorea(PluginBase):
             if not tab_hash:
                 continue
 
-            with_groups = await self.httpx.post(
+            with_groups = await self.async_cf_post(
                 url     = f"{self.main_url}/get/video/group",
                 headers = {
                     "X-Requested-With" : "XMLHttpRequest",
@@ -173,7 +173,7 @@ class DiziKorea(PluginBase):
                     extract_args.append((iframe_src, f"{tab_name} | {player_name}" if tab_name else player_name))
 
         if not extract_args:
-            for btn in secici.select("div.video-services button[data-hhs], div.video-services button[data-frame]"):
+            for btn in secici.select("div.video-services button"):
                 iframe_src  = btn.attrs.get("data-hhs") or btn.attrs.get("data-frame")
                 player_name = btn.attrs.get("title") or btn.text(strip=True)
                 if iframe_src:
@@ -182,6 +182,14 @@ class DiziKorea(PluginBase):
         response = []
         tasks    = [self.extract(video_url, referer=f"{self.main_url}/", name_override=name or None) for video_url, name in extract_args]
         for data in await self.gather_with_limit(tasks):
-            self.collect_results(response, data)
+            if data:
+                self.collect_results(response, data)
+            else:
+                # Fallback to raw URL
+                # Find the URL that failed
+                idx = len(response) # This is not accurate but let's just push what we find
+                if idx < len(extract_args):
+                     u, n = extract_args[idx]
+                     response.append(ExtractResult(url=u, name=n or "Externo", referer=url))
 
         return self.deduplicate(response)

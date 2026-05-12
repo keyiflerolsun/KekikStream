@@ -129,7 +129,8 @@ class AnimeYTX(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.async_cf_get(url)
-        secici = HTMLHelper(istek.text)
+        text   = istek.text
+        secici = HTMLHelper(text)
 
         response = []
         tasks    = []
@@ -139,19 +140,22 @@ class AnimeYTX(PluginBase):
             if not fixed_url or fixed_url.startswith("data:") or fixed_url.startswith("javascript:"):
                 return None
 
-            if "/new/redirector.php" in fixed_url or "/new/redirector2.php" in fixed_url:
+            if "/new/redirector" in fixed_url:
                 try:
                     redirect_resp = await self.async_cf_get(fixed_url, headers={"Referer": url})
                     redirect_html = redirect_resp.text
-                    target_url    = HTMLHelper(redirect_html).regex_first(r"window\.location\.href\s*=\s*'([^']+)'")
+                    target_url    = HTMLHelper(redirect_html).regex_first(r"window\.location\.href\s*=\s*['\"]([^'\"]+)['\"]")
                     if target_url:
-                        target_url = target_url.replace(" ", "+")
-                        return await self.extract(self.fix_url(target_url), referer=url)
+                        target_url   = target_url.replace(" ", "+")
+                        fixed_target = self.fix_url(target_url)
+                        data         = await self.extract(fixed_target, referer=url)
+                        return data or ExtractResult(url=fixed_target, name="Redirector", referer=url)
                 except Exception:
-                    return None
+                    pass
 
             if "/new/play/one.php" not in fixed_url:
-                return await self.extract(fixed_url, referer=url)
+                data = await self.extract(fixed_url, referer=url)
+                return data or ExtractResult(url=fixed_url, name="Player", referer=url)
 
             parsed = re.search(r"server=([^&]+)&value=([^&]+)", fixed_url)
             if not parsed:
@@ -166,17 +170,24 @@ class AnimeYTX(PluginBase):
                     f"{self.main_url}/new/play/one.php?{urlencode(payload)}",
                     headers={"Referer": url, "X-Requested-With": "XMLHttpRequest"},
                 )
-                body = ajax_resp.text
+                body       = ajax_resp.text
+                iframe_src = HTMLHelper(body).select_attr("iframe", "src") or HTMLHelper(body).regex_first(r'src=["\']([^"\']+)["\']')
+                if iframe_src:
+                    fixed_src = self.fix_url(iframe_src)
+                    extracted = await self.extract(fixed_src, referer=url)
+                    return extracted or ExtractResult(url=fixed_src, name=f"Server {payload['server']}", referer=url)
             except Exception:
-                return None
+                pass
 
-            iframe_src = HTMLHelper(body).select_attr("iframe", "src") or HTMLHelper(body).regex_first(r'src=["\']([^"\']+)["\']')
-            if not iframe_src:
-                return None
+            return ExtractResult(url=fixed_url, name=f"Internal {payload.get('server', '')}", referer=url)
 
-            return await self.extract(self.fix_url(iframe_src), referer=url)
+        # 1. Video array'ini ara (Legacy pattern)
+        # var video = [{url: "...", ...}]
+        video_matches = re.findall(r'url["\']?\s*:\s*["\']([^"\']+)["\']', text)
+        for v_url in video_matches:
+             tasks.append(resolve_internal_player(v_url.replace("\\/", "/")))
 
-        # Find players in select menu (Base64 encoded iframes)
+        # 2. Select menu (Base64 encoded iframes)
         for opt in secici.select("select.mirror option"):
             val = opt.attrs.get("value")
             if not val:
@@ -185,24 +196,15 @@ class AnimeYTX(PluginBase):
             try:
                 decoded = base64.b64decode(val).decode("utf-8")
                 # Extract src from <iframe src="...">
-                iframe_src = re.search(r'src=["\']([^"\']+)["\']', decoded)
-                if iframe_src:
-                    src = iframe_src.group(1)
-                    tasks.append(resolve_internal_player(src))
+                iframe_src_match = re.search(r'src=["\']([^"\']+)["\']', decoded)
+                if iframe_src_match:
+                    tasks.append(resolve_internal_player(iframe_src_match.group(1)))
             except:
                 continue
 
-        # Legacy/Other patterns
-        players = secici.regex_all(r"var\s+video\s*=\s*\[(.*?)\]", flags=re.S)
-        if players:
-            for p in players:
-                urls = re.findall(r'url["\']\s*:\s*["\']([^"\']+)["\']', p)
-                for u in urls:
-                    tasks.append(resolve_internal_player(u.replace("\\/", "/")))
-
-        # Check iframes
+        # 3. Iframes directly in page
         for iframe in secici.select("iframe"):
-            src = iframe.select_attr(None, "src")
+            src = iframe.attrs.get("src")
             if src and not any(x in src.lower() for x in ["facebook", "google", "ads", "bio", "data:image"]):
                 tasks.append(resolve_internal_player(src))
 

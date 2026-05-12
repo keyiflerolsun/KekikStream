@@ -25,7 +25,7 @@ class ShowFlix(PluginBase):
             "_method"         : "GET",
             "_ApplicationId"  : self.app_id,
             "_JavaScriptKey"  : self.js_key,
-            "_ClientVersion"  : "js3.4.1",
+            "_ClientVersion"  : "js3.4.2",
             "_InstallationId" : "60f6b1a7-8860-4edf-b255-6bc465b6c704"
         }
         base.update(extra)
@@ -72,7 +72,7 @@ class ShowFlix(PluginBase):
 
         payload = self.get_payload(extra_payload)
 
-        istek = await self.httpx.post(api_url, json=payload)
+        istek = await self.async_cf_post(api_url, json=payload)
         data  = istek.json().get("results", [])
 
         results = []
@@ -116,7 +116,7 @@ class ShowFlix(PluginBase):
 
         async def _safe_search(api_url):
             try:
-                return await self.httpx.get(api_url, params=params, headers=headers)
+                return await self.async_cf_get(api_url, params=params, headers=headers)
             except Exception as e:
                 return e
 
@@ -148,7 +148,7 @@ class ShowFlix(PluginBase):
         api_url = self.movie_api if item_type == "movie" else self.tv_api
         payload = self.get_payload({})
 
-        istek = await self.httpx.post(f"{api_url}/{obj_id}", json=payload)
+        istek = await self.async_cf_post(f"{api_url}/{obj_id}", json=payload)
         item  = istek.json()
 
         title       = item.get("name")
@@ -199,7 +199,7 @@ class ShowFlix(PluginBase):
         # Sezonları al
         season_url = "https://parse.showflix.sbs/parse/classes/seasonv2"
         payload    = self.get_payload({"where": json.dumps({"seriesId": series_id})})
-        istek      = await self.httpx.post(season_url, json=payload)
+        istek      = await self.async_cf_post(season_url, json=payload)
         seasons    = istek.json().get("results", [])
 
         all_episodes = []
@@ -210,7 +210,7 @@ class ShowFlix(PluginBase):
             # Bölümleri al
             episode_url = "https://parse.showflix.sbs/parse/classes/episodev2"
             ep_payload  = self.get_payload({"where": json.dumps({"seasonId": season_id})})
-            ep_istek    = await self.httpx.post(episode_url, json=ep_payload)
+            ep_istek    = await self.async_cf_post(episode_url, json=ep_payload)
             eps         = ep_istek.json().get("results", [])
 
             for ep in eps:
@@ -234,18 +234,26 @@ class ShowFlix(PluginBase):
         return sorted(all_episodes, key=lambda x: (x.season, x.episode))
 
     async def load_links(self, url: str) -> list[ExtractResult]:
+        mapping = {
+            "streamwish" : "https://embedwish.com/e/{}",
+            "streamruby" : "https://rubyvidhub.com/embed-{}.html",
+            "upnshare"   : "https://showflix.upns.one/  #{}",
+            "vihide"     : "https://smoothpre.com/v/{}.html"
+        }
+
+        async def _extract_or_fallback(u, name):
+             extracted = await self.extract(u)
+             return extracted or ExtractResult(url=u, name=name, referer=self.main_url)
+
         if url.startswith("showflix://"):
             data    = json.loads(url.replace("showflix://", ""))
             results = []
 
-            mapping = {
-                "streamwish" : "https://embedwish.com/e/{}",
-                "streamruby" : "https://rubyvidhub.com/embed-{}.html",
-                "upnshare"   : "https://showflix.upns.one/  #{}",
-                "vihide"     : "https://smoothpre.com/v/{}.html"
-            }
+            tasks = []
+            for key, template in mapping.items():
+                if val := data.get(key):
+                     tasks.append(_extract_or_fallback(template.format(val), key.capitalize()))
 
-            tasks = [self.extract(template.format(val)) for key, template in mapping.items() if (val := data.get(key))]
             for res in await self.gather_with_limit(tasks):
                 self.collect_results(results, res)
 
@@ -258,19 +266,16 @@ class ShowFlix(PluginBase):
         parts   = url.split("/")
         obj_id  = parts[-1]
         payload = self.get_payload({})
-        istek   = await self.httpx.post(f"{self.movie_api}/{obj_id}", json=payload)
+        istek   = await self.async_cf_post(f"{self.movie_api}/{obj_id}", json=payload)
         item    = istek.json()
         embeds  = item.get("embedLinks", {})
 
         results = []
-        mapping = {
-            "streamwish" : "https://embedwish.com/e/{}",
-            "streamruby" : "https://rubyvidhub.com/embed-{}.html",
-            "upnshare"   : "https://showflix.upns.one/  #{}",
-            "vihide"     : "https://smoothpre.com/v/{}.html"
-        }
+        tasks   = []
+        for key, template in mapping.items():
+            if val := embeds.get(key):
+                 tasks.append(_extract_or_fallback(template.format(val), key.capitalize()))
 
-        tasks = [self.extract(template.format(val)) for key, template in mapping.items() if (val := embeds.get(key))]
         for res in await self.gather_with_limit(tasks):
             self.collect_results(results, res)
 

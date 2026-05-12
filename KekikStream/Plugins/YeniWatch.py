@@ -43,7 +43,7 @@ class YeniWatch(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         page_url = url.replace("/page/1/", f"/page/{page}/")
-        istek    = await self.httpx.get(page_url)
+        istek    = await self.async_cf_get(page_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -86,7 +86,7 @@ class YeniWatch(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -105,14 +105,14 @@ class YeniWatch(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title = secici.select_text("h1") or ""
         title = re.sub(r"\s*-\s*YeniWatch$", "", title).strip()
 
-        poster      = secici.select_attr("div.category_image img", "src")
-        description = secici.select_text("div.category_desc")
+        poster      = secici.select_attr("div.category_image img", "src") or secici.meta_value("og:image")
+        description = secici.select_text("div.category_desc") or secici.meta_value("og:description")
         tags        = [
             t.strip() for t in secici.select_texts("div.genres a")
             if t.strip().lower() != "yeniwatch"
@@ -153,17 +153,19 @@ class YeniWatch(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        iframe_src = secici.select_attr("iframe[src]", "src")
-        if not iframe_src or "cizgipass" not in iframe_src:
-            return []
-
-        iframe_src = self.fix_url(re.sub(r"\s+", "", iframe_src))
-
         response = []
-        data     = await self.extract(iframe_src, referer=url)
-        self.collect_results(response, data)
+
+        # Tüm iframeleri tara
+        for iframe in secici.select("iframe"):
+            src = iframe.attrs.get("src")
+            if not src or src == "about:blank":
+                continue
+
+            src  = self.fix_url(re.sub(r"\s+", "", src))
+            data = await self.extract(src, referer=url)
+            self.collect_results(response, data)
 
         return self.deduplicate(response)

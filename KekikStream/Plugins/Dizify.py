@@ -31,7 +31,7 @@ class Dizify(PluginBase):
 
         media_type = "movie" if item_type == "movie" else "tv"
         try:
-            resp = await self.httpx.get(
+            resp = await self.async_cf_get(
                 f"{self.tmdb_api}/{media_type}/{tmdb_id}",
                 params={
                     "api_key"            : self.tmdb_key,
@@ -45,7 +45,7 @@ class Dizify(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         params = {"page": page}
-        istek  = await self.httpx.get(url, params=params)
+        istek  = await self.async_cf_get(url, params=params)
         data   = istek.json()
 
         if not data.get("success"):
@@ -68,7 +68,7 @@ class Dizify(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.get(f"{self.api_url}/search", params={"q": query})
+        istek = await self.async_cf_get(f"{self.api_url}/search", params={"q": query})
         data  = istek.json()
 
         if not data.get("success"):
@@ -105,13 +105,13 @@ class Dizify(PluginBase):
             slug     = match.group(1) if match else url.rstrip("/").split("/")[-1]
             endpoint = f"{self.api_url}/movies/{slug}"
 
-        istek = await self.httpx.get(endpoint)
+        istek = await self.async_cf_get(endpoint)
         data  = istek.json()
 
         # Fallback between movie/series if first guess fails
         if not data.get("success"):
             alt_endpoint = f"{self.api_url}/movies/{slug}" if is_series else f"{self.api_url}/series/{slug}"
-            istek        = await self.httpx.get(alt_endpoint)
+            istek        = await self.async_cf_get(alt_endpoint)
             data         = istek.json()
             if data.get("success"):
                 is_series = not is_series
@@ -176,7 +176,7 @@ class Dizify(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         # If url is already an API source endpoint (from our load_item)
         if "/sources" in url:
-            istek = await self.httpx.get(url)
+            istek = await self.async_cf_get(url)
             data  = istek.json()
             if not data.get("success"):
                 return []
@@ -201,11 +201,11 @@ class Dizify(PluginBase):
         if is_series:
             match = re.search(r'/(?:dizi-izle|series)/([^/]+)', url)
             slug  = match.group(1) if match else url.rstrip("/").split("/")[-1]
-            istek = await self.httpx.get(f"{self.api_url}/series/{slug}")
+            istek = await self.async_cf_get(f"{self.api_url}/series/{slug}")
         else:
             match = re.search(r'/(?:film-izle|movies)/([^/]+)', url)
             slug  = match.group(1) if match else url.rstrip("/").split("/")[-1]
-            istek = await self.httpx.get(f"{self.api_url}/movies/{slug}")
+            istek = await self.async_cf_get(f"{self.api_url}/movies/{slug}")
 
         data = istek.json()
         if data.get("success"):

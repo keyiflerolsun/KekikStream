@@ -33,7 +33,7 @@ class DiziPal(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}/")
+        istek  = await self.async_cf_get(f"{url}{page}/")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -53,7 +53,7 @@ class DiziPal(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -94,7 +94,7 @@ class DiziPal(PluginBase):
         return episodes
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         poster      = self.fix_url(secici.select_attr("[property='og:image']", "content"))
@@ -127,7 +127,7 @@ class DiziPal(PluginBase):
         if "/dizi/" in url:
             season_links = secici.select("#season-options-list ul li a")
             if season_links:
-                tasks     = [self.httpx.get(self.fix_url(s.select_attr("a", "href"))) for s in season_links]
+                tasks     = [self.async_cf_get(self.fix_url(s.select_attr("a", "href"))) for s in season_links]
                 responses = await asyncio.gather(*tasks)
 
                 episodes_map = {}
@@ -166,46 +166,55 @@ class DiziPal(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         iframe = secici.select_attr("div.video-player-area iframe", "src") or secici.select_attr("div.responsive-player iframe", "src")
         if not iframe:
+            # Fallback to any iframe
+            iframe = secici.select_attr("iframe", "src")
+
+        if not iframe:
             return []
 
         results = []
+        try:
+            i_istek = await self.async_cf_get(self.fix_url(iframe), headers={"Referer": url})
+            i_text  = i_istek.text
 
-        self.httpx.headers.update({"Referer": f"{self.main_url}/"})
-        i_istek = await self.httpx.get(iframe)
-        i_text  = i_istek.text
-
-        # m3u link çıkar
-        m3u_link = secici.regex_first(r'file:"([^"]+)"', target=i_text)
-        if m3u_link:
-
-            # Altyazıları çıkar
-            sub_text  = secici.regex_first(r'"subtitle":"([^"]+)"', target=i_text)
-            subtitles = []
-            if sub_text:
-                if "," in sub_text:
-                    for sub in sub_text.split(","):
-                        lang = sub.split("[")[1].split("]")[0] if "[" in sub else "Türkçe"
-                        sub_url = sub.replace(f"[{lang}]", "")
+            # m3u link çıkar
+            m3u_link = secici.regex_first(r'file:"([^"]+)"', target=i_text)
+            if m3u_link:
+                # Altyazıları çıkar
+                sub_text  = secici.regex_first(r'"subtitle":"([^"]+)"', target=i_text)
+                subtitles = []
+                if sub_text:
+                    if "," in sub_text:
+                        for sub in sub_text.split(","):
+                            lang = sub.split("[")[1].split("]")[0] if "[" in sub else "Türkçe"
+                            sub_url = sub.replace(f"[{lang}]", "")
+                            subtitles.append(self.new_subtitle(self.fix_url(sub_url), lang))
+                    else:
+                        lang    = sub_text.split("[")[1].split("]")[0] if "[" in sub_text else "Türkçe"
+                        sub_url = sub_text.replace(f"[{lang}]", "")
                         subtitles.append(self.new_subtitle(self.fix_url(sub_url), lang))
+
+                results.append(ExtractResult(
+                    name      = self.name,
+                    url       = self.fix_url(m3u_link),
+                    referer   = f"{self.main_url}/",
+                    subtitles = subtitles
+                ))
+            else:
+                # Extractor'a yönlendir
+                data = await self.extract(self.fix_url(iframe), referer=url)
+                if data:
+                    self.collect_results(results, data)
                 else:
-                    lang    = sub_text.split("[")[1].split("]")[0] if "[" in sub_text else "Türkçe"
-                    sub_url = sub_text.replace(f"[{lang}]", "")
-                    subtitles.append(self.new_subtitle(self.fix_url(sub_url), lang))
+                    # Fallback
+                    results.append(ExtractResult(url=self.fix_url(iframe), name="Externo", referer=url))
+        except Exception:
+             # Final fallback
+             results.append(ExtractResult(url=self.fix_url(iframe), name="Externo", referer=url))
 
-            results.append(ExtractResult(
-                name      = self.name,
-                url       = m3u_link,
-                referer   = f"{self.main_url}/",
-                subtitles = subtitles
-            ))
-        else:
-            # Extractor'a yönlendir
-            data = await self.extract(iframe)
-            self.collect_results(results, data)
-
-        return results
+        return self.deduplicate(results)

@@ -70,7 +70,15 @@ class DoramasLatinoX(PluginBase):
 
         title       = secici.select_text("h1")
         poster      = secici.select_attr("meta[property='og:image']", "content")
-        description = secici.select_attr("meta[property='og:description']", "content") or secici.select_text(".wp-content p") or secici.select_text("#info p")
+        description = (
+            secici.select_attr("meta[property='og:description']", "content")
+            or secici.select_text(".wp-content p")
+            or secici.select_text("#info p")
+            or secici.select_text(".content.right p")
+            or secici.select_text(".dtw_content p")
+        )
+        if description and len(description) < 30:
+            description = None
 
         # Meta verileri
         year   = secici.extract_year("div.extra span")
@@ -104,11 +112,14 @@ class DoramasLatinoX(PluginBase):
                     )
                 )
 
+        final_title = title.strip() if title else "Bilinmeyen"
+        final_title = re.sub(r"\s*-\s*Doramafox$", "", final_title, flags=re.I).strip()
+
         if episodes:
             return SeriesInfo(
                 url         = url,
                 poster      = self.fix_url(poster),
-                title       = title.strip() if title else "Bilinmeyen",
+                title       = final_title,
                 description = description,
                 tags        = tags,
                 year        = str(year) if year else None,
@@ -120,7 +131,7 @@ class DoramasLatinoX(PluginBase):
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
-            title       = title.strip() if title else "Bilinmeyen",
+            title       = final_title,
             description = description,
             tags        = tags,
             year        = str(year) if year else None,
@@ -137,7 +148,7 @@ class DoramasLatinoX(PluginBase):
         response = []
         tasks    = []
 
-        async def fetch_dooplayer(post, p_type, nume):
+        async def fetch_dooplayer(post, p_type, nume, name_prefix=""):
             api_url = f"{self.main_url}/wp-json/dooplayer/v2/{post}/{p_type}/{nume}"
             try:
                 r         = await self.async_cf_get(api_url)
@@ -157,7 +168,10 @@ class DoramasLatinoX(PluginBase):
                         return None
 
                     if not any(x in target.lower() for x in ["google", "facebook", "ads", "analytics", "democraticexit"]):
-                        return await self.extract(target, referer=url)
+                        extracted = await self.extract(target, referer=url, name_override=name_prefix)
+                        if extracted:
+                            return extracted
+                        return ExtractResult(url=target, name=f"{name_prefix or 'Externo'}", referer=url)
             except:
                 pass
             return None
@@ -167,18 +181,23 @@ class DoramasLatinoX(PluginBase):
             post   = opt.attrs.get("data-post")
             p_type = opt.attrs.get("data-type")
             nume   = opt.attrs.get("data-nume")
+            name   = opt.select_text("span.title")
 
             if post and p_type and nume:
-                tasks.append(fetch_dooplayer(post, p_type, nume))
+                tasks.append(fetch_dooplayer(post, p_type, nume, name))
 
         # Sayfadaki tüm iframe'leri tara
         for iframe in secici.select("iframe"):
             src = self.fix_url(iframe.attrs.get("data-src") or iframe.attrs.get("src") or "")
             if src and not any(x in src.lower() for x in ["google", "facebook", "ads", "analytics", "data:image"]):
-                tasks.append(self.extract(src, referer=url))
+                data = await self.extract(src, referer=url)
+                if data:
+                    self.collect_results(response, data)
+                else:
+                    response.append(ExtractResult(url=src, name="Iframe", referer=url))
 
         results = await self.gather_with_limit(tasks)
         for res in results:
             self.collect_results(response, res)
 
-        return response
+        return self.deduplicate(response)

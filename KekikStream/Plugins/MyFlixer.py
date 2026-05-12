@@ -6,7 +6,7 @@ from KekikStream.Core.Plugin.FlwBasePlugin import FlwBasePlugin
 class MyFlixer(FlwBasePlugin):
     name        = "MyFlixer"
     language    = "en"
-    main_url    = "https://myflixerz.to"
+    main_url    = "https://myflixer.bz"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Full Movies Online Streaming and Tv Shows Streaming At no cost - Fast and Free with Great support on many devices - Chromecast supported - Safe Private streaming"
 

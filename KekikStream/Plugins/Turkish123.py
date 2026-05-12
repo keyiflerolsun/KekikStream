@@ -31,10 +31,10 @@ class Turkish123(PluginBase):
         secici   = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.movies-list div.ml-item"):
-            title  = veri.select_text("h2")
+        for veri in secici.select("div.ml-item"):
+            title  = veri.select_text("h2") or veri.select_attr("a", "title")
             href   = veri.select_attr("a", "href")
-            poster = veri.select_attr("img", "src")
+            poster = veri.select_attr("img", "src") or veri.select_attr("img", "data-src")
 
             if title and href:
                 # Remove episode suffix from URL if present for series result
@@ -43,7 +43,7 @@ class Turkish123(PluginBase):
 
                 results.append(MainPageResult(
                     category = category,
-                    title    = title,
+                    title    = title.strip(),
                     url      = self.fix_url(href),
                     poster   = self.fix_url(poster),
                 ))
@@ -55,17 +55,17 @@ class Turkish123(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        for item in secici.select("div.movies-list div.ml-item"):
-            title  = item.select_text("h2")
+        for item in secici.select("div.ml-item"):
+            title  = item.select_text("h2") or item.select_attr("a", "title")
             href   = item.select_attr("a", "href")
-            poster = item.select_attr("img", "src")
+            poster = item.select_attr("img", "src") or item.select_attr("img", "data-src")
 
             if title and href:
                 if "-episode" in href:
                     href = href.split("-episode")[0]
 
                 results.append(SearchResult(
-                    title  = title,
+                    title  = title.strip(),
                     url    = self.fix_url(href),
                     poster = self.fix_url(poster),
                 ))
@@ -76,30 +76,34 @@ class Turkish123(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("h1[itemprop=name]")
-        poster      = secici.select_attr("div.thumb.mvic-thumb img", "src")
-        description = secici.select_text("p.f-desc")
-        tags        = secici.meta_list("Genre", container_selector="div.mvici-left")
-        year        = secici.meta_value("Year", container_selector="div.mvici-right")
-        actors      = secici.meta_list("Actors", container_selector="div.mvici-left")
-        rating      = secici.select_text("span.imdb-r")
+        title       = secici.select_text("h1[itemprop=name]") or secici.select_text("h1")
+        poster      = secici.select_poster("div.thumb.mvic-thumb img") or secici.meta_value("og:image")
+        description = secici.select_text("p.f-desc") or secici.select_text("div.description")
+        tags        = secici.meta_list("Genre", container_selector="div.mvici-left") or secici.select_texts("div.genres a")
+        year        = secici.meta_value("Year", container_selector="div.mvici-right") or secici.extract_year()
+        actors      = secici.meta_list("Actors", container_selector="div.mvici-left") or secici.select_texts("div.actors a")
+        rating      = secici.select_text("span.imdb-r") or secici.select_text(".imdb-rating")
 
         ep_links = secici.select("div.les-content a")
         if ep_links:
             episodes = []
             for ep in ep_links:
-                ep_url   = ep.select_attr(None, "href")
-                ep_title = ep.select_text()
+                ep_url   = ep.attrs.get("href")
+                # Title often contains Season info in a span, so select_direct_text is better
+                ep_title = ep.select_direct_text() or ep.text(strip=True)
                 if ep_url:
+                    s, e = secici.extract_season_episode(ep_title)
                     episodes.append(Episode(
-                        title = ep_title,
-                        url   = self.fix_url(ep_url)
+                        season  = s,
+                        episode = e,
+                        title   = ep_title.strip(),
+                        url     = self.fix_url(ep_url)
                     ))
 
             return SeriesInfo(
                 url         = url,
                 poster      = self.fix_url(poster),
-                title       = title,
+                title       = title.strip() if title else "",
                 description = description,
                 tags        = tags,
                 rating      = rating,
@@ -111,7 +115,7 @@ class Turkish123(PluginBase):
         return MovieInfo(
             url         = url,
             poster      = self.fix_url(poster),
-            title       = title,
+            title       = title.strip() if title else "",
             description = description,
             tags        = tags,
             rating      = rating,
@@ -120,17 +124,36 @@ class Turkish123(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.async_cf_get(url)
-
-        # Regex for iframe: <iframe.*src=["|'](\S+)["|']\s
-        iframes = re.findall(r'<iframe.*?src=["\'](\S+?)["\']', istek.text)
+        istek = await self.async_cf_get(url)
+        text  = istek.text
 
         response = []
-        tasks    = []
-        for iframe in iframes:
-            tasks.append(self.extract(self.fix_url(iframe)))
+
+        # 1. Klasik iframeleri tara
+        iframes = re.findall(r'<iframe.*?src=["\'](\S+?)["\']', text)
+
+        # 2. Player isimlerini bulmaya çalışalım (Tab isimleri)
+        secici = HTMLHelper(text)
+        labels = []
+        for nav in secici.select(".player_nav li"):
+            label = nav.select_text(".les-title span") or nav.text(strip=True)
+            if label:
+                labels.append(label)
+
+        tasks = []
+        # Iframeler için task oluştur
+        for ifr in iframes:
+            tasks.append(self.extract(self.fix_url(ifr), referer=url))
 
         for data in await self.gather_with_limit(tasks):
             self.collect_results(response, data)
 
-        return response
+        # Eğer hiç bulunamadıysa, sayfadaki tüm linklere bakalım
+        if not response:
+             for a in secici.select("a"):
+                 href = a.attrs.get("href")
+                 if href and any(x in href.lower() for x in ["mixdrop", "doodstream", "vidmoly", "vidoza", "streamtape"]):
+                      data = await self.extract(self.fix_url(href), referer=url)
+                      self.collect_results(response, data)
+
+        return self.deduplicate(response)

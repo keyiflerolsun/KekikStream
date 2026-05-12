@@ -46,21 +46,21 @@ class FilmFC(PluginBase):
         return articles
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.httpx.get(f"{url}/{page}")
+        istek   = await self.async_cf_get(f"{url}/{page}")
         secici  = HTMLHelper(istek.text)
         veriler = await self.get_articles(secici)
 
         return [MainPageResult(**veri, category=category) for veri in veriler if veri]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek   = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek   = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici  = HTMLHelper(istek.text)
         veriler = await self.get_articles(secici)
 
         return [SearchResult(**veri) for veri in veriler if veri]
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div.bilgi h2")
@@ -71,7 +71,7 @@ class FilmFC(PluginBase):
         rating      = secici.select_text("div.say p:nth-of-type(2)")
         rating      = rating.replace("BEĞEN", "") if rating else None
         duration    = secici.select_text("div.bilgi p b:nth-of-type(2)")
-        duration    = duration.replace(" Dakika", "") if "dakika" in duration.lower() else None
+        duration    = duration.replace(" Dakika", "") if duration and "dakika" in duration.lower() else None
 
         return MovieInfo(
             url         = url,
@@ -85,14 +85,14 @@ class FilmFC(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        iframe = secici.select_attr("span#plyg iframe", "src")
+        iframe = secici.select_attr("span#plyg iframe", "src") or secici.select_attr("iframe", "src")
 
         if not iframe:
             return []
 
-        result = await self.extract(iframe, referer=url)
+        result = await self.extract(self.fix_url(iframe), referer=url)
 
         return [result] if result else []

@@ -164,6 +164,15 @@ class CizgiMax(PluginBase):
                             url     = stream_url,
                             referer = url
                         ))
+                    elif s.get("resolveUrl"):
+                        # Yeni yapı: resolveUrl (genelde dzen vb. için)
+                        resolve_url = self.fix_url(s.get("resolveUrl"))
+                        data        = await self.extract(resolve_url, referer=url, prefix=name)
+                        if data:
+                            self.collect_results(response, data)
+                        else:
+                            response.append(ExtractResult(url=resolve_url, name=name, referer=url))
+
             except Exception:
                 pass
 

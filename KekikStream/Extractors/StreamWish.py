@@ -59,6 +59,7 @@ class StreamWish(PackedJSExtractor):
         "vtube.to",
         "vudeo.io",
         "vadshar.com",
+        "happy1de.space",
     ]
 
     _DIRECT_ALIAS_MAP = {

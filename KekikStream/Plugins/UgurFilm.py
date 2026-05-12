@@ -40,7 +40,7 @@ class UgurFilm(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}", follow_redirects=True)
+        istek  = await self.async_cf_get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -51,7 +51,7 @@ class UgurFilm(PluginBase):
                 continue
 
             href   = veri.select_attr("a", "href")
-            poster = veri.select_attr("img", "src")
+            poster = veri.select_attr("img", "src") or veri.select_attr("img", "data-src")
 
             results.append(MainPageResult(
                 category = category,
@@ -63,14 +63,14 @@ class UgurFilm(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
         for film in secici.select("div.icerik div"):
             title  = film.select_text("a.baslik span")
             href   = film.select_attr("a", "href")
-            poster = film.select_attr("img", "src")
+            poster = film.select_attr("img", "src") or film.select_attr("img", "data-src")
 
             if title and href:
                 results.append(SearchResult(
@@ -82,16 +82,16 @@ class UgurFilm(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.bilgi h2")
-        poster      = secici.select_poster("div.resim img")
-        description = secici.select_text("div.slayt-aciklama")
-        rating      = secici.select_text("b  #puandegistir")
-        tags        = secici.select_texts("p.tur a[href*='/category/']")
-        year        = secici.extract_year("a[href*='/yil/']")
-        actors      = secici.select_texts("li.oyuncu-k span")
+        title       = secici.select_text("div.bilgi h2") or secici.select_text("h1")
+        poster      = secici.select_poster("div.resim img") or secici.meta_value("og:image")
+        description = secici.select_text("div.slayt-aciklama") or secici.meta_value("og:description")
+        rating      = secici.select_text("b  #puandegistir") or secici.select_text(".puan")
+        tags        = secici.select_texts("p.tur a[href*='/category/']") or secici.select_texts(".kategori a")
+        year        = secici.extract_year("a[href*='/yil/']") or secici.extract_year()
+        actors      = secici.select_texts("li.oyuncu-k span") or secici.select_texts(".oyuncular span")
         duration    = secici.regex_first(r"(\d+) Dakika", secici.select_text("div.bilgi b"))
 
         return MovieInfo(
@@ -107,7 +107,7 @@ class UgurFilm(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek   = await self.httpx.get(url)
+        istek   = await self.async_cf_get(url)
         secici  = HTMLHelper(istek.text)
         results = []
 
