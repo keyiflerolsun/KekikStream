@@ -27,7 +27,7 @@ class DoramasLatinoX(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         full_url = url if page <= 1 else f"{url.rstrip('/')}/page/{page}/"
-        istek    = await self.httpx.get(full_url)
+        istek    = await self.async_cf_get(full_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -45,12 +45,8 @@ class DoramasLatinoX(PluginBase):
     async def search(self, query: str) -> list[SearchResult]:
         # Search URL: Query param 's' kullanılmalı (Follow redirects for search/ query)
         full_url = f"{self.main_url}/?s={query}"
-        try:
-            istek = await self.httpx.get(full_url, follow_redirects=True, timeout=15)
-            html  = istek.text
-        except Exception:
-            istek = await self.async_cf_get(full_url, headers=self._headers)
-            html  = istek.text
+        istek    = await self.async_cf_get(full_url)
+        html     = istek.text
 
         secici = HTMLHelper(html)
 
@@ -69,7 +65,7 @@ class DoramasLatinoX(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1")
@@ -133,12 +129,8 @@ class DoramasLatinoX(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        try:
-            istek = await self.httpx.get(url, timeout=15)
-            html  = istek.text
-        except Exception:
-            istek = await self.async_cf_get(url, headers=self._headers)
-            html  = istek.text
+        istek = await self.async_cf_get(url)
+        html  = istek.text
 
         secici = HTMLHelper(html)
 
@@ -148,7 +140,7 @@ class DoramasLatinoX(PluginBase):
         async def fetch_dooplayer(post, p_type, nume):
             api_url = f"{self.main_url}/wp-json/dooplayer/v2/{post}/{p_type}/{nume}"
             try:
-                r         = await self.httpx.get(api_url)
+                r         = await self.async_cf_get(api_url)
                 data      = r.json()
                 embed_url = data.get("embed_url")
                 if embed_url:
