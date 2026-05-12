@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import re
 
 class CizgiMax(PluginBase):
     name        = "CizgiMax"
@@ -27,16 +28,22 @@ class CizgiMax(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        sep      = "&" if "?" in url else "?"
-        page_url = f"{self.main_url}/diziler/page/{page}" + url.split("/diziler")[1] if "/diziler" in url else url
-        istek    = await self.httpx.get(page_url)
-        secici   = HTMLHelper(istek.text)
+        page_url = url if page <= 1 else f"{url}/page/{page}"
+        # URL'de /diziler varsa ve /page/ ekleniyorsa düzeltme gerekebilir.
+        # Sitede /diziler/anime/page/2 gibi bir yapı var.
+        if "/diziler" in url and page > 1:
+            base     = url.split("?")[0].rstrip("/")
+            query    = f"?{url.split('?')[1]}" if "?" in url else ""
+            page_url = f"{base}/page/{page}/{query}"
+
+        istek  = await self.async_cf_get(page_url)
+        secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("ul.filter-results li"):
-            title  = veri.select_text("h2.truncate")
-            href   = veri.select_attr("div.poster-subject a", "href")
-            poster = veri.select_attr("div.poster-media img", "data-src")
+        for veri in secici.select("div.film-item"):
+            title  = veri.select_text("a.film-name")
+            href   = veri.select_attr("a.film-name", "href")
+            poster = veri.select_attr("a.poster img", "src") or veri.select_attr("a.poster img", "data-src")
 
             if title and href:
                 results.append(MainPageResult(
@@ -49,58 +56,55 @@ class CizgiMax(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        resp = await self.httpx.get(f"{self.main_url}/ajaxservice/index.php?qr={query}")
+        # AJAX search yerine HTML search kullanıyoruz
+        istek  = await self.async_cf_get(f"{self.main_url}/ara/?q={query}")
+        secici = HTMLHelper(istek.text)
 
         results = []
-        try:
-            data  = resp.json()
-            items = data.get("data", {}).get("result", [])
-        except Exception:
-            return results
+        for veri in secici.select("div.film-item"):
+            title  = veri.select_text("a.film-name")
+            href   = veri.select_attr("a.film-name", "href")
+            poster = veri.select_attr("a.poster img", "src") or veri.select_attr("a.poster img", "data-src")
 
-        for item in items:
-            s_name = item.get("s_name", "")
-            s_link = item.get("s_link", "")
-            s_img  = item.get("s_image")
-
-            # Bölüm/Sezon sonuçlarını filtrele
-            if any(kw in s_name for kw in [".Bölüm", ".Sezon", "-Sezon", "-izle"]):
-                continue
-
-            if s_name and s_link:
+            if title and href:
                 results.append(SearchResult(
-                    title  = s_name.strip(),
-                    url    = self.fix_url(s_link),
-                    poster = self.fix_url(s_img),
+                    title  = title.strip(),
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster),
                 ))
 
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("h1.page-title") or ""
-        poster      = secici.select_attr("img.series-profile-thumb", "src")
-        description = secici.select_text("#tv-series-desc") or secici.select_attr("meta[property='og:description']", "content")
-        tags        = secici.select_texts("div.genre-item a")
+        title       = secici.select_text("h1.page-title") or secici.select_text("h1") or ""
+        poster      = secici.select_attr("img.series-profile-thumb", "src") or secici.meta_value("og:image")
+        description = secici.select_text("#tv-series-desc") or secici.select_text(".anime-desc") or secici.meta_value("og:description")
+        tags        = secici.select_texts("div.genre-item a") or secici.select_texts(".anime-meta-grid a")
 
         episodes = []
-        for veri in secici.select("div.asisotope div.ajax_post"):
-            ep_name  = veri.select_text("span.episode-names")
-            ep_href  = veri.select_attr("a", "href")
-            szn_name = veri.select_text("span.season-name") or ""
+        # Yeni yapı: ep-num-btn linkleri
+        for veri in secici.select("a.ep-num-btn"):
+            ep_href = veri.attrs.get("href")
+            ep_text = veri.text(strip=True)  # Genelde "1", "2" gibi sadece sayı veya "1. Bölüm"
 
-            if not ep_name or not ep_href:
+            if not ep_href:
                 continue
 
-            ep_season, ep_num = secici.extract_season_episode(f"{szn_name} {ep_name}")
-            ep_season = ep_season or 1
+            # Sezon ve bölüm bilgisini URL'den veya text'ten çıkar
+            # Örn: /devil-may-cry-2-sezon-8-bolum-izle/
+            season, episode = secici.extract_season_episode(ep_href)
+
+            # Eğer URL'den çıkmazsa text'i dene
+            if not episode:
+                episode = ep_text
 
             episodes.append(Episode(
-                season  = ep_season,
-                episode = ep_num,
-                title   = ep_name.strip(),
+                season  = season or 1,
+                episode = episode,
+                title   = f"{episode}. Bölüm",
                 url     = self.fix_url(ep_href),
             ))
 
@@ -114,18 +118,62 @@ class CizgiMax(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
-        secici = HTMLHelper(istek.text)
+        import base64, json
+        istek = await self.async_cf_get(url)
+        text  = istek.text
 
-        iframes = []
-        for li in secici.select("ul.linkler li"):
-            iframe = li.select_attr("a", "data-frame")
-            if iframe:
-                iframes.append(self.fix_url(iframe.strip()))
-
-        tasks    = [self.extract(url, referer=f"{self.main_url}/") for url in iframes]
         response = []
-        for data in await self.gather_with_limit(tasks):
-            self.collect_results(response, data)
+
+        # Base64 encoded server listesini bul
+        match = re.search(r'servers\s*=\s*JSON\.parse\(atob\("([^"]+)"\)\)', text)
+        if not match:
+            # Alternatif: serversByLang da olabilir
+            match = re.search(r'serversByLang\s*=\s*JSON\.parse\(atob\("([^"]+)"\)\)', text)
+
+        if not match:
+            # En genel haliyle atob bulmaya çalış
+            match = re.search(r'atob\("([^"]+)"\)', text)
+
+        if match:
+            try:
+                encoded = match.group(1)
+                decoded = base64.b64decode(encoded).decode('utf-8')
+                servers = json.loads(decoded)
+
+                # serversByLang ise dict olabilir, listeye çevir
+                if isinstance(servers, dict):
+                    all_servers = []
+                    for lang_list in servers.values():
+                        if isinstance(lang_list, list):
+                            all_servers.extend(lang_list)
+                    servers = all_servers
+
+                for s in servers:
+                    name = s.get("label", "CizgiMax")
+
+                    if s.get("type") == "iframe":
+                        src = s.get("src")
+                        if src:
+                            data = await self.extract(self.fix_url(src), referer=url, prefix=name)
+                            self.collect_results(response, data)
+                    elif s.get("streamUrl"):
+                        # Direkt stream URL (genelde sibnet/vidmoly api endpointi)
+                        stream_url = self.fix_url(s.get("streamUrl"))
+                        response.append(ExtractResult(
+                            name    = name,
+                            url     = stream_url,
+                            referer = url
+                        ))
+            except Exception:
+                pass
+
+        if not response:
+            # Klasik yöntem denemesi
+            secici = HTMLHelper(text)
+            for li in secici.select("ul.linkler li"):
+                iframe = li.select_attr("a", "data-frame")
+                if iframe:
+                    data = await self.extract(self.fix_url(iframe.strip()), referer=url)
+                    self.collect_results(response, data)
 
         return self.deduplicate(response)

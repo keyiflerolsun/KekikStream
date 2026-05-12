@@ -46,16 +46,16 @@ class SuperFilmIzle(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.async_cf_get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
         for veri in secici.select("div.movie-box"):
-            title_text = veri.select_text("div.name a")
+            title_text = veri.select_text("div.name a") or veri.select_attr("div.name a", "title")
             if not title_text:
                 continue
 
-            href   = veri.select_attr("div.name a", "href")
+            href   = veri.select_attr("div.name a", "href") or veri.select_attr("a", "href")
             poster = veri.select_poster("img")
 
             results.append(MainPageResult(
@@ -68,16 +68,16 @@ class SuperFilmIzle(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
         for veri in secici.select("div.movie-box"):
-            title_text = veri.select_text("div.name a")
+            title_text = veri.select_text("div.name a") or veri.select_attr("div.name a", "title")
             if not title_text:
                 continue
 
-            href   = veri.select_attr("div.name a", "href")
+            href   = veri.select_attr("div.name a", "href") or veri.select_attr("a", "href")
             poster = veri.select_poster("img")
 
             results.append(SearchResult(
@@ -89,14 +89,14 @@ class SuperFilmIzle(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.film h1")
-        poster      = secici.select_poster("div.poster img")
-        year        = secici.extract_year("div.release a")
-        description = secici.select_direct_text("div.description")
-        tags        = secici.select_texts("ul.post-categories li a")
+        title       = secici.select_text("div.film h1") or secici.select_text("h1")
+        poster      = secici.select_poster("div.poster img") or secici.meta_value("og:image")
+        year        = secici.extract_year("div.release a") or secici.extract_year("div.bilgi")
+        description = secici.select_direct_text("div.description") or secici.select_text("div.aciklama")
+        tags        = secici.select_texts("ul.post-categories li a") or secici.select_texts("div.kategoriler a")
         rating      = secici.select_text("div.imdb-count")
         rating      = rating.replace("IMDB Puanı", "") if rating else None
         actors      = secici.select_texts("div.actors a") or secici.select_texts("div.cast a")

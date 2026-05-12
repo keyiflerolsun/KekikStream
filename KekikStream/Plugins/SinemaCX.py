@@ -38,16 +38,16 @@ class SinemaCX(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
+        istek  = await self.async_cf_get(url.replace("SAYFA", str(page)))
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.son div.frag-k, div.icerik div.frag-k"):
-            title = veri.select_text("div.yanac span")
+        for veri in secici.select("div.frag-k"):
+            title = veri.select_text("div.yanac a span") or veri.select_text("div.yanac span")
             if not title:
                 continue
 
-            href   = veri.select_attr("div.yanac a", "href")
+            href   = veri.select_attr("div.yanac a", "href") or veri.select_attr("a.resim", "href")
             poster = veri.select_attr("a.resim img", "data-src") or veri.select_attr("a.resim img", "src")
 
             results.append(MainPageResult(
@@ -60,16 +60,16 @@ class SinemaCX(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.icerik div.frag-k"):
-            title = veri.select_text("div.yanac span")
+        for veri in secici.select("div.frag-k"):
+            title = veri.select_text("div.yanac a span") or veri.select_text("div.yanac span")
             if not title:
                 continue
 
-            href   = veri.select_attr("div.yanac a", "href")
+            href   = veri.select_attr("div.yanac a", "href") or veri.select_attr("a.resim", "href")
             poster = veri.select_attr("a.resim img", "data-src") or veri.select_attr("a.resim img", "src")
 
             results.append(SearchResult(
@@ -81,16 +81,16 @@ class SinemaCX(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.f-bilgi h1")
-        poster      = secici.select_poster("div.resim img")
-        description = secici.select_text("div.ackl div.scroll-liste")
-        rating      = secici.select_text("b.puandegistir")
-        tags        = secici.select_texts("div.f-bilgi div.tur a")
-        year        = secici.extract_year("ul.detay a[href*='yapim']")
-        actors      = secici.select_texts("li.oync li.oyuncu-k span.isim")
+        title       = secici.select_text("div.f-bilgi h1") or secici.select_text("h1")
+        poster      = secici.select_poster("div.resim img") or secici.meta_value("og:image")
+        description = secici.select_text("div.ackl div.scroll-liste") or secici.select_text("div.aciklama")
+        rating      = secici.select_text("b.puandegistir") or secici.select_text("div.puan")
+        tags        = secici.select_texts("div.f-bilgi div.tur a") or secici.select_texts("div.kategoriler a")
+        year        = secici.extract_year("ul.detay a[href*='yapim']") or secici.extract_year("div.bilgi")
+        actors      = secici.select_texts("li.oync li.oyuncu-k span.isim") or secici.select_texts("div.oyuncular a")
         _duration   = secici.regex_first(r"<span>Süre:\s*</span>\s*(\d+)")
         duration    = int(_duration) if _duration else None
 

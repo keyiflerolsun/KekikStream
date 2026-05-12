@@ -6,7 +6,7 @@ import re
 class DiziMom(PluginBase):
     name        = "DiziMom"
     language    = "tr"
-    main_url    = "https://www.dizimom.org/home"
+    main_url    = "https://www.dizimom.org"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Binlerce yerli yabancı dizi arşivi, tüm sezonlar, kesintisiz bölümler. Sadece dizi izle, Dizimom heryerde seninle!"
 
@@ -24,12 +24,12 @@ class DiziMom(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}/{page}/")
+        istek  = await self.async_cf_get(f"{url}/{page}/")
         secici = HTMLHelper(istek.text)
 
         results = []
         # Eğer "tum-bolumler" ise Episode kutularını, değilse Dizi kutularını tara
-        if "/tum-bolumler/" in url:
+        if "/bolum" in url or "tum-bolumler" in url:
             for item in secici.select("div.episode-box"):
                 title = item.select_text("div.episode-name a")
                 href  = item.select_attr("div.episode-name a", "href")
@@ -57,26 +57,35 @@ class DiziMom(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
         items  = secici.select("div.single-item")
 
-        return [
-            SearchResult(
-                title  = item.select_text("div.categorytitle a").split(" izle")[0],
-                url    = self.fix_url(item.select_attr("div.categorytitle a", "href")),
-                poster = self.fix_url(item.select_attr("div.cat-img img", "src"))
-            )
-            for item in items
-        ]
+        results = []
+        for item in items:
+            title_node = item.select_first("div.categorytitle a")
+            if not title_node:
+                continue
+
+            title = title_node.text(strip=True).split(" izle")[0]
+            href  = title_node.attrs.get("href")
+            img   = item.select_poster("div.cat-img img")
+
+            if title and href:
+                results.append(SearchResult(
+                    title  = title,
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(img)
+                ))
+        return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.title h1")
-        poster      = secici.select_poster("div.category_image img")
-        description = secici.select_direct_text("div.category_desc")
+        title       = secici.select_text("div.title h1") or secici.select_text("h1")
+        poster      = secici.select_poster("div.category_image img") or secici.meta_value("og:image")
+        description = secici.select_direct_text("div.category_desc") or secici.meta_value("og:description")
         tags        = secici.select_texts("div.genres a")
         rating      = secici.regex_first(r"(?s)IMDB\s*:\s*(?:</span>)?\s*([\d\.]+)", secici.html)
         year        = secici.extract_year("div.category_text")
@@ -94,7 +103,7 @@ class DiziMom(PluginBase):
                 episodes.append(Episode(
                     season  = s or 1,
                     episode = e or 1,
-                    title   = name.replace(title, "").strip(),
+                    title   = name.replace(title or "", "").strip(),
                     url     = self.fix_url(href)
                 ))
 
@@ -111,15 +120,10 @@ class DiziMom(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        await self.httpx.post(
-            url     = f"{self.main_url}/wp-login.php",
-            headers = {
-                "User-Agent"         : "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
-                "sec-ch-ua"          : 'Not/A)Brand";v="8", "Chromium";v="137", "Google Chrome";v="137"',
-                "sec-ch-ua-mobile"   : "?1",
-                "sec-ch-ua-platform" : "Android"
-            },
-            data    = {
+        # Login işlemi bazen Cloudflare yüzünden async_cf_post gerektirebilir
+        await self.async_cf_post(
+            url  = f"{self.main_url}/wp-login.php",
+            data = {
                 "log"         : "keyiflerolsun",
                 "pwd"         : "12345",
                 "rememberme"  : "forever",
@@ -127,7 +131,7 @@ class DiziMom(PluginBase):
             }
         )
 
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         iframe_data = []
