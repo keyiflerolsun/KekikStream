@@ -7,7 +7,7 @@ import re, json
 class Fembed(ExtractorBase):
     name              = "Fembed"
     main_url          = "https://fembed.online"
-    supported_domains = ["fembed.online", "fembed.net", "fembed.com"]
+    supported_domains = ["fembed.online", "fembed.net", "fembed.com", "tr.fembed.com", "suzihaza.com", "feurl.com"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         headers = {"Referer": referer or self.main_url}

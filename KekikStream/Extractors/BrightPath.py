@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
 import re, json, base64, gzip
 
 class BrightPath(ExtractorBase):
@@ -75,12 +75,35 @@ class BrightPath(ExtractorBase):
 
         # Subtitles
         subtitles = []
-        ext_sub   = api_data["data"].get("externalSub") or config.get("externalSub")
+        seen_urls = set()
+
+        def add_subtitle(url, name):
+            full_url = self.fix_url(url)
+            if full_url and full_url not in seen_urls:
+                subtitles.append(Subtitle(url=full_url, name=name))
+                seen_urls.add(full_url)
+
+        # 1. External Subtitle (from data or config)
+        ext_sub = api_data["data"].get("externalSub") or config.get("externalSub")
         if ext_sub and ext_sub.get("file"):
-            subtitles.append(self.new_subtitle(
-                url  = self.fix_url(ext_sub["file"]),
+            add_subtitle(
+                url  = ext_sub["file"],
                 name = ext_sub.get("label") or ext_sub.get("lang") or "Subtitle"
-            ))
+            )
+
+        # 2. Default Subtitles (from root)
+        for sub in api_data.get("default_subs", []):
+            add_subtitle(
+                url  = sub["url"],
+                name = sub.get("lang") or "Subtitle"
+            )
+
+        # 3. Subtitles from data
+        for sub in api_data["data"].get("subtitles", []):
+            add_subtitle(
+                url  = sub.get("file") or sub.get("url"),
+                name = sub.get("label") or sub.get("lang") or "Subtitle"
+            )
 
         for idx, s_url in enumerate(stream_urls, 1):
             # If it's a list, the first item is the name, second is the URL

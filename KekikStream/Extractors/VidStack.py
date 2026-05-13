@@ -4,7 +4,7 @@ from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle
 from Crypto.Cipher    import AES
 from Crypto.Util      import Padding
 from urllib.parse     import urlparse, parse_qs
-import re
+import re, base64
 
 class VidStack(ExtractorBase):
     name             = "VidStack"
@@ -12,16 +12,21 @@ class VidStack(ExtractorBase):
     requires_referer = True
 
     supported_domains = [
-        "vidstack.io", "server1.uns.bio", "upns.one", "upn.one",
-        "webdrama.upns.online", "webdrama.playerp2p.com",
-        "player4me.vip", "vidplayer.live", "rpmvid.com", "rpmshare.com",
-        "rpmplayer.com", "ytplay.rpmvid.com", "rpmvip.com"
+        "vidstack.io", "server1.uns.bio", "vids.uns.bio", "upns.one", "upn.one",
+        "webdrama.upns.online", "webdrama.playerp2p.com", "upns.online",
+        "player4me.vip", "player4me.top", "vidplayer.live", "rpmvid.com", "rpmshare.com",
+        "rpmplayer.com", "ytplay.rpmvid.com", "rpmvip.com", "uns.bio"
     ]
 
     def decrypt_aes(self, input_hex: str, key: str, iv: bytes) -> str:
         try:
             cipher    = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv)
-            raw_data  = bytes.fromhex(input_hex)
+            try:
+                raw_data = bytes.fromhex(input_hex)
+            except ValueError:
+                # Try base64 if hex fails
+                raw_data = base64.b64decode(input_hex)
+
             decrypted = cipher.decrypt(raw_data)
             unpadded  = Padding.unpad(decrypted, AES.block_size)
             return unpadded.decode('utf-8')
@@ -88,9 +93,28 @@ class VidStack(ExtractorBase):
         if not encoded_data:
             raise ValueError(f"VidStack: API yanıtı alınamadı. {url}")
 
-        # AES Çözme — sıfır IV (webdrama), ardından bilinen IV'lar
-        keys = ["kiemtienmua911ca", "46ed6256db0ca41ec"]
-        ivs  = [b"\x00" * 16, b"1234567890oiuytr", b"0123456789abcdef"]
+        # AES Çözme — sıfır IV, bilinen IV'lar ve Payload'ın ilk 16 byte'ı
+        keys = [
+            "kiemtienmua911ca",
+            "kiemtienmua911ca123",
+            "kiemtienmua911ca_123",
+            "46ed6256db0ca41ec",
+            "46ed6256db0ca41e",
+            "vidstackio",
+            "vidstack",
+        ]
+
+        try:
+            raw_data = bytes.fromhex(encoded_data)
+        except:
+            try:
+                raw_data = base64.b64decode(encoded_data)
+            except:
+                raw_data = b""
+
+        ivs = [b"\x00" * 16, b"1234567890oiuytr", b"0123456789abcdef"]
+        if len(raw_data) > 16:
+            ivs.append(raw_data[:16])
 
         decrypted_text = None
         for key in keys:

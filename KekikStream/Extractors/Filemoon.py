@@ -86,11 +86,15 @@ class Filemoon(PackedJSExtractor):
 
         try:
             response = await self.httpx.get(api_url, headers=headers)
-            data     = response.json() if "json" in (response.headers.get("content-type") or "").lower() else None
+            if response.status_code == 405:
+                response = await self.httpx.post(api_url, headers=headers)
+            data = response.json() if "json" in (response.headers.get("content-type") or "").lower() else None
         except Exception:
             try:
                 response = await self.async_cf_get(api_url, headers=headers)
-                data     = response.json() if "json" in (response.headers.get("content-type") or "").lower() else None
+                if response.status_code == 405:
+                    response = await self.async_cf_post(api_url, headers=headers)
+                data = response.json() if "json" in (response.headers.get("content-type") or "").lower() else None
             except Exception:
                 return None, root_referer, None
 

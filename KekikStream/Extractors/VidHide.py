@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper, M3U8_FILE_REGEX
+from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper, M3U8_FILE_REGEX, Subtitle
 from urllib.parse     import urlparse, urlunparse
 import re
 
@@ -196,6 +196,17 @@ class VidHide(PackedJSExtractor):
         # Packed JS'den m3u8 çıkarmayı dene (unpack_and_find helper)
         m3u8_url = self.unpack_and_find(text)
 
+        # NEW: fetch('/dl?op=get_stream...') pattern
+        if not m3u8_url:
+            fetch_url = sel.regex_first(r"fetch\(['\"]([^'\"]*?/dl\?op=get_stream[^'\"]+)['\"]")
+            if fetch_url:
+                try:
+                    f_resp   = await self.async_cf_get(self.fix_url(fetch_url), headers={"Referer": final_url})
+                    f_data   = f_resp.json()
+                    m3u8_url = f_data.get("url")
+                except Exception:
+                    pass
+
         # Çoklu m3u8 sonucu olabilir (regex ile tüm m3u8'leri bul)
         if not m3u8_url:
             m3u8_matches = re.findall(r'(?:file|src|url)["\']?\s*[:=]\s*["\']([^"\']+\.m3u8[^"\']*)["\']', text)
@@ -205,14 +216,32 @@ class VidHide(PackedJSExtractor):
         else:
             m3u8_matches = [m3u8_url]
 
+        # Altyazıları çıkar (Playerjs formatı)
+        subtitles = []
+        sub_text  = sel.regex_first(r'["\']subtitle["\']\s*:\s*["\']([^"\']+)["\']')
+        if sub_text:
+             for part in sub_text.split(","):
+                 if "[" in part and "]" in part:
+                     s_name = part.split("[")[1].split("]")[0]
+                     s_url  = part.split("]")[1]
+                     subtitles.append(Subtitle(url=self.fix_url(s_url), name=s_name))
+                 else:
+                     subtitles.append(Subtitle(url=self.fix_url(part), name="Bilinmeyen"))
+
         results = []
         for m3u8 in m3u8_matches:
-            results.append(ExtractResult(name=name, url=self.fix_url(m3u8), referer=f"{final_base_url}/", user_agent=self.httpx.headers.get("User-Agent", "")))
+            results.append(ExtractResult(
+                name       = name,
+                url        = self.fix_url(m3u8),
+                referer    = f"{final_base_url}/",
+                user_agent = self.httpx.headers.get("User-Agent", ""),
+                subtitles  = subtitles
+            ))
 
         if not results:
             # Fallback: sources pattern
             if m3u8_url := sel.regex_first(r'sources:\s*\[\s*\{\s*file:\s*"([^"]+)"'):
-                results.append(ExtractResult(name=name, url=self.fix_url(m3u8_url), referer=f"{final_base_url}/", user_agent=self.httpx.headers.get("User-Agent", "")))
+                results.append(ExtractResult(name=name, url=self.fix_url(m3u8_url), referer=f"{final_base_url}/", user_agent=self.httpx.headers.get("User-Agent", ""), subtitles=subtitles))
 
         if not results:
             raise ValueError(f"{name}: Video URL bulunamadı. {url}")

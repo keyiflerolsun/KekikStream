@@ -140,6 +140,11 @@ class AnimeYTX(PluginBase):
             if not fixed_url or fixed_url.startswith("data:") or fixed_url.startswith("javascript:"):
                 return None
 
+            # Kendi domaininden gelen linkleri (author/, anime/ vb.) filtrele; sadece redirector ve play işle
+            if self.main_url in fixed_url:
+                if "/new/redirector" not in fixed_url and "/new/play/" not in fixed_url:
+                    return None
+
             if "/new/redirector" in fixed_url:
                 try:
                     redirect_resp = await self.async_cf_get(fixed_url, headers={"Referer": url})
@@ -153,7 +158,7 @@ class AnimeYTX(PluginBase):
                 except Exception:
                     pass
 
-            if "/new/play/one.php" not in fixed_url:
+            if "/new/play/one.php" not in fixed_url and "/new/redirector" not in fixed_url:
                 data = await self.extract(fixed_url, referer=url)
                 return data or ExtractResult(url=fixed_url, name="Player", referer=url)
 

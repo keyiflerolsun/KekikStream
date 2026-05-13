@@ -4,8 +4,9 @@ from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper
 import contextlib, json
 
 class Ashdi(PackedJSExtractor):
-    name     = "Ashdi"
-    main_url = "https://ashdi.vip"
+    name              = "Ashdi"
+    main_url          = "https://ashdi.vip"
+    supported_domains = ["ashdi.vip", "ashdi.org"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         # Referer trailing slash fix
@@ -13,7 +14,7 @@ class Ashdi(PackedJSExtractor):
         if ref.endswith("/") and len(ref) > 10:
             ref = ref.rstrip("/")
 
-        resp = await self.httpx.get(
+        resp = await self.async_cf_get(
             url     = url,
             headers = {
                 "Referer"    : ref,

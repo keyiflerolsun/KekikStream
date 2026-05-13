@@ -8,18 +8,24 @@ class Zeus(ExtractorBase):
 
     async def extract(self, url: str, referer: str = None) -> list[ExtractResult]:
         # Iframe içeriğini al
-        istek = await self.httpx.get(url, headers={"Referer": referer} if referer else None)
-        text  = istek.text
+        headers = {"Referer": referer} if referer else None
+        istek   = await self.async_cf_get(url, headers=headers)
+        text    = istek.text
 
         # 'q' parametresini bul
-        # form.append("q", "...")
-        q_param = HTMLHelper(text).regex_first(r'form\.append\("q",\s*"([^"]+)"\)')
+        # form.append("q", "...") or formData.append("q", "...")
+        q_param = HTMLHelper(text).regex_first(r'(?s)\.append\(\s*["\']q["\']\s*,\s*["\']([^"\']+)["\']\)')
 
         if not q_param:
+            # Iframe fallback
+            iframe_src = HTMLHelper(text).select_attr("iframe", "src")
+            if iframe_src:
+                return ExtractResult(name=f"{self.name} (Iframe)", url=self.fix_url(iframe_src), referer=url)
+
             raise ValueError(f"Zeus: 'q' parametresi bulunamadı. {url}")
 
         # API'ye POST at
-        resp = await self.httpx.post(
+        resp = await self.async_cf_post(
             url     = f"{self.main_url}/zeus/api.php",
             data    = {"q": q_param},
             headers = {"Referer": url}

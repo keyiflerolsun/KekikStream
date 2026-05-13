@@ -26,6 +26,7 @@ class ByseSX(ExtractorBase):
         "bysebuho.com",
         "bysevepoin.com",
         "byseqekaho.com",
+        "bysesx.com",
     ]
 
     @staticmethod
@@ -34,36 +35,58 @@ class ByseSX(ExtractorBase):
         pad   = (4 - len(fixed) % 4) % 4
         return base64.b64decode(fixed + "=" * pad)
 
-    async def _api_get(self, code: str, host: str):
-        """details API'sini dene; 403 dönerse mirror domain'lere geç."""
-        headers = {"Origin": f"https://{host}", "Referer": f"https://{host}/e/{code}"}
-        resp    = await self.async_cf_get(f"https://{host}/api/videos/{code}/embed/details", headers=headers, timeout=12)
+    async def _api_get(self, code: str, host: str, referer: str = None):
+        """details API'sini dene; 403 dönerse mirror domain'lere veya referer'a göre Origin değiştir."""
+        candidates = [host] + MIRROR_DOMAINS
 
-        if resp.status_code == 200:
-            return resp.json()
+        # Eğer referer varsa, onun domain'ini de Origin olarak denemek isteyebiliriz
+        origin_from_referer = None
+        if referer:
+            ref_parsed          = urlparse(referer)
+            origin_from_referer = f"{ref_parsed.scheme}://{ref_parsed.netloc}"
 
-        if resp.status_code == 404:
-            raise ValueError(f"ByseSX: Video bulunamadı. {code}")
+        for domain in candidates:
+            headers = {"Origin": f"https://{domain}", "Referer": f"https://{domain}/e/{code}"}
+            resp    = await self.async_cf_get(f"https://{domain}/api/videos/{code}/embed/details", headers=headers, timeout=12)
 
-        for mirror in MIRROR_DOMAINS:
-            if mirror == host:
-                continue
-            headers = {"Origin": f"https://{mirror}", "Referer": f"https://{mirror}/e/{code}"}
-            resp    = await self.async_cf_get(f"https://{mirror}/api/videos/{code}/embed/details", headers=headers, timeout=12)
             if resp.status_code == 200:
                 return resp.json()
+
+            # 403 dönerse referer origin'ini dene
+            if resp.status_code == 403 and origin_from_referer:
+                headers["Origin"] = origin_from_referer
+                resp = await self.async_cf_get(f"https://{domain}/api/videos/{code}/embed/details", headers=headers, timeout=12)
+                if resp.status_code == 200:
+                    return resp.json()
+
             if resp.status_code == 404:
                 raise ValueError(f"ByseSX: Video bulunamadı. {code}")
 
-        raise ValueError(f"ByseSX: API erişimi başarısız. {code}")
+        raise ValueError(f"ByseSX: API erişimi başarısız (403/Mirror Fail). {code}")
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         parsed = urlparse(url)
         host   = parsed.netloc.lstrip("www.")
-        code   = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+
+        # /api/get/ pattern support
+        if "/api/get/" in url:
+            headers = {"Referer": referer or f"https://{host}/"}
+            resp    = await self.async_cf_get(url, headers=headers)
+            if resp.status_code == 200:
+                data    = resp.json()
+                sources = data.get("sources") or data.get("data", {}).get("sources", [])
+                if sources:
+                    best = max(sources, key=lambda s: s.get("bitrate_kbps", 0))
+                    return ExtractResult(
+                        name    = self.name,
+                        url     = best["url"],
+                        referer = url,
+                    )
+
+        code = parsed.path.rstrip("/").rsplit("/", 1)[-1]
 
         # 1) details
-        details         = await self._api_get(code, host)
+        details         = await self._api_get(code, host, referer=referer)
         embed_frame_url = details["embed_frame_url"]
 
         # 2) playback

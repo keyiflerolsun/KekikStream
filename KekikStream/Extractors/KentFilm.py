@@ -12,11 +12,11 @@ class KentFilm(ExtractorBase):
         helper = HTMLHelper(istek.text)
 
         # HTMLHelper.regex_first otomatik olarak ilk grubu döndürür
-        json_str = helper.regex_first(r'FirePlayer\s*\(\s*[^,]+\s*,\s*(\{.*?\})\s*,')
+        json_str = helper.regex_first(r'(?s)FirePlayer\s*\(\s*[^,]+\s*,\s*({.*?})\s*,')
 
         if not json_str:
-            # Fallback regex explicit
-            json_str = helper.regex_first(r'FirePlayer\s*\(\s*[^,]+\s*,\s*(\{.*?\})\s*,\s*false\s*\);')
+            # Alternatif: json direkt değişkende olabilir
+            json_str = helper.regex_first(r'(?s)var\s+playerData\s*=\s*({.*?});')
 
         if not json_str:
             raise ValueError(f"KentFilm: Video bilgisi bulunamadı. {url}")

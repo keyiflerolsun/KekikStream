@@ -7,10 +7,16 @@ class Vidoza(ExtractorBase):
     main_url = "https://vidoza.net"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({"Referer": referer or url})
+        headers = {"Referer": referer or url}
+        resp    = await self.async_cf_get(url, headers=headers)
+        secici  = HTMLHelper(resp.text)
 
-        resp  = await self.httpx.get(url)
-        v_url = HTMLHelper(resp.text).select_attr("source", "src")
+        # sourcesCode: [{ src: "...", ... }]
+        v_url = secici.regex_first(r'sourcesCode\s*:\s*\[\s*{\s*src\s*:\s*["\']([^"\']+)["\']')
+
+        if not v_url:
+            # Fallback
+            v_url = secici.select_attr("source", "src")
 
         if not v_url:
             raise ValueError(f"Vidoza: Video bulunamadı. {url}")

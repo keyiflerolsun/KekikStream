@@ -93,7 +93,7 @@ class SecuredLinkExtractor(ExtractorBase):
         v_id     = self._parse_video_id(url)
         base_url = self._get_base_url(url)
 
-        resp    = await self.httpx.post(
+        resp    = await self.async_cf_post(
             url     = f"{base_url}/player/index.php?data={v_id}&do=getVideo",
             data    = {"hash": v_id, "r": ref},
             headers = {"Referer": ref, "X-Requested-With": "XMLHttpRequest"}
@@ -116,7 +116,7 @@ class SecuredLinkExtractor(ExtractorBase):
         # Bazı hostlar POST yanıtında sadece iframe döndürüyor; ikinci katmanı da çöz.
         if "/player/" in m3u8_url or "/video/" in m3u8_url or "/embed/" in m3u8_url:
             if m3u8_url != url:
-                inner_resp = await self.httpx.get(m3u8_url, headers={"Referer": ref})
+                inner_resp = await self.async_cf_get(m3u8_url, headers={"Referer": ref})
                 if inner_url := self._extract_link_from_text(inner_resp.text):
                     m3u8_url = self.fix_url(inner_url)
 
@@ -221,10 +221,9 @@ class BePlayerExtractor(ExtractorBase):
         return m3u8_url, subtitles, raw_data
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({"Referer": referer or url})
-
-        resp = await self.httpx.get(url)
-        sel  = HTMLHelper(resp.text)
+        headers = {"Referer": referer or url}
+        resp    = await self.async_cf_get(url, headers=headers)
+        sel     = HTMLHelper(resp.text)
 
         m3u8_url, subtitles, _ = self.decrypt_beplayer(resp.text)
 

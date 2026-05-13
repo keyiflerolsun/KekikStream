@@ -169,7 +169,7 @@ class Dizify(PluginBase):
             return SeriesInfo(**common_info, episodes=episodes)
 
         # For movies, we return the sources API URL as the item URL for load_links
-        sources_url = f"{self.api_url}/movies/{item['id']}/sources"
+        sources_url = f"{self.api_url}/movies/{slug}/sources"
         common_info["url"] = sources_url
         return MovieInfo(**common_info)
 

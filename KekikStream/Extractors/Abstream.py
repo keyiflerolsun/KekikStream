@@ -7,7 +7,7 @@ class Abstream(ExtractorBase):
     main_url = "https://abstream.to"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        istek  = await self.httpx.get(
+        istek = await self.async_cf_get(
             url     = url,
             headers = {
                 "Accept-Language" : "en-US,en;q=0.5",

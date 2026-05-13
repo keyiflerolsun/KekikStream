@@ -50,13 +50,14 @@ class DoodStream(ExtractorBase):
         # DoodStream token/key parsing
         pass_key = re.search(r"/(?:pass_md5|pass_key)/([^'\"]+)", html)
         if not pass_key:
-            # Try alternative pattern
-            pass_key = re.search(r"\$\.get\(['\"]/([^'\"]+)['\"]", html)
+            pass_key = re.search(r"/(?:pass_md5|pass_key)/([^'\"]+)", html, re.IGNORECASE)
 
         if not pass_key:
-            # /d/ sürümünde bulamazsak /e/ sürümünü dene (tekrar döngüye girme)
-            if "/d/" in url and "/e/" in original_url:
-                raise ValueError(f"{self.name}: Pass key bulunamadı.")
+            # Try finding it in script calls
+            pass_key = re.search(r"\.get\(['\"]/([^'\"]+)['\"]", html)
+
+        if not pass_key:
+            # /d/ sürümünde bulamazsak /e/ sürümünü dene
             if "/d/" in url:
                 return await self.extract(url.replace("/d/", "/e/"), referer=referer)
             if "/e/" in url:
@@ -72,13 +73,15 @@ class DoodStream(ExtractorBase):
         if not pass_resp.text:
              raise ValueError(f"{self.name}: Pass response empty.")
 
-        # Final URL construction: pass_resp.text + some characters + token
-        # DoodStream logic usually: data + "789...?" + token
+        # Final URL construction
         token  = pk_val.split("/")[-1]
         expiry = int(time.time() * 1000)
 
-        # DoodStream usually appends some random characters
-        # The number of characters can vary, but 10 is common
-        final_url = f"{pass_resp.text}1234567890?token={token}&expiry={expiry}"
+        # random characters (usually 10)
+        random_str = "".join(re.findall(r"[a-zA-Z0-9]", pk_val))[:10]
+        if len(random_str) < 10:
+            random_str = "kekikstream"
+
+        final_url = f"{pass_resp.text}{random_str}?token={token}&expiry={expiry}"
 
         return ExtractResult(name=self.name, url=final_url, referer=url)

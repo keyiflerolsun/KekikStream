@@ -152,10 +152,12 @@ class Dizilla(PluginBase):
             return None
 
         title       = content.get("original_title") or content.get("used_title")
-        description = content.get("description") or content.get("used_description")
-        rating      = content.get("imdb_point") or content.get("local_vote_avg")
-        year        = content.get("release_year")
-        poster      = self.fix_poster_url(self.fix_url(content.get("back_url") or content.get("poster_url")))
+        description = content.get("description") or content.get("used_description") or content.get("summary")
+        if not description:
+            description = secici.select_text("div.description") or secici.select_text("div.desc")
+        rating = content.get("imdb_point") or content.get("local_vote_avg")
+        year   = content.get("release_year")
+        poster = self.fix_poster_url(self.fix_url(content.get("back_url") or content.get("poster_url")))
 
         tags   = [cat.get("name") for cat in decrypted.get("RelatedResults", {}).get("getSerieCategoriesById", {}).get("result", [])]
         actors = [cast.get("name") for cast in decrypted.get("RelatedResults", {}).get("getSerieCastsById", {}).get("result", [])]
