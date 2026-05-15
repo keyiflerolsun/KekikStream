@@ -221,7 +221,7 @@ class HTMLHelper:
                         val = curr.text(strip=True).strip(" :")
                         if val:
                             return val
-                    else: # <br> gördüysek satır bitmiştir
+                    else:  # <br> gördüysek satır bitmiştir
                         break
                     curr = curr.next
 

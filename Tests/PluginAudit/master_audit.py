@@ -165,11 +165,13 @@ class MasterAuditor:
 
         for name in names_to_show:
             r = self.results.get(name)
-            if not r: continue
+            if not r:
+                continue
             cats    = r.get("categories", {"working":0, "total":0})
             lc      = r.get("lifecycle", {})
             cat_str = f"{cats['working']}/{cats['total']}"
-            if cats.get('broken', 0) > 0: cat_str = f"[yellow]{cat_str}[/]"
+            if cats.get('broken', 0) > 0:
+                cat_str = f"[yellow]{cat_str}[/]"
 
             if name in self.active:
                 status = "[bold pulse blue]Taranıyor...[/]"
