@@ -162,7 +162,8 @@ class JetFilmizle(PluginBase):
                     ))
 
         if episodes or "/dizi/" in url:
-            if episodes: episodes.sort(key=lambda x: (x.season, x.episode))
+            if episodes:
+                episodes.sort(key=lambda x: (x.season, x.episode))
             return SeriesInfo(
                 url         = url,
                 poster      = self.fix_url(poster),

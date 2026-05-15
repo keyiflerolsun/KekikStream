@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PackedJSExtractor, ExtractResult, HTMLHelper, M3U8_FILE_REGEX, Subtitle
-from urllib.parse     import urlparse, urlunparse
+from urllib.parse     import urlparse, urlunparse, urljoin
 import re
 
 
@@ -129,13 +129,14 @@ class VidHide(PackedJSExtractor):
         base_url = self.get_base_url(url)
         name     = "EarnVids" if any(x in base_url for x in ["smoothpre.com", "dhtpre.com", "peytonepre.com", "movearnpre.com", "moorearn.com", "travid.pro"]) else self.name
 
-        # Kotlin Headers
+        # Standard Browser Headers
         headers = {
-            "Sec-Fetch-Dest" : "empty",
-            "Sec-Fetch-Mode" : "cors",
-            "Sec-Fetch-Site" : "cross-site",
-            "Origin"         : f"{base_url}/",
-            "Referer"        : referer or f"{base_url}/",
+            "Sec-Fetch-Dest"            : "document",
+            "Sec-Fetch-Mode"            : "navigate",
+            "Sec-Fetch-Site"            : "cross-site",
+            "Sec-Fetch-User"            : "?1",
+            "Referer"                   : referer or f"{base_url}/",
+            "Upgrade-Insecure-Requests" : "1",
         }
 
         embed_url      = self.get_embed_url(url)
@@ -146,11 +147,11 @@ class VidHide(PackedJSExtractor):
 
         for candidate_url in candidate_urls:
             try:
-                istek = await self.httpx.get(candidate_url, headers=headers, follow_redirects=True)
+                istek = await self.async_cf_get(candidate_url, headers=headers, allow_redirects=True)
                 text  = istek.text
             except Exception:
                 try:
-                    istek = await self.async_cf_get(candidate_url, headers=headers, follow_redirects=True)
+                    istek = await self.async_cf_get(candidate_url, headers=headers, allow_redirects=True)
                     text  = istek.text
                 except Exception:
                     istek = None
@@ -198,10 +199,33 @@ class VidHide(PackedJSExtractor):
 
         # NEW: fetch('/dl?op=get_stream...') pattern
         if not m3u8_url:
-            fetch_url = sel.regex_first(r"fetch\(['\"]([^'\"]*?/dl\?op=get_stream[^'\"]+)['\"]")
-            if fetch_url:
+            fetch_match = re.search(r"fetch\(['\"]([^'\"]*?/dl\?op=get_stream[^'\"]+)['\"]", text, re.S)
+            if fetch_match:
+                fetch_url = fetch_match.group(1)
+                # JavaScript ile set edilen cookie'leri yakala
+                js_cookies = {}
+                for c_name, c_val in re.findall(r"\.cookie\(['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]+)['\"]", text):
+                    js_cookies[c_name] = c_val
+
                 try:
-                    f_resp   = await self.async_cf_get(self.fix_url(fetch_url), headers={"Referer": final_url})
+                    target_fetch_url = urljoin(final_url, fetch_url)
+
+                    # Cookie'leri session'a ekle (domain bazlı)
+                    domain = urlparse(final_url).netloc
+                    for k, v in js_cookies.items():
+                        self._cf_session.cookies.set(k, v, domain=domain)
+
+                    fetch_headers = {
+                        "Referer"          : final_url,
+                        "Origin"           : f"{urlparse(final_url).scheme}://{urlparse(final_url).netloc}",
+                        "Sec-Fetch-Dest"   : "empty",
+                        "Sec-Fetch-Mode"   : "cors",
+                        "Sec-Fetch-Site"   : "same-origin",
+                        "X-Requested-With" : "XMLHttpRequest",
+                        "Accept"           : "application/json, text/javascript, */*; q=0.01",
+                    }
+
+                    f_resp   = await self.async_cf_get(target_fetch_url, headers=fetch_headers)
                     f_data   = f_resp.json()
                     m3u8_url = f_data.get("url")
                 except Exception:

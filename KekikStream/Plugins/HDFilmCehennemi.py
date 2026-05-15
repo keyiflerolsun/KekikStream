@@ -308,7 +308,7 @@ class HDFilmCehennemi(PluginBase):
                 return []
 
             # mobi URL'si varsa direkt kullan
-            if "mobi" in iframe: # m.hdfilmcehennemi.nl veya /mobi/
+            if "mobi" in iframe:  # m.hdfilmcehennemi.nl veya /mobi/
                 iframe = iframe.split("?")[0]
             # rapidrame ve query varsa
             elif "rapidrame" in iframe and "?rapidrame_id=" in iframe:

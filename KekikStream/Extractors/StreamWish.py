@@ -96,7 +96,7 @@ class StreamWish(PackedJSExtractor):
         if "/e/" not in url:
             parsed = urlparse(url)
             code   = parsed.path.rstrip("/").split("/")[-1]
-            if code and "." not in code: # basic check for code vs file
+            if code and "." not in code:  # basic check for code vs file
                 return f"{parsed.scheme}://{parsed.netloc}/e/{code}"
 
         return url

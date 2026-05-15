@@ -101,7 +101,8 @@ class Alloha(ExtractorBase):
                         parts  = e[2:].split(delim)
                         result = []
                         for p in parts:
-                            if not p: continue
+                            if not p:
+                                continue
                             try:
                                 t = int(p[-1])
                                 if len(p) > 32:
