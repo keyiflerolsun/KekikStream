@@ -193,6 +193,10 @@ class YTDLP(ExtractorBase):
         return False
 
     async def extract(self, url: str, referer: str | None = None) -> ExtractResult:
+        # Fast-path check: Eğer URL bu extractor tarafından desteklenmiyorsa hiç başlama
+        if not self.can_handle_url(url):
+            raise ValueError(f"yt-dlp cannot handle this URL: {url}")
+
         ydl_opts = {
             "quiet"                 : True,
             "no_warnings"           : True,
@@ -213,6 +217,11 @@ class YTDLP(ExtractorBase):
             try:
                 info = ydl.extract_info(url, download=False)
             except Exception as first_error:
+                # Eğer URL hiç desteklenmiyorsa veya geçersizse, fallback denemeden anında fırlat (Hız kazan)
+                err_msg = str(first_error).lower()
+                if "unsupported url" in err_msg or "not a valid url" in err_msg or "invalid url" in err_msg:
+                    raise ValueError(f"yt-dlp extraction failed: {first_error}")
+
                 # Bazı sitelerde format seçici kaynaklı patlamalarda daha gevşek fallback dene
                 fallback_opts = dict(ydl_opts)
                 fallback_opts["format"] = "best"
