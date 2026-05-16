@@ -199,8 +199,8 @@ class YTDLP(ExtractorBase):
             "extract_flat"          : False,  # Tam bilgi al
             "format"                : "best/all",  # En iyi kalite, yoksa herhangi biri
             "no_check_certificates" : True,
-            "socket_timeout"        : 3,
-            "retries"               : 1,
+            "socket_timeout"        : 10,  # Increased from 3
+            "retries"               : 3,  # Increased from 1
             "noplaylist"            : True,
             "skip_download"         : True,
         }
