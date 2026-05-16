@@ -30,11 +30,12 @@ class DramaFlix(PluginBase):
         offset = (page - 1) * limit
         api    = f"{self._api_url}?limit={limit}&offset={offset}&language=TR&platform={url}"
 
-        istek = await self.httpx.get(api)
-        data  = istek.json()
+        istek       = await self.httpx.get(api)
+        data        = istek.json()
+        series_list = data.get("series", []) if isinstance(data, dict) else []
 
         results = []
-        for item in data:
+        for item in series_list:
             title = item.get("title")
             slug  = item.get("slug")
 
@@ -52,12 +53,13 @@ class DramaFlix(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        api   = f"{self._api_url}?search={query}&language=TR&limit=500"
-        istek = await self.httpx.get(api)
-        data  = istek.json()
+        api         = f"{self._api_url}?search={query}&language=TR&limit=500"
+        istek       = await self.httpx.get(api)
+        data        = istek.json()
+        series_list = data.get("series", []) if isinstance(data, dict) else []
 
         results = []
-        for item in data:
+        for item in series_list:
             title = item.get("title")
             slug  = item.get("slug")
 

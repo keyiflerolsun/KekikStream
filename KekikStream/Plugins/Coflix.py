@@ -34,7 +34,7 @@ class Coflix(PluginBase):
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         # url is our key (movies, series, etc.)
         api_target = f"{self._api_url}/options/?years=&post_type={url}&genres=&page={page}&sort=1"
-        istek      = await self.async_cf_get(api_target)
+        istek      = await self.httpx.get(api_target)
         try:
             data    = istek.json()
             results = []
@@ -68,7 +68,7 @@ class Coflix(PluginBase):
     async def search(self, query: str) -> list[SearchResult]:
         # Kotlin uses suggest.php
         link  = f"{self.main_url}/suggest.php?query={query}"
-        istek = await self.async_cf_get(link)
+        istek = await self.httpx.get(link)
         try:
             # Re-format broken JSON if any, Kotlin says .toString().toJson() which implies some cleanup
             text = istek.text
@@ -90,7 +90,7 @@ class Coflix(PluginBase):
             return []
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.async_cf_get(url)
+        istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
         title = secici.select_text("meta[property='og:title']")
@@ -124,7 +124,7 @@ class Coflix(PluginBase):
 
                 # API Call for season episodes
                 ep_api   = f"{self._api_url}/series/{p_id}/{s_num}"
-                ep_istek = await self.async_cf_get(ep_api)
+                ep_istek = await self.httpx.get(ep_api)
                 try:
                     ep_data = ep_istek.json()
                     for ep in ep_data.get("episodes", []):
@@ -170,7 +170,7 @@ class Coflix(PluginBase):
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         # url might be direct or from Episodes
-        istek  = await self.async_cf_get(url, headers={"Referer": self.main_url})
+        istek  = await self.httpx.get(url, headers={"Referer": self.main_url})
         secici = HTMLHelper(istek.text)
 
         # Look for iframe

@@ -46,7 +46,7 @@ class SuperFilmIzle(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.async_cf_get(f"{url}{page}")
+        istek  = await self.httpx.get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -68,7 +68,7 @@ class SuperFilmIzle(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.async_cf_get(f"{self.main_url}?s={query}")
+        istek  = await self.httpx.get(f"{self.main_url}?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -89,7 +89,7 @@ class SuperFilmIzle(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.async_cf_get(url)
+        istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div.film h1") or secici.select_text("h1")
@@ -113,7 +113,7 @@ class SuperFilmIzle(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek     = await self.async_cf_get(url)
+        istek     = await self.httpx.get(url)
         main_text = istek.text
         secici    = HTMLHelper(main_text)
 

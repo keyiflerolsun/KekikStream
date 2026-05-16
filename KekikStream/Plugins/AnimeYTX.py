@@ -140,6 +140,9 @@ class AnimeYTX(PluginBase):
             if not fixed_url or fixed_url.startswith("data:") or fixed_url.startswith("javascript:"):
                 return None
 
+            if any(fixed_url.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js"]):
+                return None
+
             # Kendi domaininden gelen linkleri (author/, anime/ vb.) filtrele; sadece redirector ve play işle
             if self.main_url in fixed_url:
                 if "/new/redirector" not in fixed_url and "/new/play/" not in fixed_url:

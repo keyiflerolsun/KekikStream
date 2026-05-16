@@ -6,37 +6,25 @@ import re
 class FilmCennetim(PluginBase):
     name        = "FilmCennetim"
     language    = "tr"
-    main_url    = "https://filmcennetim.com"
-    favicon     = "https://filmcennetim.com/wp-content/uploads/2026/02/film-cenneti-logo.png"
+    main_url    = "https://hdfullfilmcibaba.com"
+    favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Film Cenneti, Türkçe dublaj ve 1080p kalitede en yeni filmleri HD izleyebileceğiniz bir platformdur. Hızlı, reklamsız ve kesintisiz sinema keyfi!."
 
     main_page   = {
         f"{main_url}/Kategori/tur/aile-filmleri"        : "Aile",
         f"{main_url}/Kategori/tur/aksiyon-filmleri"     : "Aksiyon",
         f"{main_url}/Kategori/tur/animasyon-filmleri"   : "Animasyon",
-        f"{main_url}/Kategori/tur/anime-filmleri"       : "Anime",
-        f"{main_url}/Kategori/tur/belgeseler-filmleri"  : "Belgeseler",
         f"{main_url}/Kategori/tur/bilim-kurgu-filmleri" : "Bilim-Kurgu",
-        f"{main_url}/Kategori/tur/biyografi-filmleri"   : "Biyoğrafi",
+        f"{main_url}/Kategori/tur/biyografi-filmleri"   : "Biyografi",
         f"{main_url}/Kategori/dizi-izle"                : "Diziler",
         f"{main_url}/Kategori/tur/dram-filmleri-hd"     : "Dram",
-        f"{main_url}/Kategori/tur/erotik-filmleri"      : "Erotik",
         f"{main_url}/Kategori/tur/fantastik-filmler"    : "Fantastik",
         f"{main_url}/Kategori/tur/gerilim-filmleri-hd"  : "Gerilim",
         f"{main_url}/Kategori/tur/gizem-filmleri"       : "Gizem",
         f"{main_url}/Kategori/tur/hint-filmleri"        : "Hint",
-        f"{main_url}/Kategori/tur/komedi-filmleri"      : "Komedi",
         f"{main_url}/Kategori/tur/korku-filmleri"       : "Korku",
         f"{main_url}/Kategori/tur/macera-filmleri"      : "Macera",
-        f"{main_url}/Kategori/tur/muzikal-filmleri"     : "Müzikal",
-        f"{main_url}/Kategori/tur/netflix-filmleri"     : "Netflix",
-        f"{main_url}/Kategori/tur/romantik-filmleri"    : "Romantik",
         f"{main_url}/Kategori/tur/savas-filmleri"       : "Savaş",
-        f"{main_url}/Kategori/tur/spor-filmleri"        : "Spor",
-        f"{main_url}/Kategori/tur/suc-filmleri"         : "Suç",
-        f"{main_url}/Kategori/tur/tarihi-filmleri"      : "Tarihi",
-        f"{main_url}/Kategori/tur/western-filmleri"     : "Western",
-        f"{main_url}/Kategori/tur/yerli-filmleri"       : "Yerli",
     }
 
     async def get_articles(self, secici: HTMLHelper) -> list[dict]:
@@ -56,7 +44,12 @@ class FilmCennetim(PluginBase):
         return articles
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.httpx.get(f"{url}/{page}")
+        if page > 1:
+            req_url = f"{url.rstrip('/')}/page/{page}/"
+        else:
+            req_url = url
+
+        istek   = await self.httpx.get(req_url)
         secici  = HTMLHelper(istek.text)
         veriler = await self.get_articles(secici)
 

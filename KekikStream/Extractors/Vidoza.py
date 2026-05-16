@@ -3,8 +3,9 @@
 from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 
 class Vidoza(ExtractorBase):
-    name     = "Vidoza"
-    main_url = "https://vidoza.net"
+    name              = "Vidoza"
+    main_url          = "https://vidoza.net"
+    supported_domains = ["vidoza.net", "vidoza.org", "vidoza.co"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
         headers = {"Referer": referer or url}

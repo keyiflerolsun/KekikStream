@@ -39,14 +39,14 @@ class FilmciBaba(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        for item in secici.select("div.movie-preview"):
-            title_el = item.select_first(".movie-title a")
+        for item in secici.select("div.movie-preview, div.v50-card"):
+            title_el = item.select_first(".movie-title a") or item.select_first("a")
             if not title_el:
                 continue
 
-            title  = title_el.text(strip=True)
+            title  = title_el.attrs.get("title") or title_el.text(strip=True)
             href   = self.fix_url(title_el.attrs.get("href"))
-            poster = self.fix_url(item.select_poster(".movie-poster img"))
+            poster = self.fix_url(item.select_poster(".movie-poster img, img"))
 
             results.append(MainPageResult(
                 category = category,
@@ -62,14 +62,14 @@ class FilmciBaba(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        for item in secici.select("div.movie-preview"):
-            title_el = item.select_first(".movie-title a")
+        for item in secici.select("div.movie-preview, div.v50-card"):
+            title_el = item.select_first(".movie-title a") or item.select_first("a")
             if not title_el:
                 continue
 
-            title  = title_el.text(strip=True)
+            title  = title_el.attrs.get("title") or title_el.text(strip=True)
             href   = self.fix_url(title_el.attrs.get("href"))
-            poster = self.fix_url(item.select_poster(".movie-poster img"))
+            poster = self.fix_url(item.select_poster(".movie-poster img, img"))
 
             results.append(SearchResult(
                 title  = title,
@@ -83,13 +83,22 @@ class FilmciBaba(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.title h1")
-        poster      = secici.select_poster(".poster img")
-        description = secici.select_text(".excerpt p")
-        year        = secici.extract_year(".release", ".movie-info")
-        rating      = secici.regex_first(r"([\d\.]+)", secici.select_text(".imdb-rating"))
-        tags        = secici.select_texts("div.categories a[href*='/Kategori/tur/']")
-        actors      = secici.select_texts("a[href*='/oyuncular/']") or secici.select_texts(".cast-list .actor-name, .cast-list a")
+        title  = secici.select_text("h1.p-v12-main-title") or secici.select_text("div.title h1")
+        poster = secici.select_poster(".p-v12-poster-main img") or secici.select_poster("img.wp-post-image") or secici.select_poster(".poster img")
+
+        description = secici.select_text("div.p-v12-story-content") or secici.select_text(".excerpt p")
+        if description:
+            h2_el = secici.select_first("div.p-v12-story-content h2")
+            if h2_el:
+                h2_text = h2_el.text(strip=True)
+                if description.startswith(h2_text):
+                    description = description[len(h2_text):].strip()
+            description = description.replace("kesintisizfilmcibabaizle", "").strip()
+
+        year   = secici.extract_year(".p-v12-meta-info span.meta-item", ".meta-item", ".release", ".movie-info")
+        rating = secici.regex_first(r"([\d\.]+)", secici.select_text(".p-v12-imdb-badge")) or secici.regex_first(r"([\d\.]+)", secici.select_text(".imdb-rating"))
+        tags   = secici.select_texts(".p-v12-meta-info a[href*='/Kategori/tur/']") or secici.select_texts(".p-v12-info-centered a[href*='/Kategori/tur/']") or secici.select_texts("div.categories a[href*='/Kategori/tur/']")
+        actors = secici.select_texts("a[href*='/oyuncular/']") or secici.select_texts(".cast-list .actor-name, .cast-list a")
 
         # Bölüm linklerini kontrol et
         ep_elements = secici.select(".parts-middle a, .parts-middle .part.active")
@@ -98,7 +107,7 @@ class FilmciBaba(PluginBase):
             return MovieInfo(
                 url         = url,
                 title       = title,
-                description = description.replace("kesintisizfilmcibabaizle", "").strip() if description else None,
+                description = description if description else None,
                 poster      = self.fix_url(poster),
                 year        = year,
                 rating      = rating if rating != "." else None,
@@ -116,7 +125,7 @@ class FilmciBaba(PluginBase):
         return SeriesInfo(
             url         = url,
             title       = title,
-            description = description.replace("kesintisizfilmcibabaizle", "").strip() if description else None,
+            description = description if description else None,
             poster      = self.fix_url(poster),
             year        = year,
             rating      = rating,
@@ -129,9 +138,17 @@ class FilmciBaba(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        iframe = secici.select_attr(".center-container iframe", "src")
-        if not iframe:
-            iframe = secici.select_attr("iframe[src*='hotstream.club']", "src")
+        iframe = None
+        for sel in ["iframe[data-litespeed-src*='hotstream.club']",
+                    "iframe[data-src*='hotstream.club']",
+                    "iframe[src*='hotstream.club']",
+                    ".plus-v12-player-wrap iframe",
+                    "iframe"]:
+            el = secici.select_first(sel)
+            if el:
+                iframe = el.attrs.get("data-litespeed-src") or el.attrs.get("data-src") or el.attrs.get("src")
+                if iframe and iframe != "about:blank":
+                    break
 
         results = []
 
