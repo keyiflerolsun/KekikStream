@@ -217,4 +217,4 @@ class DiziPal(PluginBase):
              # Final fallback
              results.append(ExtractResult(url=self.fix_url(iframe), name="Externo", referer=url))
 
-        return self.deduplicate(results)
+        return results

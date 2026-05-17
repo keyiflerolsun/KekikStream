@@ -149,4 +149,4 @@ class AsyaAnimeleri(PluginBase):
                 print(f"Error decoding link {name}: {e}")
                 continue
 
-        return self.deduplicate(links)
+        return links

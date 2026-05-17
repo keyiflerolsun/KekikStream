@@ -169,4 +169,4 @@ class YoTurkish(PluginBase):
                     user_agent = self.httpx.headers.get("User-Agent")
                 ))
 
-        return self.deduplicate(response)
+        return response

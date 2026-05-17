@@ -30,3 +30,16 @@ def normalize_rating(value: str | None) -> str | None:
         except ValueError:
             return None
     return value
+
+
+def fix_url(url: str | None, main_url: str = "") -> str:
+    """Eksik URL'leri düzeltir ve tam URL formatına çevirir."""
+    if not url:
+        return ""
+
+    if url.startswith("http") or url.startswith("{\""):
+        return url.replace("\\", "")
+
+    from urllib.parse import urljoin
+    url = f"https:{url}" if url.startswith("//") else urljoin(main_url, url)
+    return url.replace("\\", "")

@@ -183,4 +183,4 @@ class Turkish123(PluginBase):
                     user_agent = self.httpx.headers.get("User-Agent")
                 ))
 
-        return self.deduplicate(response)
+        return response

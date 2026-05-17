@@ -37,13 +37,14 @@ class DiziGom(PluginBase):
         else:
             req_url = url
 
-        istek  = await self.httpx.get(req_url)
+        istek  = await self.async_cf_get(req_url)
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.single-item"):
-            title  = veri.select_text("div.categorytitle a")
-            href   = veri.select_attr("div.categorytitle a", "href")
+        divs    = secici.select("div.single-item")
+        for veri in divs:
+            title  = veri.select_text("div.categorytitle a") or veri.select_text("h2 a")
+            href   = veri.select_attr("div.categorytitle a", "href") or veri.select_attr("h2 a", "href")
             poster = veri.select_attr("div.cat-img img", "src") or veri.select_attr("img", "src")
 
             if title and href:
@@ -57,13 +58,13 @@ class DiziGom(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
         for veri in secici.select("div.single-item"):
-            title  = veri.select_text("div.categorytitle a")
-            href   = veri.select_attr("div.categorytitle a", "href")
+            title  = veri.select_text("div.categorytitle a") or veri.select_text("h2 a")
+            href   = veri.select_attr("div.categorytitle a", "href") or veri.select_attr("h2 a", "href")
             poster = veri.select_attr("div.cat-img img", "src") or veri.select_attr("img", "src")
 
             if title and href:
@@ -76,7 +77,7 @@ class DiziGom(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         # Dizi sayfası kontrolü
@@ -160,7 +161,7 @@ class DiziGom(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url, headers={"Referer": f"{self.main_url}/"})
+        istek  = await self.async_cf_get(url, headers={"Referer": f"{self.main_url}/"})
         secici = HTMLHelper(istek.text)
 
         # Video iframe bul
@@ -171,4 +172,5 @@ class DiziGom(PluginBase):
         if not iframe_src:
             return []
 
-        return [await self.extract(self.fix_url(iframe_src))]
+        res = await self.extract(self.fix_url(iframe_src))
+        return [res] if res else []

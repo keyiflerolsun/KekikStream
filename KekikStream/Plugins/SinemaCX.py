@@ -235,4 +235,4 @@ class SinemaCX(PluginBase):
                 final_results.extend(group)
 
         # Duplicate Eliminasyonu
-        return self.deduplicate(final_results, key="url+name")
+        return final_results

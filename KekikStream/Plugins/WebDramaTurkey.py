@@ -300,4 +300,4 @@ class WebDramaTurkey(PluginBase):
         for data in await self.gather_with_limit(tasks):
             self.collect_results(response, data)
 
-        return self.deduplicate(response)
+        return response

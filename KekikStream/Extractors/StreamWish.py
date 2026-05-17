@@ -60,6 +60,7 @@ class StreamWish(PackedJSExtractor):
         "vudeo.io",
         "vadshar.com",
         "happy1de.space",
+        "perfectcrown.buzz",
     ]
 
     _DIRECT_ALIAS_MAP = {
@@ -131,23 +132,17 @@ class StreamWish(PackedJSExtractor):
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
 
-        try:
-            istek = await self.httpx.get(url=embed_url, headers=headers, follow_redirects=True)
-            html  = istek.text
-        except Exception:
-            istek = await self.async_cf_get(url=embed_url, headers=headers)
-            html  = istek.text
+        # StreamWish ve klonları genellikle Cloudflare arkasındadır, doğrudan async_cf_get kullanalım
+        istek = await self.async_cf_get(url=embed_url, headers=headers, allow_redirects=True)
+        html  = istek.text
 
         m3u8_url = self._extract_direct_media(html)
 
         if not m3u8_url and embed_url != url:
-            try:
-                istek = await self.httpx.get(url=url, headers=headers, follow_redirects=True)
-                html  = istek.text
-            except Exception:
-                istek    = await self.async_cf_get(url=url, headers=headers)
-                html     = istek.text
+            istek    = await self.async_cf_get(url=url, headers=headers, allow_redirects=True)
+            html     = istek.text
             m3u8_url = self._extract_direct_media(html)
+
         if not m3u8_url:
             download_urls = []
             if "/d/" in embed_url:
@@ -161,12 +156,8 @@ class StreamWish(PackedJSExtractor):
                     continue
                 seen.add(download_url)
 
-                try:
-                    download_resp = await self.httpx.get(url=download_url, headers=headers, follow_redirects=True)
-                    download_html = download_resp.text
-                except Exception:
-                    download_resp = await self.async_cf_get(url=download_url, headers=headers)
-                    download_html = download_resp.text
+                download_resp = await self.async_cf_get(url=download_url, headers=headers, allow_redirects=True)
+                download_html = download_resp.text
 
                 sel            = HTMLHelper(download_html)
                 download_links = sel.select_attrs("a[href*='/f/']", "href")
@@ -184,12 +175,8 @@ class StreamWish(PackedJSExtractor):
                     for candidate_link in sorted(download_links, key=quality_rank):
                         candidate_url = urljoin(f"{base_url}/", candidate_link)
 
-                        try:
-                            candidate_resp = await self.httpx.get(url=candidate_url, headers=headers, follow_redirects=True)
-                            candidate_html = candidate_resp.text
-                        except Exception:
-                            candidate_resp = await self.async_cf_get(url=candidate_url, headers=headers)
-                            candidate_html = candidate_resp.text
+                        candidate_resp = await self.async_cf_get(url=candidate_url, headers=headers, allow_redirects=True)
+                        candidate_html = candidate_resp.text
 
                         candidate_media = self._extract_direct_media(candidate_html)
                         if candidate_media:
@@ -197,7 +184,7 @@ class StreamWish(PackedJSExtractor):
                                 name       = self.name,
                                 url        = self.fix_url(candidate_media),
                                 referer    = candidate_url,
-                                user_agent = self.httpx.headers.get("User-Agent", ""),
+                                user_agent = headers["User-Agent"],
                             )
 
                         candidate_helper = HTMLHelper(candidate_html)
@@ -210,4 +197,4 @@ class StreamWish(PackedJSExtractor):
         if not m3u8_url:
             raise ValueError(f"StreamWish: m3u8 bulunamadı. {url}")
 
-        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=f"{base_url}/", user_agent=self.httpx.headers.get("User-Agent", ""))
+        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=f"{base_url}/", user_agent=headers["User-Agent"])

@@ -10,18 +10,18 @@ class EmbedLoad(PackedJSExtractor):
     supported_domains = ["embedload.cfd", "asianload.cfd"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({
+        headers = {
             "Referer" : referer or self.main_url,
             "Origin"  : self.main_url,
-        })
+        }
 
-        resp = await self.httpx.get(url, follow_redirects=True)
+        resp = await self.async_cf_get(url, headers=headers, allow_redirects=True)
         html = resp.text
 
         sel    = HTMLHelper(html)
         if iframe_src := sel.select_attr("iframe", "src"):
             iframe_src = self.fix_url(iframe_src)
-            resp       = await self.httpx.get(iframe_src, headers={"Referer": url}, follow_redirects=True)
+            resp       = await self.async_cf_get(iframe_src, headers={"Referer": url}, allow_redirects=True)
             html       = resp.text
             sel        = HTMLHelper(html)
 
@@ -56,12 +56,20 @@ class EmbedLoad(PackedJSExtractor):
 
         if not m3u8_url:
             link_map = dict(re.findall(r'"(hls\d+)":"([^"]+)"', unpacked))
-            for key in ("hls4", "hls3", "hls2"):
+            # Hls2 ve Hls3 genellikle doğrudan tam URL içerir, hls4 ise bazen hatalı relative path olabiliyor.
+            for key in ("hls2", "hls3", "hls4"):
                 if link_map.get(key):
                     m3u8_url = self.fix_url(link_map[key])
-                    break
+                    if m3u8_url.startswith("http"):
+                        break
 
-        video_url = self.unpack_and_find(html) or m3u8_url or mp4_url
+        video_url = m3u8_url or self.unpack_and_find(html) or mp4_url
+        if not video_url:
+            # If map logic found hls4 (relative), try it as last resort if nothing else found
+            link_map = dict(re.findall(r'"(hls\d+)":"([^"]+)"', unpacked))
+            if link_map.get("hls4"):
+                video_url = self.fix_url(link_map["hls4"])
+
         if not video_url:
             video_url = (
                 sel.regex_first(r'["\']file["\']\s*:\s*["\']([^"\']+\.(?:m3u8|mp4)[^"\']*)["\']') or

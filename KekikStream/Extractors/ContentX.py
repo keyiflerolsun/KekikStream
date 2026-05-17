@@ -25,7 +25,7 @@ class ContentX(ExtractorBase):
         """source2/source endpoint varyasyonlarını dener."""
         for endpoint in ("source2.php", "source.php", "source3.php", "get_source.php"):
             try:
-                resp = await self.httpx.get(f"{base_url}/{endpoint}?v={vid}", headers={"Referer": content_url})
+                resp = await self.async_cf_get(f"{base_url}/{endpoint}?v={vid}", headers={"Referer": content_url})
                 if resp.status_code == 200:
                     if file_link := HTMLHelper(resp.text).regex_first(r'file":"([^\"]+)"'):
                         return self._normalize_link(file_link)
@@ -34,10 +34,10 @@ class ContentX(ExtractorBase):
         return None
 
     async def extract(self, url: str, referer: str = None) -> list[ExtractResult] | ExtractResult:
-        ref = referer or self.get_base_url(url)
-        self.httpx.headers.update({"Referer": ref})
+        ref     = referer or self.get_base_url(url)
+        headers = {"Referer": ref}
 
-        resp = await self.httpx.get(url)
+        resp = await self.async_cf_get(url, headers=headers)
         sel  = HTMLHelper(resp.text)
 
         # Farklı player çağrılarını yakala

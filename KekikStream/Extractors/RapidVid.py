@@ -12,15 +12,16 @@ class RapidVid(ExtractorBase):
     supported_domains = ["rapidvid.net", "rapid.filmmakinesi.to"]
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
-
-        resp = await self.httpx.get(url)
-        sel  = HTMLHelper(resp.text)
+        headers = {"Referer": referer or url}
+        resp    = await self.async_cf_get(url, headers=headers)
+        sel     = HTMLHelper(resp.text)
 
         subtitles = []
         for s_url, s_lang in sel.regex_all(r'captions","file":"([^\"]+)","label":"([^\"]+)"'):
-            decoded_lang = s_lang.encode().decode('unicode_escape')
+            try:
+                decoded_lang = s_lang.encode().decode('unicode_escape')
+            except Exception:
+                decoded_lang = s_lang
             subtitles.append(Subtitle(name=decoded_lang, url=s_url.replace("\\", "")))
 
         try:
@@ -40,6 +41,11 @@ class RapidVid(ExtractorBase):
                 video_url = StreamDecoder.extract_stream_url(unpacked)
 
             if not video_url:
+                # Check for direct m3u8 in text
+                from KekikStream.Core import M3U8_FILE_REGEX
+                video_url = sel.regex_first(M3U8_FILE_REGEX)
+
+            if not video_url:
                 raise ValueError(f"RapidVid: Video URL bulunamadı. {url}")
 
         except Exception as hata:
@@ -47,30 +53,23 @@ class RapidVid(ExtractorBase):
 
         return ExtractResult(
             name      = self.name,
-            url       = video_url,
-            referer   = self.main_url,
+            url       = self.fix_url(video_url),
+            referer   = url,
             subtitles = subtitles
         )
 
-    def decode_secret(self, encoded_string: str) -> str:
-        # 1. Base64 ile şifrelenmiş string ters çevrilmiş, önce geri çeviriyoruz
-        reversed_input = encoded_string[::-1]
+    def decode_secret(self, data: str) -> str:
+        """av('...') içindeki veriyi çözer."""
+        # İlk base64 çözme işlemi
+        decoded_bytes  = base64.b64decode(data)
+        decoded_string = decoded_bytes.decode("utf-8")
 
-        # 2. İlk base64 çözme işlemi
-        decoded_once = base64.b64decode(reversed_input).decode("utf-8")
-
+        # Karakter kaydırma işlemi
         decrypted_chars = []
-        key             = "K9L"
+        for char in decoded_string:
+            decrypted_chars.append(chr(ord(char) - 1))
 
-        # 3. Key'e göre karakter kaydırma geri alınıyor
-        for index, encoded_char in enumerate(decoded_once):
-            key_char = key[index % len(key)]
-            offset   = (ord(key_char) % 5) + 1  # Her karakter için dinamik offset
-
-            original_char_code = ord(encoded_char) - offset
-            decrypted_chars.append(chr(original_char_code))
-
-        # 4. Karakterleri birleştirip ikinci base64 çözme işlemini yapıyoruz
+        # Karakterleri birleştirip ikinci base64 çözme işlemini yapıyoruz
         intermediate_string = "".join(decrypted_chars)
         final_decoded_bytes = base64.b64decode(intermediate_string)
 

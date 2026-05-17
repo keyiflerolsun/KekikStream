@@ -28,7 +28,7 @@ class DiziYou(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url.replace('SAYFA', str(page))}")
+        istek  = await self.async_cf_get(f"{url.replace('SAYFA', str(page))}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -48,7 +48,7 @@ class DiziYou(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -67,7 +67,7 @@ class DiziYou(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         poster      = secici.select_poster("div.category_image img")
@@ -106,7 +106,7 @@ class DiziYou(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         # Player iframe'inden ID'yi yakala
@@ -114,7 +114,8 @@ class DiziYou(PluginBase):
         if not iframe_src:
             return []
 
-        item_id      = iframe_src.split("/")[-1].replace(".html", "")
+        # Sorgu parametrelerini temizle ve ID'yi al
+        item_id      = iframe_src.split("?")[0].split("/")[-1].replace(".html", "")
         base_storage = self.main_url.replace("www", "storage")
 
         subtitles = []

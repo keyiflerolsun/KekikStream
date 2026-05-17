@@ -42,14 +42,14 @@ class DDizi(PluginBase):
         else:
             target_url = url
 
-        istek   = await self.httpx.get(target_url, follow_redirects=True)
+        istek   = await self.async_cf_get(target_url, allow_redirects=True)
         secici  = HTMLHelper(istek.text)
         veriler = await self.get_articles(secici)
 
         return [MainPageResult(**veri, category=category) for veri in veriler if veri]
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.post(
+        istek = await self.async_cf_post(
             url     = f"{self.main_url}/arama/",
             headers = {"Referer": f"{self.main_url}/"},
             data    = {"arama": query}
@@ -60,21 +60,14 @@ class DDizi(PluginBase):
         return [SearchResult(**veri) for veri in veriler if veri]
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1, h2, div.dizi-boxpost-cat a")
         poster      = secici.select_poster("div.afis img, img.afis, img.img-back, img.img-back-cat")
         description = secici.select_text("div.dizi-aciklama, div.aciklama, p")
 
-        # DDizi'de doğru bir rating verisi yok
-        # span.comments-ss yorum sayısı içeriyor, rating değil
-
-        # Meta verileri (DDizi'de pek yok ama deniyoruz)
-        # Year için sadece açıklama kısmına bakalım ki URL'deki ID'yi almasın
         year   = HTMLHelper(description).regex_first(r"(\d{4})") if description else None
-
-        # Etiket ve Oyuncu iyileştirmesi
         tags   = secici.select_texts("div.tag-cloud a") or secici.select_texts("p.etiket a") or secici.select_texts("div.etiketler a")
         actors = secici.select_texts("div.oyuncular a") or secici.select_attrs("div.oyuncular img", "alt") or secici.select_texts("ul.bilgi li a")
 
@@ -85,7 +78,7 @@ class DDizi(PluginBase):
         while has_next:
             page_url = f"{url}/sayfa-{current_page}" if current_page > 1 else url
             if current_page > 1:
-                istek  = await self.httpx.get(page_url)
+                istek  = await self.async_cf_get(page_url)
                 secici = HTMLHelper(istek.text)
 
             page_eps = secici.select("div.bolumler a, div.sezonlar a, div.dizi-arsiv a, div.dizi-boxpost-cat a")
@@ -96,7 +89,6 @@ class DDizi(PluginBase):
                 name = ep.text().strip()
                 href = ep.attrs.get("href")
                 if name and href:
-                    # 'Bölüm Final' gibi durumları temizleyelim
                     clean_name = name.replace("Final", "").strip()
                     s, e = secici.extract_season_episode(clean_name)
                     episodes.append(Episode(
@@ -110,7 +102,7 @@ class DDizi(PluginBase):
             has_next = any("Sonraki" in a.text() for a in secici.select(".pagination a"))
             current_page += 1
             if current_page > 10:
-                break # Emniyet kilidi
+                break
 
         if not episodes:
             s, e = secici.extract_season_episode(title)
@@ -122,7 +114,7 @@ class DDizi(PluginBase):
             ))
         elif episodes:
             last_episode = episodes[-1]
-            last_resp    = await self.httpx.get(last_episode.url)
+            last_resp    = await self.async_cf_get(last_episode.url)
             if "videoyok.html" in last_resp.text:
                 episodes.pop()
 
@@ -139,34 +131,29 @@ class DDizi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        results = []
-        # og:video ve JWPlayer kontrolü
+        results    = []
         target_url = None
 
-        # 1. og:video check
         og_video = secici.select_attr("meta[property='og:video']", "content")
         if og_video:
             target_url = self.fix_url(og_video)
         else:
-            # 2. Iframe check (/player/oynat/...)
             iframe_src = secici.select_attr("iframe[src^='/player/oynat/']", "src")
             if iframe_src:
                 target_url = self.fix_url(iframe_src)
 
         if target_url:
             with suppress(Exception):
-                player_istek  = await self.httpx.get(target_url, headers={"Referer": url})
+                player_istek  = await self.async_cf_get(target_url, headers={"Referer": url})
                 player_secici = HTMLHelper(player_istek.text)
 
-                # file: '...' logic
                 sources      = player_secici.regex_all(r'file:\s*["\']([^"\']+)["\']')
                 extract_urls = []
                 for src in sources:
-                    src = self.fix_url(src)
-                    # Direkt link kontrolü - Extractor gerektirmeyenler
+                    src       = self.fix_url(src)
                     is_direct = any(x in src.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"])
 
                     if is_direct:
@@ -184,7 +171,6 @@ class DDizi(PluginBase):
                 for res in await self.gather_with_limit(tasks):
                     self.collect_results(results, res)
 
-                # Fallback to target_url itself if nothing found inside
                 if not results:
                      if any(x in target_url.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"]) and ".html" not in target_url:
                         fb_name = "YouTube" if any(x in target_url.lower() for x in ["google", "youtube"]) else ("M3U8" if ".m3u8" in target_url.lower() else "MP4")

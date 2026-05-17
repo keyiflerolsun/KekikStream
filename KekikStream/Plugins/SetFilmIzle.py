@@ -247,4 +247,4 @@ class SetFilmIzle(PluginBase):
              if group:
                  final_results.extend(group)
 
-        return self.deduplicate(final_results, key="url+name")
+        return final_results

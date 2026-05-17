@@ -254,4 +254,4 @@ class YabanciDizi(PluginBase):
                     self.collect_results(results, extracted)
 
         # Duplicate kontrolü
-        return self.deduplicate(results)
+        return results

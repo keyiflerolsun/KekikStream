@@ -21,4 +21,9 @@ class DzenRu(ExtractorBase):
         if not links:
             raise ValueError(f"DzenRu: Video linki bulunamadı. {url}")
 
-        return ExtractResult(name=self.name, url=list(set(links))[-1], referer=self.main_url)
+        return ExtractResult(
+            name       = self.name,
+            url        = list(set(links))[-1],
+            referer    = self.main_url,
+            user_agent = self.httpx.headers.get("User-Agent"),
+        )

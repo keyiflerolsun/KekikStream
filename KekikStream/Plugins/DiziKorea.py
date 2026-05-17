@@ -192,4 +192,4 @@ class DiziKorea(PluginBase):
                      u, n = extract_args[idx]
                      response.append(ExtractResult(url=u, name=n or "Externo", referer=url))
 
-        return self.deduplicate(response)
+        return response

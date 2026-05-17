@@ -8,12 +8,12 @@ class CloseLoad(PackedJSExtractor):
     main_url = "https://closeload.filmmakinesi.to"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({
+        headers = {
             "Referer" : referer or self.main_url,
             "Origin"  : self.main_url
-        })
+        }
 
-        resp = await self.httpx.get(url)
+        resp = await self.async_cf_get(url, headers=headers)
         sel  = HTMLHelper(resp.text)
 
         # 1. JSON-LD'den Dene

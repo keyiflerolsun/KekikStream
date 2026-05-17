@@ -264,4 +264,4 @@ class AsyaWatch(PluginBase):
         data_result = await self.extract(iframe_src, referer=f"{self.main_url}/")
         self.collect_results(response, data_result)
 
-        return self.deduplicate(response)
+        return response

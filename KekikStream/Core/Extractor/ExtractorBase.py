@@ -3,9 +3,10 @@
 from abc                import ABC, abstractmethod
 from curl_cffi.requests import AsyncSession
 from httpx              import AsyncClient
-from typing             import Optional
+from typing             import Optional, Union, List
 from .ExtractorModels   import ExtractResult
 from urllib.parse       import urljoin, urlparse
+from ..Helpers          import PlayabilityHelper, fix_url
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -14,7 +15,7 @@ class ExtractorBase(ABC):
 
     def __init__(self):
         # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
-        self._cf_session = AsyncSession(impersonate="chrome")
+        self._cf_session = AsyncSession(impersonate="firefox")
         self._cf_session.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -27,6 +28,9 @@ class ExtractorBase(ABC):
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         })
+
+        # Metot sarmalama (ExtractResult URL'lerinin oynatılabilirliğini doğrular)
+        self._wrap_extract_method()
 
     def can_handle_url(self, url: str) -> bool:
         # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
@@ -64,12 +68,41 @@ class ExtractorBase(ABC):
         return await self._cf_session.post(url, **kwargs)
 
     def fix_url(self, url: str) -> str:
-        # Eksik URL'leri düzelt ve tam URL formatına çevir
-        if not url:
-            return ""
+        return fix_url(url, self.main_url)
 
-        if url.startswith("http") or url.startswith("{\""):
-            return url.replace("\\", "")
+    def _wrap_extract_method(self):
+        """extract metodunu dinamik olarak sarmalar ve oynatılamayan linkleri ayıklar."""
+        original_extract = getattr(self, "extract", None)
+        if not original_extract or getattr(original_extract, "__wb_wrapped_extract__", False):
+            return
 
-        url = f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
-        return url.replace("\\", "")
+        async def wrapped_extract(url: str, referer: Optional[str] = None, *args, **kwargs) -> Union[None, ExtractResult, List[ExtractResult]]:
+            try:
+                res = await original_extract(url, referer, *args, **kwargs)
+                if not res:
+                    return None
+
+                # Liste ise her birini doğrula ve sadece oynatılabilir olanları döndür
+                if isinstance(res, list):
+                    valid_results = []
+                    for item in res:
+                        if isinstance(item, ExtractResult):
+                            is_playable, _ = await PlayabilityHelper.is_url_playable(item)
+                            if is_playable:
+                                valid_results.append(item)
+                    return valid_results if valid_results else None
+
+                # Tekil öğe ise doğrula
+                elif isinstance(res, ExtractResult):
+                    is_playable, _ = await PlayabilityHelper.is_url_playable(res)
+                    if is_playable:
+                        return res
+                    else:
+                        return None
+
+                return res
+            except Exception as e:
+                raise e
+
+        wrapped_extract.__wb_wrapped_extract__ = True
+        self.extract                           = wrapped_extract

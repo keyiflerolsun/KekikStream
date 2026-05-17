@@ -1,8 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
-from Kekik.Sifreleme  import Packer
-import re, base64
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, MovieInfo, Episode, ExtractResult, HTMLHelper
+import re
 
 class Dramacool(PluginBase):
     name        = "Dramacool"
@@ -37,8 +36,9 @@ class Dramacool(PluginBase):
         return original_url
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}/page/{page}")
-        secici = HTMLHelper(istek.text)
+        full_url = f"{url}/page/{page}" if page > 1 else url
+        istek    = await self.async_cf_get(full_url)
+        secici   = HTMLHelper(istek.text)
 
         results = []
         for li in secici.select("ul.switch-block li"):
@@ -67,7 +67,7 @@ class Dramacool(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}?type=movies&s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}?type=movies&s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -90,8 +90,8 @@ class Dramacool(PluginBase):
 
         return results
 
-    async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div.info h1") or ""
@@ -102,11 +102,11 @@ class Dramacool(PluginBase):
         if len(p_elements) > 2:
             description = p_elements[2].text(strip=True) if hasattr(p_elements[2], "text") else ""
 
-        # selectolax :contains() desteklemez — manuel parse
+        # Metadata parse
         year = None
         tags = []
         for p_el in secici.select("div.info p"):
-            p_text = p_el.select_text(None) or ""
+            p_text = p_el.text() if hasattr(p_el, "text") else ""
             if "Released:" in p_text:
                 year_a = p_el.select_text("a")
                 if year_a:
@@ -134,6 +134,16 @@ class Dramacool(PluginBase):
                 url     = self.fix_url(ep_url),
             ))
 
+        if not episodes:
+            return MovieInfo(
+                url         = url,
+                poster      = poster,
+                title       = title,
+                description = description,
+                tags        = tags,
+                year        = year,
+            )
+
         return SeriesInfo(
             url         = url,
             poster      = poster,
@@ -144,51 +154,11 @@ class Dramacool(PluginBase):
             episodes    = episodes,
         )
 
-    async def _extract_asianload(self, url: str) -> list[ExtractResult]:
-        """AsianLoad JsUnpacker + base64 video çıkarma"""
-        results = []
-        try:
-            resp = await self.httpx.get(url)
-            # eval(function(p,a,c,k,e,d) packed JS
-            scripts = HTMLHelper(resp.text).select("div#player + script")
-            for sc in scripts:
-                script_text = sc.text if hasattr(sc, "text") else ""
-                if not script_text.startswith("eval(function(p,a,c,k,e,d)"):
-                    continue
-
-                unpacked = Packer.unpack(script_text)
-                if not unpacked:
-                    continue
-
-                # window.atob("...") → base64 decode
-                for b64_match in re.finditer(r'window\.atob\("([^"]+)"\)', unpacked):
-                    encoded = b64_match.group(1)
-                    try:
-                        decoded = base64.b64decode(encoded).decode("utf-8")
-                        if ".mp4" in decoded or ".m3u8" in decoded:
-                            results.append(ExtractResult(
-                                name    = "AsianLoad",
-                                url     = decoded,
-                                referer = url,
-                            ))
-                    except Exception:
-                        pass
-        except Exception:
-            pass
-
-        return results
-
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        response = []
-
-        async def _process_iframe(src):
-            if "asianload" in src:
-                return await self._extract_asianload(src)
-            return await self.extract(src, referer=url)
-
+        response    = []
         iframe_srcs = []
         for iframe in secici.select("iframe"):
             src = iframe.select_attr(None, "src")
@@ -199,24 +169,19 @@ class Dramacool(PluginBase):
                 src = f"https:{src}"
             iframe_srcs.append(src)
 
-        tasks = [_process_iframe(src) for src in iframe_srcs]
+        # div.watch-iframe iframe fallback
+        for iframe in secici.select("div.watch-iframe iframe"):
+            src = iframe.select_attr(None, "src")
+            if not src:
+                continue
+            src = src.strip()
+            if src.startswith("//"):
+                src = f"https:{src}"
+            if src not in iframe_srcs:
+                iframe_srcs.append(src)
+
+        tasks = [self.extract(src, referer=url) for src in iframe_srcs]
         for data in await self.gather_with_limit(tasks):
             self.collect_results(response, data)
 
-        # div.watch-iframe iframe fallback
-        if not response:
-            fallback_srcs = []
-            for iframe in secici.select("div.watch-iframe iframe"):
-                src = iframe.select_attr(None, "src")
-                if not src:
-                    continue
-                src = src.strip()
-                if src.startswith("//"):
-                    src = f"https:{src}"
-                fallback_srcs.append(src)
-
-            tasks = [self.extract(src, referer=url) for src in fallback_srcs]
-            for data in await self.gather_with_limit(tasks):
-                self.collect_results(response, data)
-
-        return self.deduplicate(response)
+        return response

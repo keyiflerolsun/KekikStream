@@ -154,8 +154,29 @@ class CizgiMax(PluginBase):
                     if s.get("type") == "iframe":
                         src = s.get("src")
                         if src:
-                            data = await self.extract(self.fix_url(src), referer=url, prefix=name)
-                            self.collect_results(response, data)
+                            src_url = self.fix_url(src)
+                            if "/oynat/" in src_url:
+                                try:
+                                    oynat_req  = await self.async_cf_get(src_url, headers={"Referer": url})
+                                    oynat_html = oynat_req.text
+                                    found_urls = re.findall(r'(https?://[^\s\"\'\<\>]+)', oynat_html)
+                                    resolved   = False
+                                    for u in found_urls:
+                                        u_clean = u.rstrip("/").rstrip("&").rstrip("?")
+                                        if any(domain in u_clean for domain in ("dzen.ru", "mail.ru", "ok.ru", "vk.com", "uqload", "voe.sx", "filemoon", "sibnet", "vidmoly", "rapidvid")):
+                                            data = await self.extract(u_clean, referer=src_url, prefix=name)
+                                            if data:
+                                                self.collect_results(response, data)
+                                                resolved = True
+                                                break
+                                    if not resolved:
+                                        data = await self.extract(src_url, referer=url, prefix=name)
+                                        self.collect_results(response, data)
+                                except Exception:
+                                    pass
+                            else:
+                                data = await self.extract(src_url, referer=url, prefix=name)
+                                self.collect_results(response, data)
                     elif s.get("streamUrl"):
                         # Direkt stream URL (genelde sibnet/vidmoly api endpointi)
                         stream_url = self.fix_url(s.get("streamUrl"))
@@ -185,4 +206,4 @@ class CizgiMax(PluginBase):
                     data = await self.extract(self.fix_url(iframe.strip()), referer=url)
                     self.collect_results(response, data)
 
-        return self.deduplicate(response)
+        return response

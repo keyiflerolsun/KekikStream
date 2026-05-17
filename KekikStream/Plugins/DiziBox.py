@@ -40,13 +40,14 @@ class DiziBox(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        self.httpx.cookies.update({
+        cookies = {
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
-        })
-        istek = await self.httpx.get(
-            url              = f"{url.replace('SAYFA', str(page))}",
-            follow_redirects = True
+        }
+        istek = await self.async_cf_get(
+            url             = f"{url.replace('SAYFA', str(page))}",
+            cookies         = cookies,
+            allow_redirects = True
         )
         secici = HTMLHelper(istek.text)
 
@@ -67,11 +68,11 @@ class DiziBox(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        self.httpx.cookies.update({
+        cookies = {
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
-        })
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        }
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}", cookies=cookies)
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -90,7 +91,7 @@ class DiziBox(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div.tv-overview h1 a")
@@ -103,7 +104,7 @@ class DiziBox(PluginBase):
 
         episodes = []
         for link in secici.select_attrs("div#seasons-list a", "href"):
-            r        = await self.httpx.get(self.fix_url(link))
+            r        = await self.async_cf_get(self.fix_url(link))
             s_secici = HTMLHelper(r.text)
             for bolum in s_secici.select("article.grid-box"):
                 name = bolum.select_text("div.post-title a")
@@ -127,22 +128,22 @@ class DiziBox(PluginBase):
     async def _iframe_decode(self, name:str, iframe_link:str, referer:str) -> list[str]:
         results = []
 
-        self.httpx.headers.update({"Referer": referer})
-        self.httpx.cookies.update({
+        headers = {"Referer": referer}
+        cookies = {
             "isTrustedUser" : "true",
             "dbxu"          : str(time.time() * 1000).split(".")[0]
-        })
+        }
 
         if "/player/king/king.php" in iframe_link:
             iframe_link = iframe_link.replace("king.php?v=", "king.php?wmode=opaque&v=")
 
-            istek  = await self.httpx.get(iframe_link)
+            istek  = await self.async_cf_get(iframe_link, headers=headers, cookies=cookies)
             secici = HTMLHelper(istek.text)
             iframe = secici.select_attr("div  #Player iframe", "src")
 
             if iframe:
-                self.httpx.headers.update({"Referer": self.main_url})
-                iframe_istek = await self.httpx.get(iframe)
+                headers       = {"Referer": self.main_url}
+                iframe_istek  = await self.async_cf_get(iframe, headers=headers)
                 iframe_secici = HTMLHelper(iframe_istek.text)
 
                 crypt_data = iframe_secici.regex_first(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", iframe_istek.text)
@@ -159,7 +160,7 @@ class DiziBox(PluginBase):
             while True:
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
-                    moly_istek = await self.httpx.get(iframe_link)
+                    moly_istek = await self.async_cf_get(iframe_link, headers=headers, cookies=cookies)
                     raw_text   = moly_istek.text
 
                     # Restore obfuscated caesar digits (%6l -> %63, %6m -> %64, %6n -> %65)
@@ -193,7 +194,7 @@ class DiziBox(PluginBase):
         return results
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         # Aktif kaynağın adını bul (DBX Pro vs.)
@@ -215,9 +216,8 @@ class DiziBox(PluginBase):
             if not alt_link:
                 continue
 
-            self.httpx.headers.update({"Referer": url})
-            alt_istek = await self.httpx.get(alt_link)
-            alt_istek.raise_for_status()
+            alt_istek = await self.async_cf_get(alt_link, headers={"Referer": url})
+            # alt_istek.raise_for_status() # AsyncSession doesn't have raise_for_status exactly like httpx
 
             alt_secici = HTMLHelper(alt_istek.text)
             alt_iframe = alt_secici.select_attr("div  #video-area iframe", "src")

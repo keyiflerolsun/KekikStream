@@ -1,66 +1,46 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
+from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
 
 class WFilmIzle(PluginBase):
     name        = "WFilmIzle"
     language    = "tr"
     main_url    = "https://www.wfilmizle.bar"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Yerli ve yabancı film izle, Türkçe dublaj ve altyazı seçenekleriyle en yeni ve unutulmamış olan filmleri Full HD kalitesinde online izleyebilirsiniz."
+    description = "Wfilmizle, Full HD kalitesinde en yeni ve en güncel filmleri Türkçe dublaj ve altyazı seçenekleriyle sunan film izleme platformudur."
 
     main_page   = {
-        f"{main_url}/"                                    : "Son Eklenenler",
-        f"{main_url}/film-arsiv/"                         : "Film Arşivi",
-        f"{main_url}/yerli-yapim-filmler-izle/"           : "Yerli Filmler",
-        f"{main_url}/turkce-dublaj-film-izle/"            : "Türkçe Dublaj",
-        f"{main_url}/turkce-altyazili-film-izle/"         : "Türkçe Altyazılı",
-        f"{main_url}/filmizle/netfliix-filmleri-izle/"    : "Netflix Filmleri",
-        f"{main_url}/filmizle/efsanee-filmler-izle/"      : "Efsane Filmler",
-        f"{main_url}/filmizle/hint-filmleri-izle/"        : "Hint Filmleri",
-        f"{main_url}/filmizle/aile-filmleri-izle-hd/"     : "Aile",
-        f"{main_url}/filmizle/aksiyon-filmleri-izle-hd/"  : "Aksiyon",
-        f"{main_url}/filmizle/animasyon-filmleri-izle/"   : "Animasyon",
-        f"{main_url}/filmizle/belgesel-filmleri-izle/"    : "Belgesel",
-        f"{main_url}/filmizle/bilim-kurgu-filmleri-izle/" : "Bilim Kurgu",
-        f"{main_url}/filmizle/draam-filmleri-izle/"       : "Dram",
-        f"{main_url}/filmizle/fantaastik-filmler-izle/"   : "Fantastik",
-        f"{main_url}/filmizle/gerilimm-filmleri-izle/"    : "Gerilim",
-        f"{main_url}/filmizle/gizem-filmleri-izle/"       : "Gizem",
-        f"{main_url}/filmizle/komedi-filmleri-izle-hd/"   : "Komedi",
-        f"{main_url}/filmizle/korkuu-filmleri-izle/"      : "Korku",
-        f"{main_url}/filmizle/macera-filmleri-izle-hd/"   : "Macera",
-        f"{main_url}/filmizle/muzikal-filmler-izle-hd/"   : "Müzikal",
-        f"{main_url}/filmizle/polisiye-filmleri-izle-hd/" : "Polisiye",
-        f"{main_url}/filmizle/poolitik-filmler-izle/"     : "Politik",
-        f"{main_url}/filmizle/romantik-filmler-izle/"     : "Romantik",
-        f"{main_url}/filmizle/savas-filmmleri-izle/"      : "Savaş",
-        f"{main_url}/filmizle/sporr-filmleri-izle/"       : "Spor",
-        f"{main_url}/filmizle/succ-filmleri-izle/"        : "Suç",
-        f"{main_url}/filmizle/tarih-filmleri-izle-hd/"    : "Tarih",
-        f"{main_url}/filmizle/vahsi-bati-filmleri-izle/"  : "Vahşi Batı",
+        f"{main_url}/"                          : "En Yeniler",
+        f"{main_url}/tur/aksiyon-filmleri/"     : "Aksiyon",
+        f"{main_url}/tur/animasyon-filmleri/"   : "Animasyon",
+        f"{main_url}/tur/bilim-kurgu-filmleri/" : "Bilim Kurgu",
+        f"{main_url}/tur/fantastik-filmler/"    : "Fantastik",
+        f"{main_url}/tur/gerilim-filmleri/"     : "Gerilim",
+        f"{main_url}/tur/komedi-filmleri/"      : "Komedi",
+        f"{main_url}/tur/korku-filmleri/"       : "Korku",
+        f"{main_url}/tur/macera-filmleri/"      : "Macera",
+        f"{main_url}/tur/romantik-filmler/"     : "Romantik",
+        f"{main_url}/tur/savas-filmleri/"       : "Savaş",
+        f"{main_url}/tur/suc-filmleri/"         : "Suç",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}/page/{page}" if page > 1 else url)
-        secici = HTMLHelper(istek.text)
-
-        if category == "Son Eklenenler":
-            container = secici.select_first("div.fix-film_item")
-            elements  = container.select("div.movie-preview-content") if container else []
-        else:
-            elements = secici.select("div.movie-preview-content")
+        full_url = f"{url.rstrip('/')}/page/{page}/" if page > 1 else url
+        istek    = await self.async_cf_get(full_url)
+        secici   = HTMLHelper(istek.text)
 
         results = []
-        for veri in elements:
-            title  = (veri.select_text("span.movie-title") or "").replace(" izle", "").strip()
+        for veri in secici.select("div.movie-poster"):
+            parent = veri.parent
+            title  = parent.select_text("div.movie-details a") or veri.select_attr("a", "title") or veri.select_attr("img", "alt")
             href   = veri.select_attr("a", "href")
-            poster = veri.select_attr("img", "data-src")
+            img    = veri.select_first("img")
+            poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
 
             if title and href:
                 results.append(MainPageResult(
                     category = category,
-                    title    = title,
+                    title    = title.strip(),
                     url      = self.fix_url(href),
                     poster   = self.fix_url(poster),
                 ))
@@ -68,43 +48,64 @@ class WFilmIzle(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.movie-preview-content"):
-            title  = (veri.select_text("span.movie-title") or "").replace(" izle", "").strip()
+        for veri in secici.select("div.movie-poster"):
+            parent = veri.parent
+            title  = parent.select_text("span.movie-title")
             href   = veri.select_attr("a", "href")
-            poster = veri.select_attr("img", "data-src")
+            img    = veri.select_first("img")
+            poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
 
             if title and href:
                 results.append(SearchResult(
-                    title  = title,
+                    title  = title.strip(),
                     url    = self.fix_url(href),
                     poster = self.fix_url(poster),
                 ))
 
         return results
 
-    async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+    async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        org_title = (secici.select_text("div.title h1") or "").replace(" izle", "").strip()
-        alt_title = (secici.select_text("div.diger_adi h2") or "").strip()
-        title     = f"{org_title} - {alt_title}" if alt_title else org_title
+        title       = secici.select_text("h1.title") or secici.select_text("h1")
+        poster      = secici.select_poster("img.cover-img") or secici.select_poster("img.poster-img")
+        description = secici.select_text("div.movie-description") or secici.select_text("div.description-text")
+        rating      = secici.select_text("span.average") or secici.regex_first(r"IMDb\s*:\s*([\d.]+)", secici.html)
+        year        = secici.select_text("span.date a") or secici.regex_first(r"Vizyon Tarihi\s*:\s*(\d{4})", secici.html)
+        actors      = secici.select_texts("div.cast-container a") or secici.select_texts("div.actors-grid .h6 a")
+        tags        = secici.select_texts("div.categories-container-details a") or secici.select_texts("div.genre-container a")
+        duration    = secici.extract_duration("Süre")
 
-        poster      = secici.select_attr("div.poster img", "src")
-        description = secici.select_text("div.excerpt")
-        year        = secici.select_text("div.release a")
-        tags        = secici.select_texts("div.categories a")
-        rating      = ""
-        for imdb_div in secici.select("div.imdb"):
-            text = imdb_div.text(strip=True)
-            if "IMDb Puanı:" in text:
-                rating = text.replace("IMDb Puanı:", "").split("/")[0].strip()
-                break
-        actors      = secici.select_texts("div.actor a")
+        # Dizi-Bölüm kontrolü
+        episodes = []
+        for link in secici.select("div.seasons-container a[href*='/bolum/']"):
+            href = link.attrs.get("href")
+            s, e = secici.extract_season_episode(href)
+            if s and e:
+                episodes.append(Episode(
+                    season  = s,
+                    episode = e,
+                    title   = link.text(strip=True),
+                    url     = self.fix_url(href)
+                ))
+
+        if episodes:
+            return SeriesInfo(
+                url         = url,
+                poster      = self.fix_url(poster),
+                title       = title,
+                description = description,
+                tags        = tags,
+                rating      = rating,
+                year        = year,
+                actors      = actors,
+                episodes    = episodes
+            )
 
         return MovieInfo(
             url         = url,
@@ -112,33 +113,32 @@ class WFilmIzle(PluginBase):
             title       = title,
             description = description,
             tags        = tags,
+            rating      = rating,
             year        = year,
             actors      = actors,
-            rating      = rating or None,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        import time
-        cookie_val = str(int(time.time()) - 50)
-
-        istek  = await self.httpx.get(url, cookies={"session_starttime": cookie_val})
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        # data-wpfc-original-src (WP Fastest Cache) → src fallback
-        iframe_src = ""
-        for ifr in secici.select("iframe"):
-            src = ifr.select_attr(None, "data-wpfc-original-src") or ifr.select_attr(None, "src") or ""
-            if src and "youtube" not in src and "a-ads" not in src:
-                iframe_src = src
-                break
-
-        iframe_src = self.fix_url(iframe_src)
-
-        if not iframe_src:
-            return []
-
         response = []
-        data     = await self.extract(iframe_src, referer=f"{self.main_url}/")
-        self.collect_results(response, data)
+        # Lazy load iframeler için data-wpfc-original-src veya src kontrolü
+        for iframe in secici.select("iframe"):
+            src = iframe.attrs.get("data-wpfc-original-src") or iframe.attrs.get("src")
+            if not src or "google" in src or "youtube" in src or "fragman" in src.lower():
+                continue
+
+            data = await self.extract(self.fix_url(src))
+            self.collect_results(response, data)
+
+        # Eğer hala link yoksa fragmanları (fragman olmayanları) tekrar zorla
+        if not response:
+            for iframe in secici.select("iframe"):
+                src = iframe.attrs.get("data-wpfc-original-src") or iframe.attrs.get("src")
+                if src and src.startswith("http"):
+                    data = await self.extract(self.fix_url(src))
+                    self.collect_results(response, data)
 
         return response

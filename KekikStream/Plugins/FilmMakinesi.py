@@ -54,7 +54,7 @@ class FilmMakinesi(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/arama/?s={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/arama/?s={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -73,7 +73,7 @@ class FilmMakinesi(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1.title")
@@ -134,7 +134,7 @@ class FilmMakinesi(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         # Video parts linklerini ve etiketlerini al

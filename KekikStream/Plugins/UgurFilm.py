@@ -115,7 +115,7 @@ class UgurFilm(PluginBase):
         if not part_links:
             part_links = [url]
 
-        async def process_alt(vid: str, alt_name: str, ord_val: str) -> list[ExtractResult]:
+        async def process_alt(vid: str, alt_name: str, ord_val: str, referer: str) -> list[ExtractResult]:
             """Alternatif player kaynağından video linkini çıkarır."""
             with contextlib.suppress(Exception):
                 resp = await self.httpx.post(
@@ -169,9 +169,9 @@ class UgurFilm(PluginBase):
                 # İç kaynaklı ise 3 alternatif için paralel istek at
                 vid   = iframe.split("vid=")[-1]
                 tasks = [
-                    process_alt(vid, "vidmoly", "0"),
-                    process_alt(vid, "ok.ru", "1"),
-                    process_alt(vid, "mailru", "2")
+                    process_alt(vid, "vidmoly", "0", part_url),
+                    process_alt(vid, "ok.ru", "1", part_url),
+                    process_alt(vid, "mailru", "2", part_url)
                 ]
 
                 alt_results = await self.gather_with_limit(tasks)
@@ -187,4 +187,4 @@ class UgurFilm(PluginBase):
             results.extend(group)
 
         # Duplicate Temizliği
-        return self.deduplicate(results)
+        return results

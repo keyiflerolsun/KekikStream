@@ -43,7 +43,7 @@ class JetFilmizle(PluginBase):
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(f"{url}{page}")
+        istek  = await self.async_cf_get(f"{url}{page}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -71,7 +71,7 @@ class JetFilmizle(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.get(
+        istek = await self.async_cf_get(
             url     = f"{self.main_url}/arama-json",
             params  = {"q": query},
             headers = {
@@ -97,7 +97,7 @@ class JetFilmizle(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title  = secici.select_text("h1")
@@ -198,7 +198,7 @@ class JetFilmizle(PluginBase):
         target_epis = params.get("episode", [None])[0]
         target_type = params.get("type", [None])[0]
 
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         film_id = target_id or secici.select_attr("input[name='film_id']", "value")
@@ -218,7 +218,7 @@ class JetFilmizle(PluginBase):
 
         async def _fetch_and_extract(p_type, s_index, label):
             try:
-                oyun_istek = await self.httpx.post(
+                oyun_istek = await self.async_cf_post(
                     url     = f"{self.main_url}/jetplayer",
                     data    = {"film_id": film_id, "source_index": s_index, "player_type": p_type},
                     headers = {"Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest", "Referer": url}

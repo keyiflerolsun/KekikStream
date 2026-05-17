@@ -41,7 +41,7 @@ class TurkAnime(PluginBase):
     _COOKIES    = {"yasOnay": "1"}
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(url, cookies=self._COOKIES)
+        istek  = await self.async_cf_get(url, cookies=self._COOKIES)
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -61,7 +61,7 @@ class TurkAnime(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.post(
+        istek = await self.async_cf_post(
             f"{self.main_url}/arama",
             data    = {"arama": query},
             cookies = self._COOKIES,
@@ -73,7 +73,7 @@ class TurkAnime(PluginBase):
             return []
 
         ajax_url  = f"{self.main_url}/{ajax_match.group(0)}"
-        ajax_resp = await self.httpx.get(
+        ajax_resp = await self.async_cf_get(
             ajax_url,
             headers = {"X-Requested-With": "XMLHttpRequest"},
             cookies = self._COOKIES,
@@ -85,7 +85,7 @@ class TurkAnime(PluginBase):
             redirect_url = self.fix_url(redirect_match.group(1))
             # Yönlendirilen sayfadan bilgileri çek
             try:
-                detail = await self.httpx.get(redirect_url, cookies=self._COOKIES)
+                detail = await self.async_cf_get(redirect_url, cookies=self._COOKIES)
                 dsecici = HTMLHelper(detail.text)
                 title   = dsecici.select_text("div#detayPaylas div.panel-title") or redirect_url.rstrip("/").split("/")[-1]
                 poster  = dsecici.select_attr("div#detayPaylas div.imaj img", "data-src")
@@ -115,7 +115,7 @@ class TurkAnime(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        istek  = await self.httpx.get(url, cookies=self._COOKIES)
+        istek  = await self.async_cf_get(url, cookies=self._COOKIES)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("div#detayPaylas div.panel-title") or ""
@@ -139,7 +139,7 @@ class TurkAnime(PluginBase):
 
         if bolumler_url:
             bolumler_url = self.fix_url(bolumler_url)
-            bol_resp = await self.httpx.get(
+            bol_resp = await self.async_cf_get(
                 bolumler_url,
                 headers = {
                     "X-Requested-With" : "XMLHttpRequest",
@@ -207,7 +207,7 @@ class TurkAnime(PluginBase):
                 return results
 
             # Player sayfasını GET (apiURL doğrulaması)
-            player_resp = await self.httpx.get(
+            player_resp = await self.async_cf_get(
                 f"{self.main_url}/player/{player_hash}",
                 headers = {"Referer": f"{self.main_url}/"},
                 cookies = self._COOKIES,
@@ -221,7 +221,7 @@ class TurkAnime(PluginBase):
             api_url = api_match.group(1)
 
             # Sources API çağır
-            src_resp = await self.httpx.get(
+            src_resp = await self.async_cf_get(
                 f"{api_url}true",
                 headers = {
                     "Referer"          : f"{self.main_url}/player/{player_hash}",
@@ -265,8 +265,11 @@ class TurkAnime(PluginBase):
         return results
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url, cookies=self._COOKIES)
+        istek  = await self.async_cf_get(url, cookies=self._COOKIES)
         secici = HTMLHelper(istek.text)
+
+        # _token meta tag
+        token = secici.select_attr("meta[name='_token']", "content") or ""
 
         response = []
 
@@ -277,19 +280,20 @@ class TurkAnime(PluginBase):
         # button onclick → ajax/videosec → alternatif kaynaklar
         sub_links = []
         for button in secici.select("button[onclick*='ajax/videosec']"):
-            onclick = button.attrs.get("onclick", "")
-            if not onclick:
+            onclick_val = button.attrs.get("onclick", "")
+            if not onclick_val:
                 continue
-            sub_link_match = re.search(r"IndexIcerik\('([^']+)'", onclick)
+            sub_link_match = re.search(r"IndexIcerik\('([^']+)'", onclick_val)
             if sub_link_match:
                 sub_links.append(self.fix_url(sub_link_match.group(1)))
 
         async def _process_sub_link(sub_link):
             try:
-                sub_resp   = await self.httpx.get(
+                sub_resp   = await self.async_cf_get(
                     sub_link,
                     headers = {
                         "X-Requested-With" : "XMLHttpRequest",
+                        "token"            : token,
                         "Referer"          : url,
                     },
                     cookies = self._COOKIES,
@@ -331,4 +335,4 @@ class TurkAnime(PluginBase):
                     data = await self.extract(real_url, referer=f"{self.main_url}/")
                     self.collect_results(response, data)
 
-        return self.deduplicate(response)
+        return response

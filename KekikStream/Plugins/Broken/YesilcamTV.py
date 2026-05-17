@@ -122,4 +122,4 @@ class YesilcamTV(PluginBase):
             data = await self.extract(real_url, referer=f"{self.main_url}/", prefix=label)
             self.collect_results(response, data)
 
-        return self.deduplicate(response)
+        return response

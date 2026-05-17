@@ -277,4 +277,4 @@ class Sinefy(PluginBase):
                 final_results.extend(group)
 
         # 4. Duplicate Temizle (URL + İsim Kombinasyonu)
-        return self.deduplicate(final_results, key="url+name")
+        return final_results

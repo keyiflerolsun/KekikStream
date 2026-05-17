@@ -220,4 +220,4 @@ class AnimeYTX(PluginBase):
         for res in results:
             self.collect_results(response, res)
 
-        return self.deduplicate(response)
+        return response

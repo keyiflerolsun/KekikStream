@@ -70,6 +70,9 @@ class Abyss(ExtractorBase):
         sources     = mp4_data.get("sources", [])
         frist_datas = mp4_data.get("fristDatas", [])
 
+        # Final response URL'ini referer olarak kullanalım (abyssplayer.com -> abysscdn.com yönlendirmesi için önemli)
+        final_referer = str(resp.url)
+
         # Create a resolution mapping: res_id -> label (e.g. 3 -> "480p", 4 -> "720p")
         res_map = {}
         for src in sources:
@@ -90,7 +93,7 @@ class Abyss(ExtractorBase):
             results.append(ExtractResult(
                 name    = f"{self.name} ({label})",
                 url     = stream_url,
-                referer = url,
+                referer = final_referer,
             ))
 
         if not results:

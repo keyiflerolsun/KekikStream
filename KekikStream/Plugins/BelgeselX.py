@@ -381,7 +381,7 @@ class BelgeselX(PluginBase):
                     if data:
                         self.collect_results(results, data)
 
-        return self.deduplicate(results, key="url+name")
+        return results
 
     @staticmethod
     def _with_query(url: str, params: dict[str, str]) -> str:

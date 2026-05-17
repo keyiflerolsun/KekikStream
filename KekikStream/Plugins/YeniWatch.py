@@ -168,4 +168,4 @@ class YeniWatch(PluginBase):
             data = await self.extract(src, referer=url)
             self.collect_results(response, data)
 
-        return self.deduplicate(response)
+        return response
