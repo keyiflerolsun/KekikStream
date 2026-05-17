@@ -46,7 +46,7 @@ class PlayabilityHelper:
         try:
             # SSL doğrulamasını devre dışı bırakarak ve redirect'leri takip ederek bağlanalım
             limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, verify=False, limits=limits) as client:
+            async with httpx.AsyncClient(timeout=3.5, follow_redirects=True, verify=False, limits=limits) as client:
                 # 1. Hızlı HEAD isteğiyle kontrol et
                 try:
                     response = await client.head(url, headers=headers)
@@ -103,7 +103,7 @@ class PlayabilityHelper:
                     # session.headers'ı güncelle
                     session.headers.update(headers)
                     # curl_cffi ile istek at
-                    response = await session.get(url, timeout=8.0, allow_redirects=True)
+                    response = await session.get(url, timeout=3.5, allow_redirects=True)
                     if response.status_code in [200, 206]:
                         content_type = response.headers.get("content-type", "").lower()
                         text_preview = response.text[:500].lower() if response.text else ""

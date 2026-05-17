@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from ..Extractor.ExtractorModels import Subtitle
-import httpx
+import httpx, re
 
 class SubtitleHelper:
     WYZIE_API     = "https://sub.wyzie.ru"
@@ -15,7 +15,7 @@ class SubtitleHelper:
         season: int | None = None,
         episode: int | None = None
     ) -> list[Subtitle]:
-        """Wyzie ve OpenSubtitles üzerinden altyazı çeker, Türkçe ve İngilizce ile sınırlandırır."""
+        """Wyzie ve OpenSubtitles üzerinden altyazı çeker, dilleri filtreler ve sınırlandırır."""
         subtitles = []
 
         # Her iki API için de bir ID lazım
@@ -39,22 +39,7 @@ class SubtitleHelper:
                 except Exception:
                     pass
 
-        # Türkçe ve İngilizce altyazıları filtrele ve her biri için en fazla 5 adet sakla
-        import re
-        turkish_subs = []
-        english_subs = []
-
-        for sub in subtitles:
-            parts = sub.name.split("|")
-            if len(parts) < 2:
-                continue
-            lang_part  = parts[1].strip().upper()
-            lang_match = re.findall(r"^[A-Z]+", lang_part)
-            if not lang_match:
-                continue
-            lang_code = lang_match[0]
-
-        # 1. Dilleri, kabul edilen kodları ve alt yazı listelerini bir sözlükte topluyoruz
+        # Kabul edilen diller ve sınırları (Senin yapına sadık kalındı)
         languages = {
             "tr" : {"codes": {"TR", "TUR", "TURKISH"}, "list": []},
             "en" : {"codes": {"EN", "ENG", "ENGLISH"}, "list": []},
@@ -65,15 +50,27 @@ class SubtitleHelper:
             "zh" : {"codes": {"ZH", "CHI", "CHINESE"}, "list": []}
         }
 
-        # 2. Döngü içindeki kontrol kısmı (Hangi dil gelirse gelsin bu 4 satır halleder)
-        for lang_data in languages.values():
-            if lang_code in lang_data["codes"]:
-                if len(lang_data["list"]) < 2:
-                    lang_data["list"].append(sub)
-                break  # Eşleşen dili bulduğumuz için diğer dillere bakmaya gerek yok, döngüden çık
+        # TEK BİR DÖNGÜ: Her altyazıyı sırayla işle ve ait olduğu dile ekle
+        for sub in subtitles:
+            parts = sub.name.split("|")
+            if len(parts) < 2:
+                continue
 
-        # 3. Tüm listeleri birleştirip tek bir liste olarak return etme kısmı
-        # (List Comprehension kullanarak tüm listeleri dinamik olarak toplar)
+            lang_part  = parts[1].strip().upper()
+            lang_match = re.findall(r"^[A-Z]+", lang_part)
+            if not lang_match:
+                continue
+
+            lang_code = lang_match[0]
+
+            # Dil kodunu languages içinde ara ve eşleşirse listeye ekle
+            for lang_data in languages.values():
+                if lang_code in lang_data["codes"]:
+                    if len(lang_data["list"]) < 2:
+                        lang_data["list"].append(sub)
+                    break  # Eşleşen dil bulundu, iç döngüden çık
+
+        # Tüm listeleri birleştirip tek bir liste olarak döndür
         return sum([lang_data["list"] for lang_data in languages.values()], [])
 
     @staticmethod
