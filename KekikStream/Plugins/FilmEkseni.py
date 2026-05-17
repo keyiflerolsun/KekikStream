@@ -7,81 +7,76 @@ class FilmEkseni(PluginBase):
     language    = "tr"
     main_url    = "https://filmekseni.cc"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Film Ekseni ⚡️ Vizyonda ki, en güncel ve en yeni filmleri full hd kalitesinde türkçe dublaj ve altyazı seçenekleriyle 1080p olarak izleyebileceğiniz adresiniz."
+    description = "FilmEkseni, en yeni filmleri Full HD kalitesinde, Türkçe dublaj ve altyazı seçenekleriyle sunan bir film platformudur."
 
-    main_page = {
-        f"{main_url}/tur/aile-filmleri/page"        : "Aile Filmleri",
-        f"{main_url}/tur/aksiyon-filmleri/page"     : "Aksiyon Filmleri",
-        f"{main_url}/tur/animasyon-film-izle/page"  : "Animasyon Filmleri",
-        f"{main_url}/tur/bilim-kurgu-filmleri/page" : "Bilim Kurgu Filmleri",
-        f"{main_url}/tur/biyografi-filmleri/page"   : "Biyografi Filmleri",
-        f"{main_url}/tur/dram-filmleri-izle/page"   : "Dram Filmleri",
-        f"{main_url}/tur/fantastik-filmler/page"    : "Fantastik Filmleri",
-        f"{main_url}/tur/gerilim-filmleri/page"     : "Gerilim Filmleri",
-        f"{main_url}/tur/gizem-filmleri/page"       : "Gizem Filmleri",
-        f"{main_url}/tur/komedi-filmleri/page"      : "Komedi Filmleri",
-        f"{main_url}/tur/korku-filmleri/page"       : "Korku Filmleri",
-        f"{main_url}/tur/macera-filmleri/page"      : "Macera Filmleri",
-        f"{main_url}/tur/romantik-filmler/page"     : "Romantik Filmleri",
-        f"{main_url}/tur/savas-filmleri/page"       : "Savaş Filmleri",
-        f"{main_url}/tur/suc-filmleri/page"         : "Suç Filmleri",
-        f"{main_url}/tur/tarih-filmleri/page"       : "Tarih Filmleri",
+    main_page   = {
+        f"{main_url}/"                          : "Son Eklenenler",
+        f"{main_url}/en-cok-izlenenler/"        : "En Çok İzlenenler",
+        f"{main_url}/imdb-250/"                 : "IMDb 250",
+        f"{main_url}/tur/aile-filmleri/"        : "Aile",
+        f"{main_url}/tur/aksiyon-filmleri/"     : "Aksiyon",
+        f"{main_url}/tur/animasyon-film-izle/"  : "Animasyon",
+        f"{main_url}/tur/bilim-kurgu-filmleri/" : "Bilim Kurgu",
+        f"{main_url}/tur/fantastik-filmler/"    : "Fantastik",
+        f"{main_url}/tur/gerilim-filmleri/"     : "Gerilim",
+        f"{main_url}/tur/komedi-filmleri/"      : "Komedi",
+        f"{main_url}/tur/korku-filmleri/"       : "Korku",
+        f"{main_url}/tur/macera-film-izle/"     : "Macera",
+        f"{main_url}/tur/suc-filmleri/"         : "Suç",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek   = await self.httpx.get(f"{url}/{page}/")
-        secici  = HTMLHelper(istek.text)
-        posters = secici.select("div.poster")
+        full_url = f"{url.rstrip('/')}/page/{page}/" if page > 1 else url
+        istek    = await self.async_cf_get(full_url)
+        secici   = HTMLHelper(istek.text)
 
-        return [
-            MainPageResult(
-                category = category,
-                title    = veri.select_text("h2"),
-                url      = veri.select_attr("a", "href"),
-                poster   = veri.select_attr("img", "data-src")
-            )
-                for veri in posters
-        ]
+        results = []
+        for item in secici.select("div.poster"):
+            title  = item.select_attr("img", "alt") or item.select_text("div.poster-title")
+            href   = item.select_attr("a", "href")
+            poster = item.select_attr("img", "data-src") or item.select_attr("img", "src")
+
+            if title and href:
+                results.append(MainPageResult(
+                    category = category,
+                    title    = title.strip().replace(" izle", ""),
+                    url      = self.fix_url(href),
+                    poster   = self.fix_url(poster),
+                ))
+
+        return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek = await self.httpx.post(
-            url     = f"{self.main_url}/search/",
-            headers = {
-                "X-Requested-With" : "XMLHttpRequest",
-                "Content-Type"     : "application/x-www-form-urlencoded; charset=UTF-8",
-                "Referer"          : f"{self.main_url}/",
-                "Origin"           : self.main_url,
-                "Accept"           : "application/json, text/javascript, */*; q=0.01",
-            },
-            data    = {"query": query}
-        )
-
-        try:
-            veriler = istek.json().get("result", [])
-        except Exception:
-            return []
-
-        return [
-            SearchResult(
-                title  = veri.get("title"),
-                url    = f"{self.main_url}/{veri.get('slug')}",
-                poster = f"{self.main_url}/uploads/poster/{veri.get('cover')}" if veri.get('cover') else None,
-            )
-                for veri in veriler
-        ]
-
-    async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(f"{self.main_url}/?s={query}")
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("div.page-title h1")
-        poster      = secici.select_poster("picture.poster-auto img")
-        description = secici.select_direct_text("article.text-white p")
-        year        = secici.extract_year("div.page-title", "strong a")
-        tags        = secici.select_texts("div.pb-2 a[href*='/tur/']")
-        rating      = secici.select_text("div.rate")
-        duration    = secici.regex_first(r"(\d+)", secici.select_text("div.d-flex.flex-column.text-nowrap"))
-        actors      = secici.select_texts("div.card-body.p-0.pt-2 .story-item .story-item-title")
+        results = []
+        for item in secici.select("div.poster"):
+            title  = item.select_attr("img", "alt") or item.select_text("div.poster-title")
+            href   = item.select_attr("a", "href")
+            poster = item.select_attr("img", "data-src") or item.select_attr("img", "src")
+
+            if title and href:
+                results.append(SearchResult(
+                    title  = title.strip().replace(" izle", ""),
+                    url    = self.fix_url(href),
+                    poster = self.fix_url(poster),
+                ))
+
+        return results
+
+    async def load_item(self, url: str) -> MovieInfo:
+        istek  = await self.async_cf_get(url)
+        secici = HTMLHelper(istek.text)
+
+        title       = secici.select_text("h1")
+        poster      = secici.select_attr("img.img-movie", "data-src") or secici.select_attr("img.img-movie", "src")
+        description = secici.select_text("div.movie-text")
+        rating      = secici.select_text("span.imdb-rating")
+        year        = secici.regex_first(r"\((\d{4})\)", secici.select_text("h1") or "")
+        tags        = secici.select_texts("div.movie-genres a")
+        actors      = secici.select_texts("div.movie-actors a")
+        duration    = secici.extract_duration("movie-info")
 
         return MovieInfo(
             url         = url,
@@ -92,109 +87,31 @@ class FilmEkseni(PluginBase):
             rating      = rating,
             year        = year,
             actors      = actors,
-            duration    = duration
+            duration    = duration,
+            imdb_id     = secici.regex_first(r"imdb\.com/title/(tt\d+)", istek.text),
+            tmdb_id     = secici.regex_first(r"tmdb\.org/movie/(\d+)", istek.text)
         )
 
-    async def _get_source_links(self, name: str, url: str, is_active: bool, initial_helper: HTMLHelper | None = None) -> list[ExtractResult]:
-        try:
-            if is_active and initial_helper:
-                secici = initial_helper
-            else:
-                resp   = await self.httpx.get(url)
-                secici = HTMLHelper(resp.text)
-
-            iframe = secici.select_first("div.card-video iframe")
-            if not iframe:
-                return []
-
-            iframe_url = iframe.attrs.get("data-src") or iframe.attrs.get("src")
-            if not iframe_url:
-                return []
-
-            iframe_url = self.fix_url(iframe_url)
-            results    = []
-
-            # VIP / EksenLoad mantığı
-            if "eksenload" in iframe_url or name == "VIP":
-                video_id   = iframe_url.split("/")[-1]
-                master_url = f"https://eksenload.site/uploads/encode/{video_id}/master.m3u8"
-                results.append(ExtractResult(
-                    url     = master_url,
-                    name    = name,
-                    referer = self.main_url
-                ))
-            else:
-                # Diğerleri (Moly, vs.) için extract
-                # Name override: "Kaynak Adı | Player Adı" olacak şekilde
-                extracted = await self.extract(iframe_url, name_override=name)
-                if extracted:
-                    self.collect_results(results, extracted)
-
-            return results
-        except Exception:
-            return []
-
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        # Dil sekmelerini bul (Dublaj, Altyazı vb.)
-        # Fragman vb. linkleri dahil etmemek için sadece 'a.nav-link' bakıyoruz
-        lang_tabs = [
-            tab for tab in secici.select("ul.nav-tabs.nav-slider a.nav-link")
-                if "fragman" not in tab.text().lower()
-        ]
+        response = []
+        # Tab iframelerini bul
+        for iframe in secici.select("div.tab-pane iframe, div.card-video iframe"):
+            src = iframe.attrs.get("data-src") or iframe.attrs.get("src")
+            if not src or "youtube" in src or "fragman" in src.lower():
+                continue
 
-        # Player panellerini bul
-        tab_panes = secici.select("div.tab-pane")
+            data = await self.extract(self.fix_url(src), referer=url)
+            self.collect_results(response, data)
 
-        sources = [] # (name, url, is_active)
+        # Diğer iframeler
+        if not response:
+            for iframe in secici.select("iframe"):
+                src = iframe.attrs.get("data-src") or iframe.attrs.get("src")
+                if src and "youtube" not in src and "fragman" not in src.lower():
+                    data = await self.extract(self.fix_url(src), referer=url)
+                    self.collect_results(response, data)
 
-        # Eğer dil sekmeleri ve paneller eşleşiyorsa (ideal durum)
-        if lang_tabs and tab_panes:
-            for i, pane in enumerate(tab_panes):
-                if i >= len(lang_tabs):
-                    break
-
-                lang_name    = lang_tabs[i].text(strip=True)
-                player_links = pane.select("a.nav-link")
-
-                for link in player_links:
-                    p_name = link.text(strip=True)
-                    if not p_name or any(x in p_name.lower() for x in ["paylaş", "indir", "hata"]):
-                        continue
-
-                    href = link.attrs.get("href")
-                    if not href or href == "#":
-                        continue
-
-                    # Yeni isim "Moly | Türkçe Dublaj"
-                    full_name = f"{p_name} | {lang_name}"
-                    is_active = "active" in link.attrs.get("class", "")
-
-                    sources.append((full_name, self.fix_url(href), is_active))
-
-        # Eğer panel yapısı beklediğimizden farklıysa eski mantığa dön
-        if not sources:
-            if nav_links := secici.select("nav.card-nav a.nav-link"):
-                seen_urls = set()
-                for link in nav_links:
-                    if link.attrs.get("href") == "#":
-                        continue # Sinema Modu vb.
-
-                    name      = link.text(strip=True)
-                    href      = link.attrs.get("href")
-                    is_active = "active" in link.attrs.get("class", "")
-
-                    if href and href not in seen_urls:
-                        seen_urls.add(href)
-                        sources.append((name, self.fix_url(href), is_active))
-            else:
-                # Nav yoksa mevcut sayfayı (Varsayılan/VIP) al
-                sources.append(("VIP", url, True))
-
-        tasks = []
-        for name, link_url, is_active in sources:
-            tasks.append(self._get_source_links(name, link_url, is_active, secici if is_active else None))
-
-        return [item for sublist in await self.gather_with_limit(tasks) for item in sublist]
+        return response
