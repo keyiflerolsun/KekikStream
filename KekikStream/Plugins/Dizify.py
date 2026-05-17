@@ -214,6 +214,6 @@ class Dizify(PluginBase):
                  # Series sources are usually per episode, but if we have a series URL we can't guess the episode
                  # This part might need more logic if we want to support series root URLs in load_links
                  return []
-            return await self.load_links(f"{self.api_url}/movies/{item_id}/sources")
+            return await self.load_links(f"{self.api_url}/movies/{slug}/sources")
 
         return []

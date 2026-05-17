@@ -396,6 +396,9 @@ class PluginBase(ABC):
                 return data
 
             # Tekil öğe ise
+            if data is None:
+                return None
+
             data.extractor = extractor.name
             if not data.user_agent:
                 data.user_agent = extractor.httpx.headers.get("User-Agent")

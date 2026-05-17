@@ -12,8 +12,8 @@ class BFlix(PluginBase):
     description = "Watch free Streaming movies and TV shows online in HD quality."
 
     main_page   = {
-        f"{main_url}/movie?page="        : "Movies",
-        f"{main_url}/tv-show?page="      : "TV Shows",
+        f"{main_url}/movies?page="       : "Movies",
+        f"{main_url}/tv-series?page="    : "TV Shows",
         f"{main_url}/top-imdb?page="     : "Top IMDB",
         f"{main_url}/genre/action?page=" : "Action",
         f"{main_url}/genre/comedy?page=" : "Comedy",
@@ -67,28 +67,51 @@ class BFlix(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        title       = secici.select_text("h2.heading-name") or secici.select_text("h1")
-        poster      = secici.select_poster("img.film-poster-img") or secici.meta_value("og:image")
-        description = secici.select_text("div.description") or secici.meta_value("og:description")
+        title       = secici.select_text("h1.film-title") or secici.select_text("h1") or secici.meta_value("og:title")
+        img_el      = secici.select_first("div.film-poster img")
+        poster      = img_el.select_attr(None, "src") if img_el else None
+        poster      = poster or secici.meta_value("og:image")
+        description = secici.select_text("div.film-desc") or secici.meta_value("og:description")
 
-        meta   = secici.select("div.elements div.row-line")
-        year   = None
-        rating = None
-        for row in meta:
-            label = row.select_text("strong")
-            if label:
-                if "Released" in label:
-                    year = row.select_text("span")
-                if "IMDb" in label:
-                    rating = row.select_text("span")
+        meta_rows = secici.select("div.film-meta > div")
+        year      = None
+        rating    = None
+        tags      = []
+        actors    = []
+        duration  = None
 
-        tags   = secici.select_texts("div.elements div.row-line:contains('Genre') a")
-        actors = secici.select_texts("div.elements div.row-line:contains('Casts') a")
+        subtitle_div = secici.select_first("div.film-subtitle")
+        if subtitle_div:
+            for span in subtitle_div.select("span"):
+                span_text = span.text(strip=True)
+                if "min" in span_text:
+                    try:
+                        duration = int(span_text.replace("min", "").strip())
+                    except:
+                        pass
+                elif span.attrs.get("class") == ["rating"]:
+                    rating = span_text
+                elif span.select_first("i.fa-star"):
+                    # rating fallback or user score
+                    pass
+
+        for row in meta_rows:
+            label_div = row.select_first("div > div")
+            if label_div:
+                label    = label_div.text(strip=True).replace(":", "").strip()
+                val_span = row.select_first("span")
+                if val_span:
+                    if label == "Year":
+                        year = val_span.text(strip=True)
+                    elif label == "Genre":
+                        tags = [a.text(strip=True) for a in val_span.select("a")]
+                    elif label == "Cast":
+                        actors = [a.text(strip=True) for a in val_span.select("a")]
 
         is_series = "/tv/" in url or "/series/" in url
         if is_series:
             episodes = []
-            # AJAX URL'sini bul
+            # Find current season AJAX URL
             ajax_url = secici.regex_first(r"const current_url = '([^']+)'")
             if ajax_url:
                 ajax_istek  = await self.async_cf_get(ajax_url, headers={"Referer": url})
@@ -98,7 +121,15 @@ class BFlix(PluginBase):
                     if a_tag:
                         ep_href = a_tag.attrs.get("href")
                         ep_name = a_tag.text(strip=True)
-                        s, e = secici.extract_season_episode(ep_name)
+
+                        s, e = None, None
+                        if ep_href:
+                            # Path is like /series/show-name/1-1/
+                            match = re.search(r'/(\d+)-(\d+)/?$', ep_href)
+                            if match:
+                                s = int(match.group(1))
+                                e = int(match.group(2))
+
                         episodes.append(Episode(
                             season  = s or 1,
                             episode = e or 1,
@@ -110,7 +141,7 @@ class BFlix(PluginBase):
                 url         = url,
                 poster      = self.fix_url(poster),
                 title       = title.strip() if title else "",
-                description = description,
+                description = description.strip() if description else "",
                 tags        = tags,
                 year        = year,
                 rating      = rating,
@@ -122,28 +153,50 @@ class BFlix(PluginBase):
             url         = url,
             poster      = self.fix_url(poster),
             title       = title.strip() if title else "",
-            description = description,
+            description = description.strip() if description else "",
             tags        = tags,
             year        = year,
             rating      = rating,
-            actors      = actors
+            actors      = actors,
+            duration    = duration
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        # Flw clones often have a data-id or similar
-        # For bflix.sh, it's a bit different.
-        # I'll just look for any iframe as a start.
+        # Retrieve player servers list via pl_url AJAX
+        pl_url   = secici.regex_first(r"const pl_url = '([^']+)'")
         response = []
-        for iframe in secici.select("iframe"):
-            src = iframe.attrs.get("src")
-            if src:
-                data = await self.extract(self.fix_url(src), referer=url)
-                if data:
-                    self.collect_results(response, data)
-                else:
-                    response.append(ExtractResult(url=self.fix_url(src), name="Iframe", referer=url))
+
+        if pl_url:
+            ajax_resp = await self.async_cf_get(pl_url, headers={"Referer": url})
+            if ajax_resp.status_code == 200:
+                ajax_secici = HTMLHelper(ajax_resp.text)
+                for server in ajax_secici.select("div.film-server, div.sv-item"):
+                    player_url  = server.attrs.get("data-id")
+                    server_name = server.attrs.get("data-srv") or "Server"
+                    if player_url:
+                        # Extract the stream using the selected player URL
+                        data = await self.extract(self.fix_url(player_url), referer=url)
+                        if data:
+                            self.collect_results(response, data)
+                        else:
+                            response.append(ExtractResult(
+                                url     = self.fix_url(player_url),
+                                name    = server_name,
+                                referer = url
+                            ))
+
+        # Fallback to direct iframe parsing if no AJAX URL is found
+        if not response:
+            for iframe in secici.select("iframe"):
+                src = iframe.attrs.get("src")
+                if src:
+                    data = await self.extract(self.fix_url(src), referer=url)
+                    if data:
+                        self.collect_results(response, data)
+                    else:
+                        response.append(ExtractResult(url=self.fix_url(src), name="Iframe", referer=url))
 
         return self.deduplicate(response)

@@ -2,7 +2,7 @@
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, SeriesInfo, Episode, ExtractResult, HTMLHelper
 from Kekik.Sifreleme  import CryptoJS
-import urllib.parse, base64, contextlib, asyncio, time
+import urllib.parse, base64, contextlib, asyncio, time, re
 
 class DiziBox(PluginBase):
     name        = "DiziBox"
@@ -159,17 +159,31 @@ class DiziBox(PluginBase):
             while True:
                 await asyncio.sleep(.3)
                 with contextlib.suppress(Exception):
-                    moly_istek  = await self.httpx.get(iframe_link)
-                    moly_secici = HTMLHelper(moly_istek.text)
+                    moly_istek = await self.httpx.get(iframe_link)
+                    raw_text   = moly_istek.text
 
-                    if atob_data := moly_secici.regex_first(r"unescape\(\"(.*)\"\)", moly_istek.text):
+                    # Restore obfuscated caesar digits (%6l -> %63, %6m -> %64, %6n -> %65)
+                    raw_text    = raw_text.replace("%6l", "%63").replace("%6m", "%64").replace("%6n", "%65")
+                    moly_secici = HTMLHelper(raw_text)
+
+                    if atob_data := moly_secici.regex_first(r"unescape\(\"(.*)\"\)", raw_text):
+                        if atob_data.startswith("47"):
+                            atob_data = "G" + atob_data[2:]
                         decoded_atob = urllib.parse.unquote(atob_data)
-                        str_atob     = base64.b64decode(decoded_atob).decode("utf-8")
 
-                        iframe_src = HTMLHelper(str_atob).select_attr("div#Player iframe", "src")
-                        if iframe_src:
-                            results.append(iframe_src)
+                        # Handle base64 with potential padding and ignore invalid UTF-8 prefix bytes
+                        b64_padded  = decoded_atob + "=" * ((4 - len(decoded_atob) % 4) % 4)
+                        b64_decoded = base64.b64decode(b64_padded, validate=False)
+                        decoded_str = b64_decoded.decode('utf-8', errors='ignore')
 
+                        # Use regex to find vidmoly/moly player URL, or fallback to selectolax parser
+                        match = re.search(r"https?://[a-zA-Z0-9.-]*moly\.[a-zA-Z0-9./-]+", decoded_str)
+                        if match:
+                            results.append(match.group(0).rstrip('"').rstrip("'"))
+                        else:
+                            iframe_src = HTMLHelper(decoded_str).select_attr("iframe", "src")
+                            if iframe_src:
+                                results.append(iframe_src)
                     break
 
         elif "/player/haydi.php" in iframe_link:
