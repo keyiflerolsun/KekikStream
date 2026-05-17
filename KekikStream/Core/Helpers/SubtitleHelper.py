@@ -54,14 +54,27 @@ class SubtitleHelper:
                 continue
             lang_code = lang_match[0]
 
-            if lang_code in {"TR", "TUR", "TURKISH"}:
-                if len(turkish_subs) < 2:
-                    turkish_subs.append(sub)
-            elif lang_code in {"EN", "ENG", "ENGLISH"}:
-                if len(english_subs) < 2:
-                    english_subs.append(sub)
+        # 1. Dilleri, kabul edilen kodları ve alt yazı listelerini bir sözlükte topluyoruz
+        languages = {
+            "tr" : {"codes": {"TR", "TUR", "TURKISH"}, "list": []},
+            "en" : {"codes": {"EN", "ENG", "ENGLISH"}, "list": []},
+            "fr" : {"codes": {"FR", "FRA", "FRENCH"}, "list": []},
+            "ru" : {"codes": {"RU", "RUS", "RUSSIAN"}, "list": []},
+            "uk" : {"codes": {"UK", "UKR", "UKRAINIAN"}, "list": []},
+            "hi" : {"codes": {"HI", "HIN", "HINDI"}, "list": []},
+            "zh" : {"codes": {"ZH", "CHI", "CHINESE"}, "list": []}
+        }
 
-        return turkish_subs + english_subs
+        # 2. Döngü içindeki kontrol kısmı (Hangi dil gelirse gelsin bu 4 satır halleder)
+        for lang_data in languages.values():
+            if lang_code in lang_data["codes"]:
+                if len(lang_data["list"]) < 2:
+                    lang_data["list"].append(sub)
+                break  # Eşleşen dili bulduğumuz için diğer dillere bakmaya gerek yok, döngüden çık
+
+        # 3. Tüm listeleri birleştirip tek bir liste olarak return etme kısmı
+        # (List Comprehension kullanarak tüm listeleri dinamik olarak toplar)
+        return sum([lang_data["list"] for lang_data in languages.values()], [])
 
     @staticmethod
     async def _fetch_wyzie(client: httpx.AsyncClient, target_id: str, season: int | None = None, episode: int | None = None) -> list[Subtitle]:

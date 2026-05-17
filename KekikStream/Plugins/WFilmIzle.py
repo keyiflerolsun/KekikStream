@@ -10,18 +10,16 @@ class WFilmIzle(PluginBase):
     description = "Wfilmizle, Full HD kalitesinde en yeni ve en güncel filmleri Türkçe dublaj ve altyazı seçenekleriyle sunan film izleme platformudur."
 
     main_page   = {
-        f"{main_url}/"                          : "En Yeniler",
-        f"{main_url}/tur/aksiyon-filmleri/"     : "Aksiyon",
-        f"{main_url}/tur/animasyon-filmleri/"   : "Animasyon",
-        f"{main_url}/tur/bilim-kurgu-filmleri/" : "Bilim Kurgu",
-        f"{main_url}/tur/fantastik-filmler/"    : "Fantastik",
-        f"{main_url}/tur/gerilim-filmleri/"     : "Gerilim",
-        f"{main_url}/tur/komedi-filmleri/"      : "Komedi",
-        f"{main_url}/tur/korku-filmleri/"       : "Korku",
-        f"{main_url}/tur/macera-filmleri/"      : "Macera",
-        f"{main_url}/tur/romantik-filmler/"     : "Romantik",
-        f"{main_url}/tur/savas-filmleri/"       : "Savaş",
-        f"{main_url}/tur/suc-filmleri/"         : "Suç",
+        f"{main_url}/"                                    : "En Yeniler",
+        f"{main_url}/filmizle/aksiyon-filmleri-izle-hd/"  : "Aksiyon",
+        f"{main_url}/filmizle/animasyon-filmleri-izle/"   : "Animasyon",
+        f"{main_url}/filmizle/bilim-kurgu-filmleri-izle/" : "Bilim Kurgu",
+        f"{main_url}/filmizle/draam-filmleri-izle/"       : "Dram",
+        f"{main_url}/filmizle/gerilimm-filmleri-izle/"    : "Gerilim",
+        f"{main_url}/filmizle/komedi-filmleri-izle-hd/"   : "Komedi",
+        f"{main_url}/filmizle/korkuu-filmleri-izle/"      : "Korku",
+        f"{main_url}/filmizle/macera-filmleri-izle-hd/"   : "Macera",
+        f"{main_url}/filmizle/succ-filmleri-izle/"        : "Suç",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -31,8 +29,7 @@ class WFilmIzle(PluginBase):
 
         results = []
         for veri in secici.select("div.movie-poster"):
-            parent = veri.parent
-            title  = parent.select_text("div.movie-details a") or veri.select_attr("a", "title") or veri.select_attr("img", "alt")
+            title  = veri.select_attr("img", "alt") or veri.select_attr("a", "title")
             href   = veri.select_attr("a", "href")
             img    = veri.select_first("img")
             poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
@@ -53,8 +50,7 @@ class WFilmIzle(PluginBase):
 
         results = []
         for veri in secici.select("div.movie-poster"):
-            parent = veri.parent
-            title  = parent.select_text("span.movie-title")
+            title  = veri.select_attr("img", "alt") or veri.select_attr("a", "title")
             href   = veri.select_attr("a", "href")
             img    = veri.select_first("img")
             poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
@@ -130,7 +126,7 @@ class WFilmIzle(PluginBase):
             if not src or "google" in src or "youtube" in src or "fragman" in src.lower():
                 continue
 
-            data = await self.extract(self.fix_url(src))
+            data = await self.extract(self.fix_url(src), referer=url)
             self.collect_results(response, data)
 
         # Eğer hala link yoksa fragmanları (fragman olmayanları) tekrar zorla
@@ -138,7 +134,7 @@ class WFilmIzle(PluginBase):
             for iframe in secici.select("iframe"):
                 src = iframe.attrs.get("data-wpfc-original-src") or iframe.attrs.get("src")
                 if src and src.startswith("http"):
-                    data = await self.extract(self.fix_url(src))
+                    data = await self.extract(self.fix_url(src), referer=url)
                     self.collect_results(response, data)
 
         return response

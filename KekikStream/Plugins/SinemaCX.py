@@ -126,11 +126,8 @@ class SinemaCX(PluginBase):
 
         if "player.filmizle.in" in iframe_url.lower():
             with contextlib.suppress(Exception):
-                # Referer önemli
-                self.httpx.headers.update({"Referer": f"{self.main_url}/"})
-
                 # Iframe içeriğini çek (Altyazı ve JS için)
-                iframe_resp = await self.httpx.get(iframe_url)
+                iframe_resp = await self.async_cf_get(iframe_url, headers={"Referer": f"{self.main_url}/"})
                 iframe_text = iframe_resp.text
 
                 subtitles = []
@@ -140,10 +137,11 @@ class SinemaCX(PluginBase):
 
                 base_url = HTMLHelper(iframe_url).regex_first(r"https?://([^/]+)")
                 if base_url:
-                    vid_id = iframe_url.split("/")[-1]
-                    self.httpx.headers.update({"X-Requested-With": "XMLHttpRequest"})
-
-                    vid_istek = await self.httpx.post(f"https://{base_url}/player/index.php?data={vid_id}&do=getVideo")
+                    vid_id    = iframe_url.split("/")[-1]
+                    vid_istek = await self.async_cf_post(
+                        f"https://{base_url}/player/index.php?data={vid_id}&do=getVideo",
+                        headers = {"X-Requested-With": "XMLHttpRequest", "Referer": iframe_url}
+                    )
                     vid_data  = vid_istek.json()
 
                     if link := vid_data.get("securedLink"):
@@ -151,12 +149,13 @@ class SinemaCX(PluginBase):
                             name      = name,
                             url       = link,
                             referer   = iframe_url,
-                            subtitles = subtitles
+                            subtitles = subtitles,
+                            extractor = "SinemaCX"
                         ))
         else:
             # Standart Extractor
             with contextlib.suppress(Exception):
-                extracted = await self.extract(iframe_url)
+                extracted = await self.extract(iframe_url, referer=f"{self.main_url}/")
                 if extracted:
                     items = extracted if isinstance(extracted, list) else [extracted]
                     for item in items:
@@ -166,7 +165,7 @@ class SinemaCX(PluginBase):
         return results
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek     = await self.httpx.get(url)
+        istek     = await self.async_cf_get(url)
         main_text = istek.text
         secici    = HTMLHelper(main_text)
 
@@ -215,7 +214,7 @@ class SinemaCX(PluginBase):
             else:
                 # Yeni sayfa fetch et
                 with contextlib.suppress(Exception):
-                    resp       = await self.httpx.get(src_url)
+                    resp       = await self.async_cf_get(src_url, headers={"Referer": url})
                     iframe_url = await self._get_iframe_from_source(resp.text)
 
             if iframe_url:
@@ -234,5 +233,4 @@ class SinemaCX(PluginBase):
             if group:
                 final_results.extend(group)
 
-        # Duplicate Eliminasyonu
         return final_results
