@@ -1,7 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core                           import ExtractorBase, ExtractResult, HTMLHelper
-from KekikStream.Core.Extractor.ExtractorModels import Subtitle
+from KekikStream.Core import ExtractorBase, ExtractResult, HTMLHelper
 import json, re
 
 class ErikWorker(ExtractorBase):

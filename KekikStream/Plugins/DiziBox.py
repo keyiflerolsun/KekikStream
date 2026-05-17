@@ -139,21 +139,10 @@ class DiziBox(PluginBase):
 
             istek  = await self.async_cf_get(iframe_link, headers=headers, cookies=cookies)
             secici = HTMLHelper(istek.text)
-            iframe = secici.select_attr("div  #Player iframe", "src")
+            iframe = secici.select_attr("#Player iframe", "src") or secici.select_attr("div  #Player iframe", "src")
 
             if iframe:
-                headers       = {"Referer": self.main_url}
-                iframe_istek  = await self.async_cf_get(iframe, headers=headers)
-                iframe_secici = HTMLHelper(iframe_istek.text)
-
-                crypt_data = iframe_secici.regex_first(r"CryptoJS\.AES\.decrypt\(\"(.*)\",\"", iframe_istek.text)
-                crypt_pass = iframe_secici.regex_first(r"\",\"(.*)\"\);", iframe_istek.text)
-                decode     = CryptoJS.decrypt(crypt_pass, crypt_data)
-
-                if video_match := iframe_secici.regex_first(r"file: '(.*)',", decode):
-                    results.append(video_match)
-                else:
-                    results.append(decode)
+                results.append(self.fix_url(iframe))
 
         elif "/player/moly/moly.php" in iframe_link:
             iframe_link = iframe_link.replace("moly.php?h=", "moly.php?wmode=opaque&h=")

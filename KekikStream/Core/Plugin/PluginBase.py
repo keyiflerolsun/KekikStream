@@ -9,7 +9,6 @@ from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
 from ..Helpers.MethodCache        import method_cache
 from ..Helpers.FallbackClients    import FallbackHTTPX, FallbackCF
 from ..Helpers                    import MetadataHelper, SubtitleHelper, HTMLHelper, PlayabilityHelper, fix_url
-from urllib.parse                 import urljoin
 import asyncio, httpx, curl_cffi
 
 class PluginBase(ABC):
@@ -260,22 +259,11 @@ class PluginBase(ABC):
 
                 results = await original_load_links(url)
 
-                # Oynatılamayan linkleri filtrele (Concurrent validation)
                 if results:
-                    import asyncio
-                    async def check_playable(item):
-                        is_playable, _ = await PlayabilityHelper.is_url_playable(item)
-                        return is_playable
-
-                    playability_tasks   = [check_playable(r) for r in results]
+                    playability_tasks   = [PlayabilityHelper.is_url_playable(r) for r in results]
                     playability_results = await asyncio.gather(*playability_tasks)
 
-                    filtered_results = []
-                    for item, is_playable in zip(results, playability_results):
-                        if is_playable:
-                            filtered_results.append(item)
-                    results = filtered_results
-
+                    results = [item for item, (is_playable, _) in zip(results, playability_results) if is_playable]
                 results = await self.finalize_subtitles(results, url=url, imdb_id=imdb_id, tmdb_id=tmdb_id)
                 results = self.deduplicate(results)
                 results = self.sync_subtitles(results)

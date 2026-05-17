@@ -110,13 +110,18 @@ class FilmFC(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        response = []
+        response   = []
+        tried_urls = set()
+
         # Span#plyg içindeki iframe'i önceliklendir
         for iframe in secici.select("span#plyg iframe"):
             src = iframe.attrs.get("src")
             if src:
-                data = await self.extract(self.fix_url(src), referer=url)
-                self.collect_results(response, data)
+                src_fixed = self.fix_url(src)
+                if src_fixed not in tried_urls:
+                    tried_urls.add(src_fixed)
+                    data = await self.extract(src_fixed, referer=url)
+                    self.collect_results(response, data)
 
         # Diğer iframeler
         if not response:
@@ -125,7 +130,10 @@ class FilmFC(PluginBase):
                 if not src or any(x in src for x in ["youtube", "google", "facebook", "twitter"]):
                     continue
 
-                data = await self.extract(self.fix_url(src), referer=url)
-                self.collect_results(response, data)
+                src_fixed = self.fix_url(src)
+                if src_fixed not in tried_urls:
+                    tried_urls.add(src_fixed)
+                    data = await self.extract(src_fixed, referer=url)
+                    self.collect_results(response, data)
 
         return response

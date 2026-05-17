@@ -3,17 +3,74 @@
 from ..Extractor.ExtractorModels import ExtractResult
 from urllib.parse                import urlparse
 from curl_cffi.requests          import AsyncSession
-import httpx
+import httpx, asyncio, time
 
 class PlayabilityHelper:
-    @staticmethod
-    async def is_url_playable(link: ExtractResult) -> tuple[bool, str]:
-        """URL'nin oynatılabilir (playable) olup olmadığını kontrol eder."""
+    # İstemcileri (Client) sınıf seviyesinde tutuyoruz (Connection Pooling)
+    _httpx_client = None
+    _cf_session   = None
+
+    # --- ÖNBELLEK (CACHE) SİSTEMİ ---
+    _cache     = {}  # url -> (timestamp, (bool, str))
+    _cache_ttl = 600  # Cache'te tutulma süresi (Saniye) - Şu an 10 Dakika
+    _locks     = {}  # Aynı anda gelen aynı link isteklerini sıraya sokmak için
+
+    @classmethod
+    def _get_httpx(cls):
+        """Bağlantıları açık tutan paylaşımlı HTTPX istemcisi"""
+        if cls._httpx_client is None:
+            limits            = httpx.Limits(max_keepalive_connections=20, max_connections=50)
+            cls._httpx_client = httpx.AsyncClient(timeout=3.0, follow_redirects=True, verify=False, limits=limits)
+        return cls._httpx_client
+
+    @classmethod
+    def _get_cf(cls):
+        """Bağlantıları açık tutan paylaşımlı Cloudflare Bypass istemcisi"""
+        if cls._cf_session is None:
+            cls._cf_session = AsyncSession(impersonate="firefox", timeout=4.0)
+        return cls._cf_session
+
+    @classmethod
+    async def is_url_playable(cls, link: ExtractResult) -> tuple[bool, str]:
+        """URL'nin oynatılabilir olup olmadığını kontrol eder (Cache destekli)."""
         url = link.url
         if not url:
             return False, "URL boş"
 
-        # YouTube veya fragman linklerini doğrudan kabul et
+        # 1. Önbellekte (Cache) varsa ve süresi dolmamışsa direkt sonucu dön
+        now = time.time()
+        if url in cls._cache:
+            timestamp, result = cls._cache[url]
+            if now - timestamp < cls._cache_ttl:
+                return result
+
+        # 2. Kilit (Lock) oluştur: Aynı link aynı anda gelirse çift istek atmasını engeller
+        if url not in cls._locks:
+            cls._locks[url] = asyncio.Lock()
+
+        async with cls._locks[url]:
+            # Kilidi beklerken başka bir işlem (örneğin extractor) sonucu bulup cache'e yazmış olabilir, tekrar kontrol edelim
+            if url in cls._cache:
+                timestamp, result = cls._cache[url]
+                if time.time() - timestamp < cls._cache_ttl:
+                    return result
+
+            # 3. Cache'te yok, ağa bağlanıp kontrol et
+            result = await cls._check_url_network(link)
+
+            # 4. Sonucu önbelleğe kaydet (Başarısız olsa bile kaydederiz ki bozuk linke sürekli istek atılmasın)
+            cls._cache[url] = (time.time(), result)
+
+            # Hafıza şişmesini önlemek için işlem bitince kilidi temizleyebiliriz
+            cls._locks.pop(url, None)
+
+            return result
+
+    @classmethod
+    async def _check_url_network(cls, link: ExtractResult) -> tuple[bool, str]:
+        """Asıl HTTP isteklerini yapan arka plan fonksiyonu"""
+        url = link.url
+
         if "youtube.com" in url or "youtu.be" in url:
             return True, "YouTube Embed / Fragman"
 
@@ -23,109 +80,110 @@ class PlayabilityHelper:
         # Header hazırlama
         headers = {
             "Accept"          : "*/*",
-            "Accept-Language" : "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7"
+            "Accept-Language" : "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+            "User-Agent"      : link.user_agent or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
+
         if link.referer:
-            headers["Referer"] = link.referer
-            try:
-                parsed = urlparse(link.referer)
-                if parsed.scheme and parsed.netloc:
-                    headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
-            except Exception:
-                pass
-
-        if link.user_agent:
-            headers["User-Agent"] = link.user_agent
-        else:
-            headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
-        # Varsa ek header'ları ekle (Cookie vb.)
-        if link.extra_headers:
-            headers.update(link.extra_headers)
-
-        try:
-            # SSL doğrulamasını devre dışı bırakarak ve redirect'leri takip ederek bağlanalım
-            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
-            async with httpx.AsyncClient(timeout=3.5, follow_redirects=True, verify=False, limits=limits) as client:
-                # 1. Hızlı HEAD isteğiyle kontrol et
+            # Hotlink koruması olan/Referer istemeyen sunucular için başlığı atla
+            skip_referer = any(x in url.lower() for x in ["yandex", "googleusercontent", "twimg", "googleapis"])
+            if not skip_referer:
+                headers["Referer"] = link.referer
                 try:
-                    response = await client.head(url, headers=headers)
-                    if response.status_code in [200, 206]:
-                        content_type = response.headers.get("content-type", "").lower()
-                        if content_type and "html" not in content_type:
-                            return True, f"HEAD Başarılı ({response.status_code}, {content_type})"
+                    parsed = urlparse(link.referer)
+                    if parsed.scheme and parsed.netloc:
+                        headers["Origin"] = f"{parsed.scheme}://{parsed.netloc}"
                 except Exception:
                     pass
 
-                # 2. HEAD başarısızsa GET ile ilk 1024 baytı çek
-                headers["Range"] = "bytes=0-1024"
-                response = await client.get(url, headers=headers)
+        if link.extra_headers:
+            headers.update(link.extra_headers)
 
-                # Range desteklemeyen sunucularda 416 hatası dönebilir, Range olmadan tekrar dene
-                if response.status_code == 416:
-                    headers.pop("Range")
-                    response = await client.get(url, headers=headers)
+        httpx_client = cls._get_httpx()
 
-                # Cloudflare/403/503 durumunda curl_cffi ile tekrar dene
-                if response.status_code in [403, 503] or "cloudflare" in response.headers.get("server", "").lower():
-                    raise httpx.HTTPStatusError("Cloudflare / Access Blocked", request=response.request, response=response)
+        try:
+            # 1. Hızlı HEAD isteğiyle kontrol et
+            req_headers = headers.copy()
+            req_headers["Range"] = "bytes=0-1024" # Videoların tamamını indirmeyi engeller
 
-                if response.status_code not in [200, 206]:
-                    return False, f"HTTP Hata Kodu: {response.status_code}"
+            response = await httpx_client.head(url, headers=req_headers)
 
-                # Yanıt gövdesini ve tipini incele
+            # HEAD Cloudflare dönerse GET ile zaman kaybetmeden hemen curl_cffi'a geç
+            if response.status_code in [403, 503] or "cloudflare" in response.headers.get("server", "").lower():
+                raise httpx.HTTPStatusError("Cloudflare / Access Blocked", request=response.request, response=response)
+
+            if response.status_code in [200, 206]:
                 content_type = response.headers.get("content-type", "").lower()
-                text_preview = response.text[:500].lower() if response.text else ""
+                if content_type and "html" not in content_type:
+                    return True, f"HEAD Başarılı ({response.status_code}, {content_type})"
 
-                # m3u8 playlist check (Check this before HTML check because some providers serve m3u8 as text/html)
-                if "#extm3u" in text_preview or "mpegurl" in content_type or "apple.mpegurl" in content_type:
-                    return True, "HLS Stream (m3u8) Playable"
+            # 2. HEAD başarısızsa GET ile ilk 1024 baytı çek
+            response = await httpx_client.get(url, headers=req_headers)
 
-                # Eğer HTML dönüyorsa ve hata ifadeleri içeriyorsa oynatılamazdır
-                if "html" in content_type:
-                    if any(x in text_preview for x in ("forbidden", "unauthorized", "cloudflare", "error", "dns", "yasak", "hata", "bulunamadı")):
-                        # Cloudflare engeline takılmış olma ihtimali için hata fırlatıp curl_cffi'a geçelim
-                        if "cloudflare" in text_preview or "forbidden" in text_preview:
-                            raise httpx.HTTPStatusError("Cloudflare Blocked (HTML)", request=response.request, response=response)
-                        return False, f"Hata Sayfası Döndü (HTML): {text_preview[:80].strip()}"
-                    return False, "Video beklenirken HTML sayfası döndü"
+            # Range desteklemeyen sunucularda 416 hatası dönebilir, Range olmadan tekrar dene
+            if response.status_code == 416:
+                req_headers.pop("Range")
+                response = await httpx_client.get(url, headers=req_headers)
 
-                # Video content check
-                if "video" in content_type or "octet-stream" in content_type or response.content:
-                    return True, f"Video Stream ({content_type or 'unknown'}) Playable"
+            if response.status_code in [403, 503] or "cloudflare" in response.headers.get("server", "").lower():
+                raise httpx.HTTPStatusError("Cloudflare", request=response.request, response=response)
 
-                return False, f"Belirsiz İçerik Tipi: {content_type}"
+            if response.status_code not in [200, 206]:
+                return False, f"HTTP Hata Kodu: {response.status_code}"
+
+            # Yanıt gövdesini ve tipini incele
+            content_type = response.headers.get("content-type", "").lower()
+            text_preview = response.text[:500].lower() if response.text else ""
+
+            if "#extm3u" in text_preview or "mpegurl" in content_type or "apple.mpegurl" in content_type:
+                return True, "HLS Stream (m3u8) Playable"
+
+            if "html" in content_type:
+                if any(x in text_preview for x in ("forbidden", "unauthorized", "cloudflare", "error", "dns", "yasak", "hata", "bulunamadı")):
+                    if "cloudflare" in text_preview or "forbidden" in text_preview:
+                        raise httpx.HTTPStatusError("Cloudflare Blocked (HTML)", request=response.request, response=response)
+                    return False, f"Hata Sayfası Döndü (HTML): {text_preview[:80].strip()}"
+                return False, "Video beklenirken HTML sayfası döndü"
+
+            if "video" in content_type or "octet-stream" in content_type or response.content:
+                return True, f"Video Stream ({content_type or 'unknown'}) Playable"
+
+            return False, f"Belirsiz İçerik Tipi: {content_type}"
 
         except (httpx.TimeoutException, httpx.ConnectError, httpx.HTTPStatusError, Exception) as primary_err:
             # Cloudflare veya bağlantı hatası durumunda curl_cffi (Firefox) ile bypass etmeyi dene
+            cf_session = cls._get_cf()
             try:
-                async with AsyncSession(impersonate="firefox") as session:
-                    # session.headers'ı güncelle
-                    session.headers.update(headers)
-                    # curl_cffi ile istek at
-                    response = await session.get(url, timeout=3.5, allow_redirects=True)
-                    if response.status_code in [200, 206]:
-                        content_type = response.headers.get("content-type", "").lower()
-                        text_preview = response.text[:500].lower() if response.text else ""
+                # DİKKAT: curl_cffi için de Range ekliyoruz. Yoksa videonun tamamını indirir, kilitlenir.
+                req_headers = headers.copy()
+                req_headers["Range"] = "bytes=0-1024"
 
-                        # m3u8 playlist check (Check this before HTML check)
-                        if "#extm3u" in text_preview or "mpegurl" in content_type or "apple.mpegurl" in content_type:
-                            return True, "HLS Stream (m3u8) Playable (CF Bypass)"
+                response = await cf_session.get(url, headers=req_headers, allow_redirects=True)
 
-                        if "html" in content_type:
-                            if any(x in text_preview for x in ("forbidden", "unauthorized", "cloudflare", "error", "dns", "yasak", "hata", "bulunamadı")):
-                                return False, f"Hata Sayfası Döndü (HTML/CF): {text_preview[:80].strip()}"
-                            return False, "Video beklenirken HTML sayfası döndü (CF)"
+                # Eğer Range hatası (416) verirse, başlık olmadan son bir kez deneriz
+                if response.status_code == 416:
+                    req_headers.pop("Range")
+                    response = await cf_session.get(url, headers=req_headers, allow_redirects=True)
 
-                        # Video content check
-                        if "video" in content_type or "octet-stream" in content_type or response.content:
-                            return True, f"Video Stream ({content_type or 'unknown'}) Playable (CF Bypass)"
+                if response.status_code in [200, 206]:
+                    content_type = response.headers.get("content-type", "").lower()
+                    text_preview = response.text[:500].lower() if response.text else ""
 
-                        return False, f"Belirsiz İçerik Tipi (CF): {content_type}"
-                    else:
-                        return False, f"HTTP Hata Kodu (CF): {response.status_code}"
+                    if "#extm3u" in text_preview or "mpegurl" in content_type or "apple.mpegurl" in content_type:
+                        return True, "HLS Stream (m3u8) Playable (CF Bypass)"
+
+                    if "html" in content_type:
+                        if any(x in text_preview for x in ("forbidden", "unauthorized", "cloudflare", "error", "dns", "yasak", "hata", "bulunamadı")):
+                            return False, f"Hata Sayfası Döndü (HTML/CF): {text_preview[:80].strip()}"
+                        return False, "Video beklenirken HTML sayfası döndü (CF)"
+
+                    if "video" in content_type or "octet-stream" in content_type or response.content:
+                        return True, f"Video Stream ({content_type or 'unknown'}) Playable (CF Bypass)"
+
+                    return False, f"Belirsiz İçerik Tipi (CF): {content_type}"
+                else:
+                    return False, f"HTTP Hata Kodu (CF): {response.status_code}"
             except Exception:
-                # curl_cffi da hata verirse, asıl hatayı raporla
                 pass
 
             if isinstance(primary_err, httpx.TimeoutException):

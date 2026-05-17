@@ -4,8 +4,9 @@ from abc                import ABC, abstractmethod
 from curl_cffi.requests import AsyncSession
 from httpx              import AsyncClient
 from .ExtractorModels   import ExtractResult
-from urllib.parse       import urljoin, urlparse
+from urllib.parse       import urlparse
 from ..Helpers          import PlayabilityHelper, fix_url
+import asyncio
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -81,17 +82,28 @@ class ExtractorBase(ABC):
                 if not res:
                     return None
 
-                # Liste ise her birini doğrula ve sadece oynatılabilir olanları döndür
+                # Liste ise asyncio.gather ile paralel doğrulama yap
                 if isinstance(res, list):
-                    valid_results = []
-                    for item in res:
-                        if isinstance(item, ExtractResult):
-                            is_playable, _ = await PlayabilityHelper.is_url_playable(item)
-                            if is_playable:
-                                valid_results.append(item)
+                    extract_items = [item for item in res if isinstance(item, ExtractResult)]
+
+                    if not extract_items:
+                        return None
+
+                    # Görevleri hazırla
+                    tasks = [PlayabilityHelper.is_url_playable(item) for item in extract_items]
+
+                    # Paralel olarak çalıştır
+                    playability_results = await asyncio.gather(*tasks)
+
+                    # Sonuçları eşleştir ve filtrele
+                    valid_results = [
+                        item for item, (is_playable, _) in zip(extract_items, playability_results)
+                        if is_playable
+                    ]
+
                     return valid_results if valid_results else None
 
-                # Tekil öğe ise doğrula
+                # Tekil öğe ise tekli doğrulama yap
                 elif isinstance(res, ExtractResult):
                     is_playable, _ = await PlayabilityHelper.is_url_playable(res)
                     if is_playable:

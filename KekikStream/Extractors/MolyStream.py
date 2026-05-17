@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from KekikStream.Core  import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+from KekikStream.Core import ExtractorBase, ExtractResult, Subtitle, HTMLHelper
+from Kekik.Sifreleme  import CryptoJS
 import re
 
 class MolyStream(ExtractorBase):
@@ -25,6 +26,12 @@ class MolyStream(ExtractorBase):
         except Exception:
             istek = await self.httpx.get(url, follow_redirects=True)
         html   = istek.text
+        if "CryptoJS.AES.decrypt" in html:
+            crypt_data = re.search(r'CryptoJS\.AES\.decrypt\(\"([^\"]+)\"', html)
+            crypt_pass = re.search(r'CryptoJS\.AES\.decrypt\(\"[^\"]+\",\s*\"([^\"]+)\"\)', html)
+            if crypt_data and crypt_pass:
+                html = CryptoJS.decrypt(crypt_pass.group(1), crypt_data.group(1))
+
         secici = HTMLHelper(html)
 
         if "Attention Required! | Cloudflare" in html or "Sorry, you have been blocked" in html:
@@ -39,6 +46,9 @@ class MolyStream(ExtractorBase):
 
         if not v_url:
             v_url = secici.regex_first(r'"(?:file|src)"\s*:\s*"([^"]+\.(?:m3u8|mp4)[^"]*)"')
+
+        if not v_url:
+            v_url = secici.regex_first(r'file\s*:\s*["\']([^"\']+)["\']')
 
         # Fallback to keyifAPI Adaptive HLS proxy for encrypted videos
         if not v_url and ('const datas' in html or 'atob(datas)' in html):
