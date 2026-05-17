@@ -180,12 +180,22 @@ class BFlix(PluginBase):
                         # Extract the stream using the selected player URL
                         data = await self.extract(self.fix_url(player_url), referer=url)
                         if data:
+                            if isinstance(data, list):
+                                for item in data:
+                                    item.name       = f"{server_name}"
+                                    item.referer    = url
+                                    item.user_agent = self.httpx.headers.get("User-Agent")
+                            else:
+                                data.name       = f"{server_name}"
+                                data.referer    = url
+                                data.user_agent = self.httpx.headers.get("User-Agent")
                             self.collect_results(response, data)
                         else:
                             response.append(ExtractResult(
-                                url     = self.fix_url(player_url),
-                                name    = server_name,
-                                referer = url
+                                url        = self.fix_url(player_url),
+                                name       = f"{server_name}",
+                                referer    = url,
+                                user_agent = self.httpx.headers.get("User-Agent")
                             ))
 
         # Fallback to direct iframe parsing if no AJAX URL is found
@@ -195,8 +205,22 @@ class BFlix(PluginBase):
                 if src:
                     data = await self.extract(self.fix_url(src), referer=url)
                     if data:
+                        if isinstance(data, list):
+                            for item in data:
+                                item.name       = "Iframe"
+                                item.referer    = url
+                                item.user_agent = self.httpx.headers.get("User-Agent")
+                        else:
+                            data.name       = "Iframe"
+                            data.referer    = url
+                            data.user_agent = self.httpx.headers.get("User-Agent")
                         self.collect_results(response, data)
                     else:
-                        response.append(ExtractResult(url=self.fix_url(src), name="Iframe", referer=url))
+                        response.append(ExtractResult(
+                            url        = self.fix_url(src),
+                            name       = "Iframe",
+                            referer    = url,
+                            user_agent = self.httpx.headers.get("User-Agent")
+                        ))
 
         return self.deduplicate(response)

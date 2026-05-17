@@ -128,7 +128,6 @@ class StreamWish(PackedJSExtractor):
             "Accept"     : "*/*",
             "Connection" : "keep-alive",
             "Referer"    : referer or f"{base_url}/",
-            "Origin"     : f"{base_url}/",
             "User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
 
@@ -140,6 +139,15 @@ class StreamWish(PackedJSExtractor):
             html  = istek.text
 
         m3u8_url = self._extract_direct_media(html)
+
+        if not m3u8_url and embed_url != url:
+            try:
+                istek = await self.httpx.get(url=url, headers=headers, follow_redirects=True)
+                html  = istek.text
+            except Exception:
+                istek    = await self.async_cf_get(url=url, headers=headers)
+                html     = istek.text
+            m3u8_url = self._extract_direct_media(html)
         if not m3u8_url:
             download_urls = []
             if "/d/" in embed_url:

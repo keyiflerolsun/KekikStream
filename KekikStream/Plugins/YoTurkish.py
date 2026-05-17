@@ -73,9 +73,9 @@ class YoTurkish(PluginBase):
         year = secici.extract_year("span a[href*='year/']")
         tags = secici.select_texts("span a[href*='genre/']")
 
-        # Actors için description içindeki 'Starring:' metnine bakalım
-        actors = []
-        if description and "Starring:" in description:
+        # Actors listesi
+        actors = secici.select_texts("div.casts a")
+        if not actors and description and "Starring:" in description:
             try:
                 actors_raw = description.split("Starring:")[-1].split(".")[0].strip()
                 actors     = [a.strip() for a in actors_raw.split(",") if a.strip()]
@@ -111,32 +111,62 @@ class YoTurkish(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.async_cf_get(url)
-        text   = istek.text
-        secici = HTMLHelper(text)
+        api_url     = "http://px-webservisler:2585/api/v1/yoturkish"
+        response    = []
+        tasks       = []
+        api_success = False
 
-        response = []
-        tasks    = []
+        try:
+            params = {"url": url}
+            resp   = await self.httpx.get(api_url, params=params, timeout=20)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success") and data.get("results"):
+                    for item in data["results"]:
+                        tasks.append((self.fix_url(item["url"]), item["name"]))
+                    api_success = True
+        except Exception:
+            pass
 
-        # Sayfa içindeki tüm iframe src'lerini yakala (HTML ve Script içinden)
-        sources = set(re.findall(r'src=["\'](https?://[^"\']+)["\']', text))
+        # Fallback to local regex scraping if API failed
+        if not api_success:
+            istek   = await self.async_cf_get(url)
+            text    = istek.text
+            sources = set(re.findall(r'src=["\'](https?://[^"\']+)["\']', text))
+            for src in sources:
+                src = self.fix_url(src)
+                if any(x in src.lower() for x in [
+                    "google", "facebook", "ads", "analytics", "data:image",
+                    "gb.ligninkeftiu.com", "cloudflare", "sharethis",
+                    "wp-content/", "wp-includes/", "pubadx", "bvtpk.com",
+                ]):
+                    continue
+                if src.lower().endswith((".js", ".css", ".png", ".jpg", ".gif", ".svg", ".ico")):
+                    continue
+                tasks.append((src, "Server"))
 
-        for src in sources:
-            src = self.fix_url(src)
-            # Reklam, JS, CDN veya geçersiz yapıları atla
-            if any(x in src.lower() for x in [
-                "google", "facebook", "ads", "analytics", "data:image",
-                "gb.ligninkeftiu.com", "cloudflare", "sharethis",
-                "wp-content/", "wp-includes/", "pubadx", "bvtpk.com",
-            ]):
-                continue
-            if src.lower().endswith((".js", ".css", ".png", ".jpg", ".gif", ".svg", ".ico")):
-                continue
+        # Taskları paralel olarak çalıştır
+        extract_tasks = [self.extract(task_url, referer=url) for task_url, _ in tasks]
+        results       = await self.gather_with_limit(extract_tasks)
 
-            tasks.append(self.extract(src, referer=url))
+        for (task_url, server_name), data in zip(tasks, results):
+            if data:
+                if isinstance(data, list):
+                    for item in data:
+                        item.name       = f"{server_name}"
+                        item.referer    = url
+                        item.user_agent = self.httpx.headers.get("User-Agent")
+                else:
+                    data.name       = f"{server_name}"
+                    data.referer    = url
+                    data.user_agent = self.httpx.headers.get("User-Agent")
+                self.collect_results(response, data)
+            else:
+                response.append(ExtractResult(
+                    url        = task_url,
+                    name       = f"{server_name}",
+                    referer    = url,
+                    user_agent = self.httpx.headers.get("User-Agent")
+                ))
 
-        results = await self.gather_with_limit(tasks)
-        for res in results:
-            self.collect_results(response, res)
-
-        return response
+        return self.deduplicate(response)

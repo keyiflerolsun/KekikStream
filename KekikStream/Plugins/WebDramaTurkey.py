@@ -37,7 +37,7 @@ class WebDramaTurkey(PluginBase):
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         page_url = url if url.endswith("/") else f"{url}?page={page}"
-        istek    = await self.httpx.get(page_url)
+        istek    = await self.async_cf_get(page_url)
         secici   = HTMLHelper(istek.text)
 
         results = []
@@ -89,7 +89,7 @@ class WebDramaTurkey(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/arama/{query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/arama/{query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -108,7 +108,7 @@ class WebDramaTurkey(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo | SeriesInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         title       = secici.select_text("h1") or ""
@@ -229,7 +229,7 @@ class WebDramaTurkey(PluginBase):
         return results
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         response = []

@@ -225,7 +225,36 @@ class HDrezka(PluginBase):
         try:
             res = json.loads(url)
         except Exception:
-            return []
+            # Eğer JSON değilse, bunun bir ham sayfa URL'si olduğunu varsayalım ve dinamik olarak ayrıştıralım!
+            try:
+                istek  = await self.async_cf_get(url)
+                secici = HTMLHelper(istek.text)
+                doc_id = url.split("/")[-1].split("-")[0]
+
+                t_id        = secici.regex_first(r"data-translator_id=\"(\d+)\"")
+                translators = []
+                for li in secici.select("ul#translators-list li"):
+                    tid = li.attrs.get("data-translator_id")
+                    if tid:
+                        translators.append({
+                            "translator_name" : li.text().strip(),
+                            "translator_id"   : tid,
+                            "camrip"          : li.attrs.get("data-camrip"),
+                            "ads"             : li.attrs.get("data-ads"),
+                            "director"        : li.attrs.get("data-director")
+                        })
+                if not translators and t_id:
+                    translators.append({"translator_name": "Default", "translator_id": t_id})
+
+                res = {
+                    "id"     : doc_id,
+                    "favs"   : secici.select_attr("input#ctrl_favs", "value"),
+                    "ref"    : url,
+                    "action" : "get_movie",
+                    "server" : translators
+                }
+            except Exception:
+                return []
 
         results = []
 

@@ -12,28 +12,16 @@ class JPFilms(PluginBase):
     description = "Watch online The Legend of Love & Sincerity on Japanese Classic Movies and TVSeries (https://jp-films.com) with English Subtitle. Japanese Classic Movies, Japanese Classic TVSeries, Jindaigeki, Action, Tora-san, Zatoichi"
 
     main_page = {
-        f"{main_url}/movies/"                                                   : "Latest Movies",
-        f"{main_url}/tv-series/"                                                : "Latest Series",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/20/"   : "Action",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/2659/" : "Action & Adventure",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/295/"  : "Adventure",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/3015/" : "Animation",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/56/"   : "Comedy",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/4/"    : "Crime",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/1055/" : "Documentary",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/5/"    : "Drama",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/920/"  : "Family",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/894/"  : "Fantasy",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/619/"  : "History",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/258/"  : "Horror",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/71/"   : "Jidaigeki",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/11/"   : "Mystery",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/281/"  : "Romance",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/318/"  : "Science Fiction",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/119/"  : "Thriller",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/249/"  : "War",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/1729/" : "Western",
-        f"{main_url}/filter-movies/sort/formality/status/country/release/32/"   : "Yakuza",
+        f"{main_url}/tag/akira-kurosawa"                 : "Akira Kurosawa",
+        f"{main_url}/tag/godzilla-collection"            : "Godzilla",
+        f"{main_url}/tag/ninja-vixens-series"            : "Ninja Vixens",
+        f"{main_url}/tag/tora-san"                       : "Tora-san",
+        f"{main_url}/tag/zatoichi"                       : "Zatoichi",
+        f"{main_url}/tag/criterion-collection"           : "Criterion Collection",
+        f"{main_url}/tag/the-hoodlum-soldier-collection" : "The Hoodlum Soldier",
+        f"{main_url}/tag/top-imdb"                       : "Top IMDb",
+        f"{main_url}/tv-series/"                         : "Latest Series",
+        f"{main_url}/movies/"                            : "Latest Movies",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
@@ -81,7 +69,7 @@ class JPFilms(PluginBase):
 
         # Meta verileri
         year   = secici.extract_year(".released a[href*='release']")
-        tags   = secici.select_texts(".category a[href*='genres']")
+        tags   = secici.select_texts(".category a")
         rating = secici.select_text(".halim_imdbrating .score")
         actors = secici.select_texts(".actors a")
 
@@ -119,43 +107,168 @@ class JPFilms(PluginBase):
         istek  = await self.httpx.get(url)
         secici = HTMLHelper(istek.text)
 
-        buttons          = secici.select(".halim-list-eps .halim-btn")
-        current_ep_match = re.search(r"(ep-\d+)", url)
-        current_slug     = current_ep_match.group(1) if current_ep_match else None
+        episodes = []
+
+        # 1. jsonEpisodes'ı dene
+        eps_match = re.search(r'var jsonEpisodes\s*=\s*(\[\[.+?\]\])(?:;|</script>)', istek.text, re.DOTALL)
+        if eps_match:
+            try:
+                import json
+                eps_data = json.loads(eps_match.group(1))
+
+                # Aktif olan bölümün indeksini bul
+                active_idx = -1
+                for server_list in eps_data:
+                    for idx, ep in enumerate(server_list):
+                        if "active" in (ep.get("activeItem") or ""):
+                            active_idx = idx
+                            break
+                    if active_idx != -1:
+                        break
+
+                if active_idx == -1:
+                    active_idx = 0
+
+                # Sadece bu indeksteki sunucu alternatiflerini topla
+                for server_list in eps_data:
+                    if 0 <= active_idx < len(server_list):
+                        ep = server_list[active_idx]
+                        episodes.append({
+                            "slug"      : ep.get("episodeSlug"),
+                            "server_id" : ep.get("serverId"),
+                            "post_id"   : ep.get("postId"),
+                            "name"      : ep.get("episodeName", "").strip() or "Server"
+                        })
+            except:
+                pass
+
+        # 2. Butonları dene (yedek olarak)
+        if not episodes:
+            buttons     = secici.select(".halim-list-eps .halim-btn")
+            active_slug = None
+            for btn in buttons:
+                if "active" in btn.attrs.get("class", []):
+                    active_slug = btn.attrs.get("data-episode-slug")
+                    break
+            if not active_slug:
+                active_slug = url.split("/")[-1].replace(".html", "")
+                if "-sv" in active_slug:
+                    active_slug = active_slug.split("-sv")[0]
+
+            for btn in buttons:
+                slug      = btn.attrs.get("data-episode-slug")
+                server_id = btn.attrs.get("data-server")
+                post_id   = btn.attrs.get("data-post-id")
+                name      = btn.text(strip=True) or "Server"
+                if slug and server_id and post_id:
+                    clean_slug   = slug.split("-sv")[0] if "-sv" in slug else slug
+                    clean_active = active_slug.split("-sv")[0] if "-sv" in active_slug else active_slug
+                    if clean_slug == clean_active or len(buttons) <= 4:
+                        episodes.append({
+                            "slug"      : slug,
+                            "server_id" : server_id,
+                            "post_id"   : post_id,
+                            "name"      : name
+                        })
+
+        # 3. halim_cfg'yi dene (ikinci yedek olarak)
+        if not episodes:
+            cfg_match = re.search(r'var halim_cfg\s*=\s*({.+?})(?:;|</script>)', istek.text, re.DOTALL)
+            if cfg_match:
+                try:
+                    import json
+                    cfg       = json.loads(cfg_match.group(1))
+                    slug      = cfg.get("episode_slug")
+                    server_id = cfg.get("server")
+                    post_id   = cfg.get("post_id")
+                    if slug and server_id and post_id:
+                        episodes.append({
+                            "slug"      : slug,
+                            "server_id" : server_id,
+                            "post_id"   : post_id,
+                            "name"      : "Server"
+                        })
+                except:
+                    pass
 
         response = []
         tasks    = []
 
-        async def fetch_source(slug, server_id, post_id):
-            ajax_url = f"{self.main_url}/wp-content/themes/halimmovies/player.php"
+        # Sayfadaki alternatif alt sunucuları (subsv_id) topla
+        subsv_ids = [""]
+        spans     = re.findall(r'data-subsv-id=["\']([^"\']+)["\']', istek.text, re.IGNORECASE)
+        for s_id in spans:
+            if s_id not in subsv_ids:
+                subsv_ids.append(s_id)
+
+        async def fetch_source(slug, server_id, post_id, name, subsv_id) -> list[ExtractResult]:
+            ajax_url    = f"{self.main_url}/wp-content/themes/halimmovies/player.php"
+            found_links = []
             try:
                 resp = await self.httpx.get(
                     ajax_url,
-                    params  = {"episode_slug": slug, "server_id": server_id, "post_id": post_id},
+                    params  = {
+                        "episode_slug" : slug,
+                        "server_id"    : server_id,
+                        "post_id"      : post_id,
+                        "subsv_id"     : subsv_id
+                    },
                     headers = {"X-Requested-With": "XMLHttpRequest", "Referer": url},
                 )
-                data        = resp.json()
-                source_html = data.get("data", {}).get("sources", "")
-                if source_html:
-                    m3u8_url = HTMLHelper(source_html).select_attr("source", "src")
-                    if m3u8_url:
-                        return ExtractResult(name=self.name, url=self.fix_url(m3u8_url), referer=f"{self.main_url}/")
+                if resp.status_code == 200:
+                    html = resp.text
+
+                    # A. VIDEO_SRC kontrolü
+                    src_match = re.search(r'VIDEO_SRC\s*=\s*"([^"]+)"', html)
+                    if not src_match:
+                        src_match = re.search(r'VIDEO_SRC\s*=\s*\'([^\']+)\'', html)
+                    if src_match:
+                        m3u8_url = src_match.group(1).replace("\\/", "/")
+                        found_links.append(ExtractResult(
+                            name       = f"{self.name} - {name}",
+                            url        = self.fix_url(m3u8_url),
+                            referer    = url,
+                            user_agent = self.httpx.headers.get("User-Agent")
+                        ))
+
+                    # B. HYDRAX_ID kontrolü
+                    hydrax_match = re.search(r'HYDRAX_ID\s*=\s*"([^"]+)"', html)
+                    if not hydrax_match:
+                        hydrax_match = re.search(r'HYDRAX_ID\s*=\s*\'([^\']+)\'', html)
+                    if hydrax_match:
+                        hydrax_id = hydrax_match.group(1)
+                        found_links.append(ExtractResult(
+                            name       = f"{self.name} - {name} (Hydrax)",
+                            url        = f"https://short.icu/{hydrax_id}",
+                            referer    = url,
+                            user_agent = self.httpx.headers.get("User-Agent")
+                        ))
+
+                    # C. iframe kontrolü (402.html hariç)
+                    sec        = HTMLHelper(html)
+                    iframe_src = sec.select_attr("iframe", "src")
+                    if iframe_src and "402.html" not in iframe_src:
+                        found_links.append(ExtractResult(
+                            name       = f"{self.name} - {name}",
+                            url        = self.fix_url(iframe_src),
+                            referer    = url,
+                            user_agent = self.httpx.headers.get("User-Agent")
+                        ))
             except:
                 pass
-            return None
+            return found_links
 
-        for btn in buttons:
-            slug      = btn.attrs.get("data-episode-slug")
-            server_id = btn.attrs.get("data-server")
-            post_id   = btn.attrs.get("data-post-id")
-
-            if slug and server_id and post_id:
-                if current_slug is None or slug == current_slug or "movie" in slug.lower():
-                    tasks.append(fetch_source(slug, server_id, post_id))
+        for ep in episodes:
+            slug      = ep["slug"]
+            server_id = ep["server_id"]
+            post_id   = ep["post_id"]
+            name      = ep["name"]
+            for subsv_id in subsv_ids:
+                tasks.append(fetch_source(slug, server_id, post_id, name, subsv_id))
 
         results = await self.gather_with_limit(tasks)
-        for res in results:
-            if res:
-                response.append(res)
+        for res_list in results:
+            if res_list:
+                response.extend(res_list)
 
         return response

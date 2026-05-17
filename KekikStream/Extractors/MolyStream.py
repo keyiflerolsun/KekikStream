@@ -40,6 +40,10 @@ class MolyStream(ExtractorBase):
         if not v_url:
             v_url = secici.regex_first(r'"(?:file|src)"\s*:\s*"([^"]+\.(?:m3u8|mp4)[^"]*)"')
 
+        # Fallback to keyifAPI Adaptive HLS proxy for encrypted videos
+        if not v_url and ('const datas' in html or 'atob(datas)' in html):
+            v_url = f"http://px-webservisler:2585/api/v1/moly/playlist.m3u8?url={url}"
+
         # Altyazılar
         subtitles = []
         for s_url, s_name in secici.regex_all(r"addSrtFile\(['\"]([^'\"]+\.srt)['\"]\s*,\s*['\"][a-z]{2}['\"]\s*,\s*['\"]([^'\"]+)['\"]"):

@@ -8,7 +8,7 @@ class Turkish123(PluginBase):
     language    = "tr"
     main_url    = "https://turkish123.ac"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
-    description = "Turkish123 - Watch Turkish Series with English Subtitles Online for Free without Registration only at our website - turkish123.ac"
+    description = "Watch Turkish Series with English Subtitles Online for Free without Registration only at our website - turkish123.ac"
 
     main_page   = {
         f"{main_url}/series-list/page/"     : "Series List",
@@ -124,36 +124,63 @@ class Turkish123(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek = await self.async_cf_get(url)
-        text  = istek.text
+        api_url     = "http://px-webservisler:2585/api/v1/turkish123"
+        response    = []
+        tasks       = []
+        api_success = False
 
-        response = []
+        try:
+            params = {"url": url}
+            resp   = await self.httpx.get(api_url, params=params, timeout=20)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("success") and data.get("results"):
+                    for item in data["results"]:
+                        tasks.append((self.fix_url(item["url"]), item["name"]))
+                    api_success = True
+        except Exception:
+            pass
 
-        # 1. Klasik iframeleri tara
-        iframes = re.findall(r'<iframe.*?src=["\'](\S+?)["\']', text)
+        # Fallback to local regex scraping if API failed
+        if not api_success:
+            istek = await self.async_cf_get(url)
+            text  = istek.text
 
-        # 2. Player isimlerini bulmaya çalışalım (Tab isimleri)
-        secici = HTMLHelper(text)
-        labels = []
-        for nav in secici.select(".player_nav li"):
-            label = nav.select_text(".les-title span") or nav.text(strip=True)
-            if label:
-                labels.append(label)
+            # 1. Klasik iframeleri tara
+            iframes = re.findall(r'<iframe.*?src=["\'](\S+?)["\']', text)
+            for ifr in iframes:
+                tasks.append((self.fix_url(ifr), "Iframe"))
 
-        tasks = []
-        # Iframeler için task oluştur
-        for ifr in iframes:
-            tasks.append(self.extract(self.fix_url(ifr), referer=url))
+            # Eğer hiç bulunamazsa sayfadaki diğer linkleri tara
+            if not tasks:
+                secici = HTMLHelper(text)
+                for a in secici.select("a"):
+                    href = a.attrs.get("href")
+                    if href and any(x in href.lower() for x in ["mixdrop", "doodstream", "vidmoly", "vidoza", "streamtape"]):
+                        tasks.append((self.fix_url(href), "Server"))
 
-        for data in await self.gather_with_limit(tasks):
-            self.collect_results(response, data)
+        # Taskları paralel olarak çalıştır
+        extract_tasks = [self.extract(task_url, referer=url) for task_url, _ in tasks]
+        results       = await self.gather_with_limit(extract_tasks)
 
-        # Eğer hiç bulunamadıysa, sayfadaki tüm linklere bakalım
-        if not response:
-             for a in secici.select("a"):
-                 href = a.attrs.get("href")
-                 if href and any(x in href.lower() for x in ["mixdrop", "doodstream", "vidmoly", "vidoza", "streamtape"]):
-                      data = await self.extract(self.fix_url(href), referer=url)
-                      self.collect_results(response, data)
+        for (task_url, server_name), data in zip(tasks, results):
+            if data:
+                if isinstance(data, list):
+                    for item in data:
+                        item.name       = f"{server_name}"
+                        item.referer    = url
+                        item.user_agent = self.httpx.headers.get("User-Agent")
+                else:
+                    data.name       = f"{server_name}"
+                    data.referer    = url
+                    data.user_agent = self.httpx.headers.get("User-Agent")
+                self.collect_results(response, data)
+            else:
+                response.append(ExtractResult(
+                    url        = task_url,
+                    name       = f"{server_name}",
+                    referer    = url,
+                    user_agent = self.httpx.headers.get("User-Agent")
+                ))
 
         return self.deduplicate(response)
