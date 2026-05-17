@@ -138,11 +138,33 @@ class DMax(PluginBase):
                             poster = self.fix_url(item.select_attr("img", "src")),
                         ))
 
+        tags = []
+        if cat := secici.select_attr("meta[property='dyg:category']", "content"):
+            tags.append(cat)
+        if subcat := secici.select_attr("meta[property='dyg:sub-category']", "content"):
+            tags.append(subcat)
+
+        # Parse year if mentioned in description or title
+        year = None
+        if y_match := re.search(r"\b((?:19|20)\d{2})\b", description):
+            year = str(y_match.group(1))
+
+        # Try to parse hosts/actors from description
+        actors = None
+        if host_match := re.search(r"([A-Z][a-z]+ [A-Z][a-z]+(?: ve [A-Z][a-z]+ [A-Z][a-z]+)?)", description):
+            actors = host_match.group(1)
+
+        rating = None
+
         return SeriesInfo(
             url         = url,
             poster      = self.fix_url(poster),
             title       = title,
             description = description,
+            tags        = tags,
+            year        = year,
+            rating      = rating,
+            actors      = actors,
             episodes    = episodes,
         )
 

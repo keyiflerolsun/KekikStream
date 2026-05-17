@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, ExtractResult, HTMLHelper
-import json
+import re
 
 class FilmFC(PluginBase):
     name        = "FilmFC"
@@ -75,35 +75,40 @@ class FilmFC(PluginBase):
         istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
-        # JSON-LD metadata
-        json_ld = secici.regex_first(r'application/ld\+json">({.*?})</script>')
-        title   = ""
-        poster  = ""
-        if json_ld:
-            try:
-                data   = json.loads(json_ld)
-                title  = data.get("name", "").replace(" izle", "")
-                poster = data.get("image")
-            except Exception:
-                pass
+        title = secici.select_text("h2") or secici.select_text("title") or ""
+        title = title.split("|")[0].split("-")[0].replace(" izle", "").strip()
 
-        if not title:
-            title = secici.select_text("title") or ""
-            title = title.split("|")[0].split("-")[0].replace(" izle", "").strip()
+        poster = secici.select_attr("meta[property='og:image']", "content") or secici.select_attr("link[rel='image_src']", "href")
 
-        description = secici.select_text("div.movie-description") or secici.select_text("div.icerik")
-        rating      = secici.select_text("span.imdb-rating") or secici.select_text("div.puan b")
-        year        = secici.regex_first(r"\((\d{4})\)", secici.select_text("title") or "")
-        tags        = secici.select_texts("div.movie-genres a") or secici.select_texts("div.detay b")
+        description = secici.select_attr("meta[name='description']", "content") or secici.select_attr("meta[property='og:description']", "content")
+
+        duration = None
+        tags     = []
+        year     = None
+        for p in secici.select("p"):
+            p_text = p.text(strip=True)
+            if p_text.startswith("Süre:"):
+                dur_match = re.search(r"(\d+)", p_text)
+                if dur_match:
+                    duration = int(dur_match.group(1))
+            elif p_text.startswith("Tür:"):
+                tags_part = p_text.replace("Tür:", "").strip()
+                tags      = [t.strip() for t in tags_part.split(",") if t.strip()]
+            elif re.match(r"^(19|20)\d{2}$", p_text):
+                year = p_text
+
+        rating = secici.select_text("div.puan") or None
+
 
         return MovieInfo(
             url         = url,
-            poster      = self.fix_url(poster),
+            poster      = self.fix_url(poster) if poster else None,
             title       = title,
             description = description,
             tags        = tags,
             rating      = rating,
             year        = year,
+            duration    = duration,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:

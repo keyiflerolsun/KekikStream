@@ -28,11 +28,11 @@ class WFilmIzle(PluginBase):
         secici   = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.movie-poster"):
+        for veri in secici.select("div.poster"):
             title  = veri.select_attr("img", "alt") or veri.select_attr("a", "title")
             href   = veri.select_attr("a", "href")
             img    = veri.select_first("img")
-            poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
+            poster = img.attrs.get("data-src") or img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
 
             if title and href:
                 results.append(MainPageResult(
@@ -49,11 +49,11 @@ class WFilmIzle(PluginBase):
         secici = HTMLHelper(istek.text)
 
         results = []
-        for veri in secici.select("div.movie-poster"):
+        for veri in secici.select("div.poster"):
             title  = veri.select_attr("img", "alt") or veri.select_attr("a", "title")
             href   = veri.select_attr("a", "href")
             img    = veri.select_first("img")
-            poster = img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
+            poster = img.attrs.get("data-src") or img.attrs.get("data-wpfc-original-src") or img.attrs.get("src") if img else None
 
             if title and href:
                 results.append(SearchResult(

@@ -1,6 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult, HTMLHelper
+import re
 
 class FilmciBaba(PluginBase):
     name        = "FilmciBaba"
@@ -99,6 +100,11 @@ class FilmciBaba(PluginBase):
         rating = secici.regex_first(r"([\d\.]+)", secici.select_text(".p-v12-imdb-badge")) or secici.regex_first(r"([\d\.]+)", secici.select_text(".imdb-rating"))
         tags   = secici.select_texts(".p-v12-meta-info a[href*='/Kategori/tur/']") or secici.select_texts(".p-v12-info-centered a[href*='/Kategori/tur/']") or secici.select_texts("div.categories a[href*='/Kategori/tur/']")
         actors = secici.select_texts("a[href*='/oyuncular/']") or secici.select_texts(".cast-list .actor-name, .cast-list a")
+
+        if not actors and description:
+            actor_matches = re.findall(r"([A-Z][a-z]+ [A-Z][a-z]+)(?:\s*\([^)]*rolünde\))", description)
+            if actor_matches:
+                actors = list(dict.fromkeys(actor_matches))
 
         # Bölüm linklerini kontrol et
         ep_elements = secici.select(".parts-middle a, .parts-middle .part.active")

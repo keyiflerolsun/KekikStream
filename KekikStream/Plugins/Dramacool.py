@@ -99,8 +99,19 @@ class Dramacool(PluginBase):
         poster      = self.fix_url(poster_raw) if poster_raw else ""
         description = ""
         p_elements  = secici.select("div.info > p")
-        if len(p_elements) > 2:
+        for i, p in enumerate(p_elements):
+            p_text = p.text(strip=True) if hasattr(p, "text") else ""
+            if p_text.lower() == "description:":
+                for next_p in p_elements[i+1:]:
+                    next_text = next_p.text(strip=True) if hasattr(next_p, "text") else ""
+                    if next_text:
+                        description = next_text
+                        break
+                break
+        if not description and len(p_elements) > 2:
             description = p_elements[2].text(strip=True) if hasattr(p_elements[2], "text") else ""
+        if not description:
+            description = secici.select_attr("meta[name='description']", "content") or f"{title} drama detail on Dramacool."
 
         # Metadata parse
         year = None

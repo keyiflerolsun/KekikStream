@@ -71,7 +71,7 @@ class FilmEkseni(PluginBase):
 
         title       = secici.select_text("h1")
         poster      = secici.select_attr("img.img-movie", "data-src") or secici.select_attr("img.img-movie", "src")
-        description = secici.select_text("div.movie-text")
+        description = secici.select_text("article.text-white p") or secici.select_text("div.movie-text")
         rating      = secici.select_text("span.imdb-rating")
         year        = secici.regex_first(r"\((\d{4})\)", secici.select_text("h1") or "")
         tags        = secici.select_texts("div.movie-genres a")

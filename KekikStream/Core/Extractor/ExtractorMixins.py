@@ -227,9 +227,14 @@ class BePlayerExtractor(ExtractorBase):
 
         m3u8_url, subtitles, _ = self.decrypt_beplayer(resp.text)
 
-        # Fallback: Düz JS içinde file: ara
+        # Fallback 1: Düz JS içinde file: ara
         if not m3u8_url:
             m3u8_url = sel.regex_first(r'file\s*:\s*"([^"]+)"')
+
+        # Fallback 2: nested iframe src'sini ara (örn: YouTube embeds)
+        if not m3u8_url:
+            if iframe_src := sel.select_attr("iframe", "src"):
+                m3u8_url = iframe_src
 
         if not m3u8_url:
             raise ValueError(f"{self.name}: Video linki bulunamadı. {url}")

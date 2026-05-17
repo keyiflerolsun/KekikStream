@@ -79,7 +79,9 @@ class DramaFlix(PluginBase):
 
         tags = [series.get("platform")] if series.get("platform") else []
         # Actors meta alanını API credits'ten doldur
-        actors = [c.get("name") for c in series.get("credits", []) if c.get("name")]
+        actors_list = [c.get("name") for c in series.get("credits", []) if c.get("name")]
+        actors      = ", ".join(actors_list) if actors_list else None
+        rating      = str(series.get("rating")) if series.get("rating") else None
 
         created_at = series.get("createdAt")
         year       = None
@@ -100,6 +102,7 @@ class DramaFlix(PluginBase):
             description = desc,
             tags        = tags,
             year        = year,
+            rating      = rating,
             actors      = actors,
             episodes    = episodes,
         )

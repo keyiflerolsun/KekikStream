@@ -210,11 +210,26 @@ class BelgeselX(PluginBase):
                 if actor_line := secici.regex_first(r"(?:Sunucular|Oyuncular)\s*:?\s*([^<]+)", item, flags=re.I):
                     actor_list = [part.strip() for part in actor_line.split(",") if part.strip()]
                     actors     = ", ".join(actor_list) or None
-        rating     = rating or None
+
+        # Modern px-hero-meta badge desteği
+        for badge in secici.select(".px-hero-badge"):
+            badge_html = str(badge.html)
+            if not year and 'fa-calendar' in badge_html:
+                date_text = badge.text(strip=True)
+                if y_match := re.search(r"\b((?:19|20)\d{2})\b", date_text):
+                    year = int(y_match.group(1))
+            if not rating and 'fa-star' in badge_html:
+                rating_text = badge.text(strip=True)
+                if r_match := re.search(r"%\s*(\d+)", rating_text):
+                    rating = float(r_match.group(1)) / 10
+
+        rating = rating or None
 
         if not actors:
             actor_line = (
                 secici.regex_first(r"<strong>\s*(?:Sunucular|Oyuncular|Yayın Kanalı)\s*:\s*</strong>\s*([^<]+)", istek.text, flags=re.I) or
+                secici.select_text(".px-hero-channel span") or
+                secici.select_text(".px-channel-bottom span") or
                 secici.select_text(".px-dizi-channel span")
             )
             if actor_line:

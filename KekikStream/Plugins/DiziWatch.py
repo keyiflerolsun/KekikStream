@@ -153,33 +153,53 @@ class DiziWatch(PluginBase):
 
         year = secici.extract_year("div.text-sm:nth-child(2) span.text-white:nth-child(3)")
 
+        # JSON-LD'den actor ve rating ayıkla
+        actors          = []
+        rating          = None
+        script_payloads = secici.regex_all(r'<script[^>]*type=?["\']?application/ld\+json["\']?[^>]*>\s*([\s\S]*?)</script>')
+        for payload in script_payloads:
+            try:
+                import json
+                data = json.loads(payload)
+                if isinstance(data, dict):
+                    if "actor" in data:
+                        actor_list = data["actor"]
+                        if isinstance(actor_list, list):
+                            for act in actor_list:
+                                if isinstance(act, dict) and "name" in act:
+                                    actors.append(act["name"])
+                    if "aggregateRating" in data:
+                        agg = data["aggregateRating"]
+                        if isinstance(agg, dict) and "ratingValue" in agg:
+                            rating = str(agg["ratingValue"])
+            except Exception:
+                continue
+
+        actors_str = ", ".join(actors[:10]) if actors else None
+        if not actors_str:
+            fallback_actors = secici.select_texts("a[href*='/person/']") or secici.select_texts("div.actors a")
+            actors_str      = ", ".join(fallback_actors[:10]) if fallback_actors else None
+
+        rating = rating or None
+
         episodes = []
         for bolum in secici.select("ul a"):
             b_href = bolum.select_attr(None, "href")
             if not b_href:
                 continue
 
-            b_name  = bolum.select_text("span.hidden.sm\\:block") or bolum.select_text("span.hidden")
-            se_text = bolum.select_text("span.text-sm") or ""
+            b_name = bolum.select_text("span.hidden.sm\\:block") or bolum.select_text("span.hidden") or "Bölüm"
 
-            b_season = None
-            b_ep     = None
-            if "." in se_text:
-                parts = se_text.split(".")
-                try:
-                    b_season = int(parts[0])
-                except ValueError:
-                    pass
-                remain = parts[-1].strip().split(" ")[0] if len(parts) > 1 else ""
-                try:
-                    b_ep = int(remain)
-                except ValueError:
-                    pass
+            b_season, b_ep = HTMLHelper.extract_season_episode(b_href)
+            if not b_season:
+                b_season = 1
+            if not b_ep:
+                b_ep = 1
 
             episodes.append(Episode(
-                season  = b_season or 1,
+                season  = b_season,
                 episode = b_ep,
-                title   = b_name or f"Bölüm {b_ep}" if b_ep else "Bölüm",
+                title   = b_name if "Bölüm" in b_name else f"{b_name} - Sezon {b_season} Bölüm {b_ep}",
                 url     = self.fix_url(b_href),
             ))
 
@@ -190,6 +210,8 @@ class DiziWatch(PluginBase):
             description = description,
             tags        = tags,
             year        = year,
+            rating      = rating,
+            actors      = actors_str,
             episodes    = episodes,
         )
 

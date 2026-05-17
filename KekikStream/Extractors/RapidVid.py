@@ -27,18 +27,36 @@ class RapidVid(ExtractorBase):
         try:
             video_url = None
 
-            # Method 1: HexCodec pattern
-            if hex_data := sel.regex_first(r'file": "(.*)",'):
+            # Method 1: vprx / vprx2 pattern (Modern)
+            if vprx_data := (sel.regex_first(r'vprx\s*=\s*_\("([^"]+)"\)') or
+                             sel.regex_first(r'vprx\s*=\s*_\(\'([^\']+)\'\)') or
+                             sel.regex_first(r'vprx2\s*=\s*_\("([^"]+)"\)') or
+                             sel.regex_first(r'vprx2\s*=\s*_\(\'([^\']+)\'\)')):
+                video_url = self.decode_secret_new(vprx_data)
+
+            # Method 2: HexCodec pattern
+            elif hex_data := sel.regex_first(r'file": "(.*)",'):
                 video_url = HexCodec.decode(hex_data)
 
-            # Method 2: av('...') pattern
+            # Method 3: av('...') pattern (Legacy)
             elif av_data := sel.regex_first(r"av\('([^']+)'\)"):
                 video_url = self.decode_secret(av_data)
 
-            # Method 3: Packed dc_*
+            # Method 4: Packed dc_*
             elif Packer.detect_packed(resp.text):
                 unpacked  = Packer.unpack(resp.text)
                 video_url = StreamDecoder.extract_stream_url(unpacked)
+
+            if video_url and video_url.endswith(".xml"):
+                try:
+                    xml_resp = await self.async_cf_get(video_url, headers={"Referer": url})
+                    if xml_resp.status_code == 200 and xml_resp.text:
+                        from KekikStream.Core import M3U8_FILE_REGEX
+                        m3u8_url = HTMLHelper(xml_resp.text).regex_first(M3U8_FILE_REGEX)
+                        if m3u8_url:
+                            video_url = m3u8_url
+                except Exception:
+                    pass
 
             if not video_url:
                 # Check for direct m3u8 in text
@@ -74,3 +92,30 @@ class RapidVid(ExtractorBase):
         final_decoded_bytes = base64.b64decode(intermediate_string)
 
         return final_decoded_bytes.decode("utf-8")
+
+    def decode_secret_new(self, data: str) -> str:
+        """vprx'i çözmek için kullanılan yeni _() fonksiyonunun Python karşılığı."""
+        reversed_payload = data[::-1]
+        missing_padding  = len(reversed_payload) % 4
+        if missing_padding:
+            reversed_payload += '=' * (4 - missing_padding)
+
+        t_bytes = base64.b64decode(reversed_payload)
+        t       = t_bytes.decode('latin-1')
+
+        o_chars = []
+        key     = "K9L"
+        for i, char in enumerate(t):
+            r     = key[i % 3]
+            shift = ord(r) % 5 + 1
+            n     = ord(char) - shift
+            o_chars.append(chr(n))
+
+        o = "".join(o_chars)
+
+        missing_padding_o = len(o) % 4
+        if missing_padding_o:
+            o += '=' * (4 - missing_padding_o)
+
+        final_bytes = base64.b64decode(o)
+        return final_bytes.decode('utf-8', errors='ignore')
