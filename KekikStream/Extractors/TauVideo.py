@@ -6,29 +6,38 @@ class TauVideo(ExtractorBase):
     name     = "TauVideo"
     main_url = "https://tau-video.xyz"
 
-    async def extract(self, url, referer=None) -> list[ExtractResult]:
-        if referer:
-            self.httpx.headers.update({"Referer": referer})
+    async def extract(self, url: str, referer: str | None = None) -> ExtractResult | list[ExtractResult] | None:
+        headers = {"Referer": referer or self.main_url}
 
-        video_key = url.split("/")[-1]
+        # Extract video key, handle query params if present
+        # /embed/ID?vid=... -> ID?vid=...
+        video_key = url.rstrip("/").split("/")[-1]
         api_url   = f"{self.main_url}/api/video/{video_key}"
 
-        response = await self.httpx.get(api_url)
-        response.raise_for_status()
+        # Cloudflare bypasslı GET
+        response = await self.async_cf_get(api_url, headers=headers)
 
-        api_data = response.json()
+        try:
+            api_data = response.json()
+        except Exception:
+             raise ValueError(f"TauVideo: API yanıtı JSON değil. {url}")
 
         if "urls" not in api_data:
-            raise ValueError("API yanıtında 'urls' bulunamadı.")
+            raise ValueError(f"TauVideo: API yanıtında 'urls' bulunamadı. {url}")
 
-        results = [
-                ExtractResult(
-                    name      = video['label'],
-                    url       = video["url"],
-                    referer   = referer or self.main_url,
+        results = []
+        for video in api_data["urls"]:
+            file_url = video.get("url")
+            label    = video.get("label", "Kaynak")
+            if file_url:
+                results.append(ExtractResult(
+                    name      = f"{self.name} | {label}",
+                    url       = self.fix_url(file_url),
+                    referer   = self.main_url,
                     subtitles = []
-                )
-                    for video in api_data["urls"]
-            ]
+                ))
 
-        return results[0] if len(results) == 1 else results
+        if not results:
+            return None
+
+        return results

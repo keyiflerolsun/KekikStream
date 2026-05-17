@@ -82,7 +82,7 @@ class StreamWish(PackedJSExtractor):
         # Handle hash based URLs like doramasfoxito.p2pplay.online/#ID
         if "#" in url and not any(x in url for x in ["/e/", "/f/", "/d/", "/download/"]):
             parts = url.split("#")
-            if len(parts[-1]) > 5:
+            if len(parts[-1]) >= 5:
                 return f"{parts[0].rstrip('/')}/e/{parts[-1]}"
 
         # StreamWish sites usually prefer /e/ for embedding

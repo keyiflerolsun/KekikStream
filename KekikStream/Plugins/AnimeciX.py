@@ -31,7 +31,7 @@ class AnimeciX(PluginBase):
         results = []
 
         if "/last-episodes" in url:
-            resp = await self.httpx.get(
+            resp = await self.async_cf_get(
                 f"{self.main_url}/secure/last-episodes?page={page}&perPage=10",
                 headers={"x-e-h": self._XEH},
             )
@@ -53,7 +53,7 @@ class AnimeciX(PluginBase):
                 ))
         else:
             sep  = "&" if "?" in url else "?"
-            resp = await self.httpx.get(
+            resp = await self.async_cf_get(
                 f"{url}{sep}page={page}&perPage=16",
                 headers={"x-e-h": self._XEH},
             )
@@ -76,7 +76,7 @@ class AnimeciX(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        resp = await self.httpx.get(f"{self.main_url}/secure/search/{query}?limit=20")
+        resp = await self.async_cf_get(f"{self.main_url}/secure/search/{query}?limit=20")
         data = resp.json()
 
         results = []
@@ -95,7 +95,7 @@ class AnimeciX(PluginBase):
         return results
 
     async def load_item(self, url: str) -> SeriesInfo:
-        resp = await self.httpx.get(url, headers={"x-e-h": self._XEH})
+        resp = await self.async_cf_get(url, headers={"x-e-h": self._XEH})
         data = resp.json().get("title", {})
 
         title_id   = data.get("id", "")
@@ -112,7 +112,7 @@ class AnimeciX(PluginBase):
         if title_type == "anime":
             for season in data.get("seasons", []):
                 s_num    = season.get("number", 1)
-                vid_resp = await self.httpx.get(
+                vid_resp = await self.async_cf_get(
                     f"{self.main_url}/secure/related-videos?episode=1&season={s_num}&videoId=0&titleId={title_id}"
                 )
                 vid_data = vid_resp.json()
@@ -161,7 +161,8 @@ class AnimeciX(PluginBase):
     async def load_links(self, url: str) -> list[ExtractResult]:
         page_url = f"{self.main_url}/{url}" if not url.startswith("http") else url
 
-        resp        = await self.httpx.get(page_url, follow_redirects=True, headers={"Referer": f"{self.main_url}/"})
+        # Referer header'ı ve async_cf_get kullanımı redirect takibi için önemli
+        resp        = await self.async_cf_get(page_url, headers={"Referer": f"{self.main_url}/"})
         iframe_link = str(resp.url)
 
         # Çift URL düzeltme
@@ -169,12 +170,13 @@ class AnimeciX(PluginBase):
         if double_match:
             iframe_link = double_match.group(1)
 
-        # best-video redirect takibi
+        # best-video redirect takibi (bazı durumlarda manuel GET gerekebilir)
         if "/secure/best-video" in iframe_link:
-            redir_resp  = await self.httpx.get(iframe_link, follow_redirects=True, headers={"Referer": f"{self.main_url}/"})
+            redir_resp  = await self.async_cf_get(iframe_link, headers={"Referer": f"{self.main_url}/"})
             iframe_link = str(redir_resp.url)
 
         results = []
-        data    = await self.extract(iframe_link, referer=f"{self.main_url}/")
+        # Artık iframe_link gerçek tau-video veya benzeri bir link olmalı
+        data = await self.extract(iframe_link, referer=f"{self.main_url}/")
         self.collect_results(results, data)
         return results

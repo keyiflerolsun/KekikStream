@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from copy   import deepcopy
-from time   import monotonic
-from typing import Awaitable, Callable, Any
+from copy            import deepcopy
+from time            import monotonic
+from collections.abc import Awaitable, Callable
 import asyncio
 
 
@@ -12,9 +12,9 @@ class MethodCache:
     """Plugin metodları için RAM tabanlı TTL cache (singleton kullanımı için)."""
 
     def __init__(self):
-        self._cache    : dict[tuple[str, str], dict[str, tuple[float, Any]]] = {}
-        self._inflight : dict[tuple[str, str], dict[str, asyncio.Task]]      = {}
-        self._lock                                                           = asyncio.Lock()
+        self._cache    : dict[tuple[str, str], dict[str, tuple[float, object]]] = {}
+        self._inflight : dict[tuple[str, str], dict[str, asyncio.Task]]         = {}
+        self._lock                                                              = asyncio.Lock()
 
     async def run(
         self,
@@ -22,11 +22,11 @@ class MethodCache:
         namespace: str,
         method_name: str,
         key: str,
-        producer: Callable[[], Awaitable[Any]],
-        should_cache: Callable[[Any], bool] | None = None,
+        producer: Callable[[], Awaitable[object]],
+        should_cache: Callable[[object], bool] | None = None,
         ttl: int = 3600,
         max_entries: int = 512,
-    ):
+    ) -> object:
         """Aynı namespace+method+key çağrıları için TTL cache uygula."""
         if ttl <= 0:
             return self._clone_payload(await producer())
@@ -72,7 +72,7 @@ class MethodCache:
         return self._clone_payload(payload)
 
     @staticmethod
-    def _clone_payload(payload):
+    def _clone_payload(payload: object) -> object:
         if isinstance(payload, list):
             return [MethodCache._clone_payload(item) for item in payload]
         if isinstance(payload, dict):

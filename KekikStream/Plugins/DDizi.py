@@ -127,7 +127,7 @@ class DDizi(PluginBase):
             rating      = None,
             year        = year,
             actors      = actors,
-            episodes    = episodes
+            episodes    = episodes,
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
@@ -154,15 +154,17 @@ class DDizi(PluginBase):
                 extract_urls = []
                 for src in sources:
                     src       = self.fix_url(src)
-                    is_direct = any(x in src.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"])
+                    is_direct = any(x in src.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", "yandex", ".m3u8", ".mp4", "master.txt"])
 
                     if is_direct:
-                        src_name = "YouTube" if any(x in src.lower() for x in ["google", "youtube"]) else ("M3U8" if ".m3u8" in src.lower() else "MP4")
+                        src_name = "YouTube" if any(x in src.lower() for x in ["google", "youtube"]) else \
+                                  ("Yandex" if "yandex" in src.lower() else \
+                                  ("M3U8" if ".m3u8" in src.lower() else "MP4"))
                         results.append(ExtractResult(
                             url        = src,
                             name       = src_name,
-                            user_agent = "googleusercontent",
-                            referer    = "https://twitter.com/"
+                            user_agent = "googleusercontent" if "google" in src.lower() else None,
+                            referer    = "https://twitter.com/" if "google" in src.lower() else target_url
                         ))
                     else:
                         extract_urls.append(src)
@@ -172,13 +174,16 @@ class DDizi(PluginBase):
                     self.collect_results(results, res)
 
                 if not results:
-                     if any(x in target_url.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", ".m3u8", ".mp4", "master.txt"]) and ".html" not in target_url:
-                        fb_name = "YouTube" if any(x in target_url.lower() for x in ["google", "youtube"]) else ("M3U8" if ".m3u8" in target_url.lower() else "MP4")
+                     is_direct = any(x in target_url.lower() for x in ["google", "twimg", "mncdn", "akamai", "streambox", "yandex", ".m3u8", ".mp4", "master.txt"])
+                     if is_direct and ".html" not in target_url:
+                        fb_name = "YouTube" if any(x in target_url.lower() for x in ["google", "youtube"]) else \
+                                  ("Yandex" if "yandex" in target_url.lower() else \
+                                  ("M3U8" if ".m3u8" in target_url.lower() else "MP4"))
                         results.append(ExtractResult(
                             url        = target_url,
                             name       = fb_name,
-                            user_agent = "googleusercontent",
-                            referer    = "https://twitter.com/"
+                            user_agent = "googleusercontent" if "google" in target_url.lower() else None,
+                            referer    = "https://twitter.com/" if "google" in target_url.lower() else url
                         ))
                      else:
                         res = await self.extract(target_url)

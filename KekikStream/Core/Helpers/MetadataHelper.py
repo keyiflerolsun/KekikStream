@@ -1,9 +1,8 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from typing import TYPE_CHECKING
-import httpx, re
+import httpx, re, typing
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from ..Plugin.PluginModels import MovieInfo, SeriesInfo
 
 class MetadataHelper:

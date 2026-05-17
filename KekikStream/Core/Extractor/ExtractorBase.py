@@ -3,15 +3,14 @@
 from abc                import ABC, abstractmethod
 from curl_cffi.requests import AsyncSession
 from httpx              import AsyncClient
-from typing             import Optional, Union, List
 from .ExtractorModels   import ExtractResult
 from urllib.parse       import urljoin, urlparse
 from ..Helpers          import PlayabilityHelper, fix_url
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
-    name     = "Extractor"
-    main_url = ""
+    name     : str = "Extractor"
+    main_url : str = ""
 
     def __init__(self):
         # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
@@ -50,7 +49,7 @@ class ExtractorBase(ABC):
         return f"{parsed.scheme}://{parsed.netloc}"
 
     @abstractmethod
-    async def extract(self, url: str, referer: Optional[str] = None) -> ExtractResult:
+    async def extract(self, url: str, referer: str | None = None) -> ExtractResult | list[ExtractResult] | None:
         # Alt sınıflar tarafından uygulanacak medya çıkarma fonksiyonu
         pass
 
@@ -76,7 +75,7 @@ class ExtractorBase(ABC):
         if not original_extract or getattr(original_extract, "__wb_wrapped_extract__", False):
             return
 
-        async def wrapped_extract(url: str, referer: Optional[str] = None, *args, **kwargs) -> Union[None, ExtractResult, List[ExtractResult]]:
+        async def wrapped_extract(url: str, referer: str | None = None, *args, **kwargs) -> ExtractResult | list[ExtractResult] | None:
             try:
                 res = await original_extract(url, referer, *args, **kwargs)
                 if not res:

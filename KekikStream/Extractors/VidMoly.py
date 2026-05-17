@@ -3,7 +3,7 @@
 # ! https://github.com/recloudstream/cloudstream/blob/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors/Vidmoly.kt
 
 from KekikStream.Core  import PackedJSExtractor, ExtractResult, Subtitle, HTMLHelper
-import contextlib, json, re
+import json, re
 
 class VidMoly(PackedJSExtractor):
     name     = "VidMoly"
@@ -75,16 +75,17 @@ class VidMoly(PackedJSExtractor):
         # Altyazı kaynaklarını ayrıştır
         subtitles = []
         if sub_str := sel.regex_first(r"(?s)tracks:\s*\[(.*?)\]"):
-            sub_data = self._add_marks(sub_str, "file")
-            sub_data = self._add_marks(sub_data, "label")
-            sub_data = self._add_marks(sub_data, "kind")
+            for block in re.findall(r'\{(.*?)\}', sub_str, re.S):
+                f = re.search(r'file\s*:\s*["\']([^"\']+)["\']', block)
+                l = re.search(r'label\s*:\s*["\']([^"\']+)["\']', block)
+                k = re.search(r'kind\s*:\s*["\']([^"\']+)["\']', block)
 
-            with contextlib.suppress(json.JSONDecodeError):
-                sub_sources = json.loads(f"[{sub_data}]")
-                subtitles   = [
-                    Subtitle(name=sub.get("label"), url=self.fix_url(sub.get("file")))
-                    for sub in sub_sources if sub.get("kind") == "captions"
-                ]
+                file_url = f.group(1) if f else None
+                label    = l.group(1) if l else "Altyazı"
+                kind     = k.group(1) if k else None
+
+                if file_url and kind == "captions":
+                    subtitles.append(Subtitle(name=label, url=self.fix_url(file_url)))
 
         # Video URL Bulma
         video_url = None
@@ -100,13 +101,10 @@ class VidMoly(PackedJSExtractor):
 
         if not video_url:
             if src_str := sel.regex_first(r"(?s)sources:\s*\[(.*?)\],"):
-                vid_data = self._add_marks(src_str, "file")
-                with contextlib.suppress(json.JSONDecodeError):
-                    vid_sources = json.loads(f"[{vid_data}]")
-                    for source in vid_sources:
-                        if source.get("file"):
-                            video_url = source.get("file")
-                            break
+                # Regex ile ilk file linkini bul (genellikle tek link olur zaten)
+                f = re.search(r'file\s*:\s*["\']([^"\']+)["\']', src_str)
+                if f:
+                    video_url = f.group(1)
 
         if not video_url:
             video_url = sel.regex_first(r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']') or \
@@ -121,9 +119,3 @@ class VidMoly(PackedJSExtractor):
             referer   = f"{self.get_base_url(url)}/",
             subtitles = subtitles
         )
-
-    def _add_marks(self, text: str, field: str) -> str:
-        """
-        Verilen alanı çift tırnak içine alır.
-        """
-        return HTMLHelper(text).regex_replace(rf"\"?{field}\"?", f"\"{field}\"")
