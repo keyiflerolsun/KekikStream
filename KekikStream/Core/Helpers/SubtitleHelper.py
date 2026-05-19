@@ -97,6 +97,13 @@ class SubtitleHelper:
             url  = item.get("url")
             lang = item.get("lang") or item.get("language") or "Altyazı"
             if url:
+                # Wyzie'den gelen Türkçe altyazıların encode sorununu çözmek için encoding parametresini ISO-8859-9 yapıyoruz
+                if lang.lower() in ("tr", "tur", "turkish"):
+                    if "encoding=" in url:
+                        url = re.sub(r"encoding=[^&]+", "encoding=ISO-8859-9", url)
+                    else:
+                        sep = "&" if "?" in url else "?"
+                        url = f"{url}{sep}encoding=ISO-8859-9"
                 results.append(Subtitle(name=f"Wyzie | {lang.upper()}", url=url))
         return results
 
