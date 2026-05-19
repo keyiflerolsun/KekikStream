@@ -5,7 +5,7 @@ from KekikStream.Core import PluginBase, MainPageResult, SearchResult, MovieInfo
 class WFilmIzle(PluginBase):
     name        = "WFilmIzle"
     language    = "tr"
-    main_url    = "https://www.wfilmizle.bar"
+    main_url    = "https://www.wfilmizle.nl"
     favicon     = f"https://www.google.com/s2/favicons?domain={main_url}&sz=64"
     description = "Wfilmizle, Full HD kalitesinde en yeni ve en güncel filmleri Türkçe dublaj ve altyazı seçenekleriyle sunan film izleme platformudur."
 
