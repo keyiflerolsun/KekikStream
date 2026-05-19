@@ -10,36 +10,36 @@ class FilmModu(PluginBase):
     description = "Film modun geldiyse yüksek kalitede hd film izle, 1080p izleyebileceğiniz reklamsız ve hızlı film sitesi."
 
     main_page   = {
-        f"{main_url}/hd-film-kategori/4k-film-izle?page=SAYFA"         : "4K",
-        f"{main_url}/hd-film-kategori/aile-filmleri?page=SAYFA"        : "Aile",
-        f"{main_url}/hd-film-kategori/aksiyon?page=SAYFA"              : "Aksiyon",
-        f"{main_url}/hd-film-kategori/animasyon?page=SAYFA"            : "Animasyon",
-        f"{main_url}/hd-film-kategori/belgeseller?page=SAYFA"          : "Belgesel",
-        f"{main_url}/hd-film-kategori/bilim-kurgu-filmleri?page=SAYFA" : "Bilim-Kurgu",
-        f"{main_url}/hd-film-kategori/dram-filmleri?page=SAYFA"        : "Dram",
-        f"{main_url}/hd-film-kategori/fantastik-filmler?page=SAYFA"    : "Fantastik",
-        f"{main_url}/hd-film-kategori/gerilim?page=SAYFA"              : "Gerilim",
-        f"{main_url}/hd-film-kategori/gizem-filmleri?page=SAYFA"       : "Gizem",
-        f"{main_url}/hd-film-kategori/hd-hint-filmleri?page=SAYFA"     : "Hint Filmleri",
-        f"{main_url}/hd-film-kategori/kisa-film?page=SAYFA"            : "Kısa Film",
-        f"{main_url}/hd-film-kategori/hd-komedi-filmleri?page=SAYFA"   : "Komedi",
-        f"{main_url}/hd-film-kategori/korku-filmleri?page=SAYFA"       : "Korku",
-        f"{main_url}/hd-film-kategori/kult-filmler-izle?page=SAYFA"    : "Kült Filmler",
-        f"{main_url}/hd-film-kategori/macera-filmleri?page=SAYFA"      : "Macera",
-        f"{main_url}/hd-film-kategori/muzik?page=SAYFA"                : "Müzik",
-        f"{main_url}/hd-film-kategori/odullu-filmler-izle?page=SAYFA"  : "Oscar Ödüllü",
-        f"{main_url}/hd-film-kategori/romantik-filmler?page=SAYFA"     : "Romantik",
-        f"{main_url}/hd-film-kategori/savas?page=SAYFA"                : "Savaş",
-        f"{main_url}/hd-film-kategori/stand-up?page=SAYFA"             : "Stand Up",
-        f"{main_url}/hd-film-kategori/suc-filmleri?page=SAYFA"         : "Suç",
-        f"{main_url}/hd-film-kategori/tarih?page=SAYFA"                : "Tarih",
-        f"{main_url}/hd-film-kategori/tavsiye-filmler?page=SAYFA"      : "Tavsiye",
-        f"{main_url}/hd-film-kategori/tv-film?page=SAYFA"              : "TV Film",
-        f"{main_url}/hd-film-kategori/vahsi-bati-filmleri?page=SAYFA"  : "Vahşi Batı",
+        f"{main_url}/film-tur/4k-film-izle"         : "4K",
+        f"{main_url}/film-tur/aile-filmleri"        : "Aile",
+        f"{main_url}/film-tur/aksiyon"              : "Aksiyon",
+        f"{main_url}/film-tur/animasyon"            : "Animasyon",
+        f"{main_url}/film-tur/belgeseller"          : "Belgesel",
+        f"{main_url}/film-tur/bilim-kurgu-filmleri" : "Bilim-Kurgu",
+        f"{main_url}/film-tur/dram-filmleri"        : "Dram",
+        f"{main_url}/film-tur/fantastik-filmler"    : "Fantastik",
+        f"{main_url}/film-tur/gerilim"              : "Gerilim",
+        f"{main_url}/film-tur/gizem-filmleri"       : "Gizem",
+        f"{main_url}/film-tur/hd-hint-filmleri"     : "Hint Filmleri",
+        f"{main_url}/film-tur/kisa-film"            : "Kısa Film",
+        f"{main_url}/film-tur/hd-komedi-filmleri"   : "Komedi",
+        f"{main_url}/film-tur/korku-filmleri"       : "Korku",
+        f"{main_url}/film-tur/kult-filmler-izle"    : "Kült Filmler",
+        f"{main_url}/film-tur/macera-filmleri"      : "Macera",
+        f"{main_url}/film-tur/muzik"                : "Müzik",
+        f"{main_url}/film-tur/odullu-filmler-izle"  : "Oscar Ödüllü",
+        f"{main_url}/film-tur/romantik-filmler"     : "Romantik",
+        f"{main_url}/film-tur/savas"                : "Savaş",
+        f"{main_url}/film-tur/stand-up"             : "Stand Up",
+        f"{main_url}/film-tur/suc-filmleri"         : "Suç",
+        f"{main_url}/film-tur/tarih"                : "Tarih",
+        f"{main_url}/film-tur/tavsiye-filmler"      : "Tavsiye",
+        f"{main_url}/film-tur/tv-film"              : "TV Film",
+        f"{main_url}/film-tur/vahsi-bati-filmleri"  : "Vahşi Batı",
     }
 
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
-        istek  = await self.httpx.get(url.replace("SAYFA", str(page)))
+        istek  = await self.async_cf_get(f"{url}?page={page}" if page > 1 else url)
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -59,7 +59,7 @@ class FilmModu(PluginBase):
         return results
 
     async def search(self, query: str) -> list[SearchResult]:
-        istek  = await self.httpx.get(f"{self.main_url}/film-ara?term={query}")
+        istek  = await self.async_cf_get(f"{self.main_url}/film-ara?term={query}")
         secici = HTMLHelper(istek.text)
 
         results = []
@@ -78,7 +78,7 @@ class FilmModu(PluginBase):
         return results
 
     async def load_item(self, url: str) -> MovieInfo:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         org_title   = secici.select_text("div.titles h1")
@@ -103,7 +103,7 @@ class FilmModu(PluginBase):
         )
 
     async def load_links(self, url: str) -> list[ExtractResult]:
-        istek  = await self.httpx.get(url)
+        istek  = await self.async_cf_get(url)
         secici = HTMLHelper(istek.text)
 
         alternates = secici.select("div.alternates a")
@@ -119,7 +119,7 @@ class FilmModu(PluginBase):
                 continue
 
             alt_link  = self.fix_url(alt_link)
-            alt_istek = await self.httpx.get(alt_link)
+            alt_istek = await self.async_cf_get(alt_link)
             secici    = HTMLHelper(alt_istek.text)
 
             vid_id   = secici.regex_first(r"var videoId = '([^']*)'")
@@ -128,7 +128,7 @@ class FilmModu(PluginBase):
             if not vid_id or not vid_type:
                 continue
 
-            source_istek = await self.httpx.get(f"{self.main_url}/get-source?movie_id={vid_id}&type={vid_type}")
+            source_istek = await self.async_cf_get(f"{self.main_url}/get-source?movie_id={vid_id}&type={vid_type}")
             source_data  = source_istek.json()
 
             if source_data.get("subtitle"):

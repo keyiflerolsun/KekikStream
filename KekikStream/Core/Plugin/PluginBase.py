@@ -291,7 +291,7 @@ class PluginBase(ABC):
         episode: int | None = None
     ) -> list[ExtractResult]:
         """Harici altyazıları çekip sonuçlara ekler."""
-        if not results:
+        if not results or self.name == "SolarMovies":
             return results
 
         # URL'den ID ve Bölüm bilgilerini tahmin etmeye çalış (id paslanmamışsa)
