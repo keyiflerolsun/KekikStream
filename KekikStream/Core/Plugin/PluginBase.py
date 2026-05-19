@@ -27,10 +27,15 @@ class PluginBase(ABC):
         self.favicon   = self.favicon.replace(self.main_url, new_url)
         self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
         self.main_url  = new_url
+        if hasattr(self, "_cf_session"):
+            self._cf_session.main_url = new_url
+        if hasattr(self, "httpx"):
+            self.httpx.main_url = new_url
 
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
-        self._cf_session = FallbackCF(impersonate="firefox")
+        self._cf_session          = FallbackCF(impersonate="firefox")
+        self._cf_session.main_url = self.main_url
         self._cf_session.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -55,6 +60,7 @@ class PluginBase(ABC):
             follow_redirects = True,
             proxy            = httpx_proxy,
         )
+        self.httpx.main_url = self.main_url
         self.httpx.headers.update(self._cf_session.headers)
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
