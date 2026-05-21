@@ -42,7 +42,7 @@ class MasterAuditor:
         """Tek bir kategoriyi test eder."""
         try:
             # 5 saniyelik katı zaman aşımı
-            res = await asyncio.wait_for(instance.get_main_page(page=1, url=url, category=category), timeout=7)
+            res = await asyncio.wait_for(instance.get_main_page(page=1, url=url, category=category), timeout=3)
             return len(res) if res else 0
         except:
             return 0
@@ -101,18 +101,18 @@ class MasterAuditor:
                 if test_url:
                     try:
                         # Main Page
-                        main_res = await asyncio.wait_for(instance.get_main_page(page=1, url=test_url, category=test_cat), timeout=10)
+                        main_res = await asyncio.wait_for(instance.get_main_page(page=1, url=test_url, category=test_cat), timeout=3)
                         if main_res:
                             report["lifecycle"]["main_page"] = "✅"
                             target = main_res[0]
 
                             # Load Item
-                            item_info = await asyncio.wait_for(instance.load_item(target.url), timeout=10)
+                            item_info = await asyncio.wait_for(instance.load_item(target.url), timeout=3)
                             if item_info and (getattr(item_info, 'title', None) or getattr(item_info, 'description', None)):
                                 report["lifecycle"]["load_item"] = "✅"
 
                                 # Load Links
-                                links = await asyncio.wait_for(instance.load_links(item_info.url), timeout=15)
+                                links = await asyncio.wait_for(instance.load_links(item_info.url), timeout=3)
                                 report["lifecycle"]["load_links"] = "✅" if links else "❌"
                             else:
                                 report["lifecycle"]["load_item"] = "❌"
@@ -127,7 +127,7 @@ class MasterAuditor:
 
                 # 3. Search
                 try:
-                    s_res = await asyncio.wait_for(instance.search("love"), timeout=10)
+                    s_res = await asyncio.wait_for(instance.search("love"), timeout=3)
                     report["lifecycle"]["search"] = "✅" if s_res else "❌"
                 except:
                     report["lifecycle"]["search"] = "❌"

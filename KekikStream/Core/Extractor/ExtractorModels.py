@@ -10,9 +10,10 @@ class Subtitle(BaseModel):
 
 class ExtractResult(BaseModel):
     """Extractor'ın döndürmesi gereken sonuç modeli."""
-    name       : str
-    url        : str
-    referer    : str | None     = None
-    user_agent : str | None     = None
-    subtitles  : list[Subtitle] = []
-    extractor  : str | None     = None
+    name          : str
+    url           : str
+    referer       : str | None     = None
+    user_agent    : str | None     = None
+    extra_headers : dict[str, str] = {}
+    subtitles     : list[Subtitle] = []
+    extractor     : str | None     = None

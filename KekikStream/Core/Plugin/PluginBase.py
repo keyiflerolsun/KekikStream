@@ -8,7 +8,7 @@ from ..Extractor.ExtractorManager import ExtractorManager
 from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
 from ..Helpers.MethodCache        import method_cache
 from ..Helpers.FallbackClients    import FallbackHTTPX, FallbackCF
-from urllib.parse                 import urljoin
+from ..Helpers                    import MetadataHelper, SubtitleHelper, HTMLHelper, PlayabilityHelper, fix_url
 import asyncio, httpx, curl_cffi
 
 class PluginBase(ABC):
@@ -27,10 +27,15 @@ class PluginBase(ABC):
         self.favicon   = self.favicon.replace(self.main_url, new_url)
         self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
         self.main_url  = new_url
+        if hasattr(self, "_cf_session"):
+            self._cf_session.main_url = new_url
+        if hasattr(self, "httpx"):
+            self.httpx.main_url = new_url
 
     def __init__(self, proxy: str | dict | None = None, ex_manager: str | ExtractorManager = "Extractors"):
         # curl_cffi - for bypassing Cloudflare TLS/HTTP2 fingerprints
-        self._cf_session = FallbackCF(impersonate="chrome")
+        self._cf_session          = FallbackCF(impersonate="firefox", timeout=3)
+        self._cf_session.main_url = self.main_url
         self._cf_session.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
             "Accept"     : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
@@ -40,7 +45,7 @@ class PluginBase(ABC):
             proxy_str                = proxy if isinstance(proxy, str) else (proxy.get("https") or proxy.get("http"))
             self._cf_session.proxies = {"http": proxy_str, "https": proxy_str}
 
-            cf_fallback = curl_cffi.AsyncSession(impersonate="chrome")
+            cf_fallback = curl_cffi.AsyncSession(impersonate="firefox", timeout=3)
             cf_fallback.headers.update(self._cf_session.headers)
             self._cf_session.set_fallback(cf_fallback)
 
@@ -51,10 +56,11 @@ class PluginBase(ABC):
 
         # httpx - lightweight and safe for most HTTP requests
         self.httpx = FallbackHTTPX(
-            timeout          = 10,
+            timeout          = 3,
             follow_redirects = True,
             proxy            = httpx_proxy,
         )
+        self.httpx.main_url = self.main_url
         self.httpx.headers.update(self._cf_session.headers)
         self.httpx.headers.update({
             "User-Agent" : "Mozilla/5.0 (Macintosh; Intel Mac OS X 15.7; rv:135.0) Gecko/20100101 Firefox/135.0",
@@ -62,7 +68,7 @@ class PluginBase(ABC):
         })
 
         if httpx_proxy:
-            httpx_fallback = httpx.AsyncClient(timeout=10, follow_redirects=True)
+            httpx_fallback = httpx.AsyncClient(timeout=3, follow_redirects=True)
             httpx_fallback.headers.update(self.httpx.headers)
             self.httpx.set_fallback(httpx_fallback)
 
@@ -74,7 +80,11 @@ class PluginBase(ABC):
         else:
             self.ex_manager = ExtractorManager(extractor_dir=ex_manager)
 
-        self.failed_extractions: list[dict] = []
+        self.failed_extractions : list[dict] = []
+        self._last_loaded_item               = None
+
+        # Subclass'ın metotlarını dinamik olarak sarmalla (otomatik TMDB & Altyazı zenginleştirmesi)
+        self._wrap_plugin_methods()
 
         self._cache_namespace = f"{self.__class__.__module__}.{self.__class__.__name__}"
         self._setup_default_method_caches()
@@ -214,6 +224,120 @@ class PluginBase(ABC):
     # YARDIMCI METOTLAR
     # ========================
 
+    def _wrap_plugin_methods(self):
+        """Plugin subclass metotlarını otomatik olarak zenginleştirici sarmallarla sarar."""
+        # 1. load_item sarmalı
+        original_load_item = getattr(self, "load_item", None)
+        if original_load_item and not getattr(original_load_item, "__wb_wrapped__", False):
+            async def wrapped_load_item(url: str) -> MovieInfo | SeriesInfo:
+                item = await original_load_item(url)
+                if item:
+                    item                   = await self.enrich_metadata(item)
+                    self._last_loaded_item = item
+                return item
+
+            wrapped_load_item.__wb_wrapped__ = True
+            wrapped_load_item.__doc__        = getattr(original_load_item, "__doc__", None)
+            self.load_item                   = wrapped_load_item
+
+        # 2. load_links sarmalı
+        original_load_links = getattr(self, "load_links", None)
+        if original_load_links and not getattr(original_load_links, "__wb_wrapped__", False):
+            async def wrapped_load_links(url: str) -> list[ExtractResult]:
+                imdb_id = None
+                tmdb_id = None
+
+                # Check if we need to load metadata to get the ID
+                if not getattr(self, "_last_loaded_item", None):
+                    main_item_url = url
+                    if "/sezon-" in url or "/season-" in url:
+                        main_item_url = url.split("/sezon-")[0].split("/season-")[0]
+                        if not main_item_url.endswith("/"):
+                            main_item_url += "/"
+                    try:
+                        await self.load_item(main_item_url)
+                    except Exception:
+                        pass
+
+                if getattr(self, "_last_loaded_item", None):
+                    imdb_id = self._last_loaded_item.imdb_id
+                    tmdb_id = self._last_loaded_item.tmdb_id
+
+                results = await original_load_links(url)
+
+                if results:
+                    playability_tasks   = [PlayabilityHelper.is_url_playable(r) for r in results]
+                    playability_results = await asyncio.gather(*playability_tasks)
+
+                    results = [item for item, (is_playable, _) in zip(results, playability_results) if is_playable]
+                results = await self.finalize_subtitles(results, url=url, imdb_id=imdb_id, tmdb_id=tmdb_id)
+                results = self.deduplicate(results)
+                results = self.sync_subtitles(results)
+                return results
+
+            wrapped_load_links.__wb_wrapped__ = True
+            wrapped_load_links.__doc__        = getattr(original_load_links, "__doc__", None)
+            self.load_links                   = wrapped_load_links
+
+    async def enrich_metadata(self, info: MovieInfo | SeriesInfo) -> MovieInfo | SeriesInfo:
+        """Eksik metadataları TMDB üzerinden tamamlar."""
+        try:
+            return await MetadataHelper.enrich_metadata(info)
+        except Exception as e:
+            konsol.log(f"[yellow][!] TMDB Zenginleştirme Hatası ({self.name}): {e}")
+            return info
+
+    async def finalize_subtitles(
+        self,
+        results: list[ExtractResult],
+        url: str | None = None,
+        imdb_id: str | None = None,
+        tmdb_id: str | None = None,
+        season: int | None = None,
+        episode: int | None = None
+    ) -> list[ExtractResult]:
+        """Harici altyazıları çekip sonuçlara ekler."""
+        if not results or self.name == "SolarMovies":
+            return results
+
+        # URL'den ID ve Bölüm bilgilerini tahmin etmeye çalış (id paslanmamışsa)
+        if not imdb_id and not tmdb_id and url:
+            secici  = HTMLHelper("")
+            imdb_id = secici.regex_first(r"imdb\.com/title/(tt\d+)", url)
+            season, episode = secici.extract_season_episode(url)
+
+        # Eğer hala bulunamadıysa ve referer'lar varsa oradan da tahmin etmeyi deneyelim
+        if not imdb_id and not tmdb_id:
+            secici  = HTMLHelper("")
+            for res in results:
+                if res.referer:
+                    imdb_id = secici.regex_first(r"imdb\.com/title/(tt\d+)", res.referer)
+                    season, episode = secici.extract_season_episode(res.referer)
+                    if imdb_id:
+                        break
+
+        if imdb_id or tmdb_id:
+            try:
+                ext_subs = await SubtitleHelper.fetch_external_subtitles(
+                    imdb_id = imdb_id,
+                    tmdb_id = tmdb_id,
+                    season  = season,
+                    episode = episode
+                )
+                if ext_subs:
+                    for res in results:
+                        if res.subtitles is None:
+                            res.subtitles = []
+                        # Tekrar eden altyazıları eklemeyelim
+                        existing_urls = {sub.url for sub in res.subtitles}
+                        for sub in ext_subs:
+                            if sub.url not in existing_urls:
+                                res.subtitles.append(sub)
+            except Exception as e:
+                konsol.log(f"[yellow][!] Harici Altyazı Arama Hatası ({self.name}): {e}")
+
+        return results
+
     def collect_results(self, results: list[ExtractResult], data: ExtractResult | list[ExtractResult] | None):
         """
         extract() dönüşünü (tekil, liste veya None) sonuç listesine ekler.
@@ -338,14 +462,7 @@ class PluginBase(ABC):
         await self._cf_session.close()
 
     def fix_url(self, url: str) -> str:
-        if not url:
-            return ""
-
-        if url.startswith("http") or url.startswith("{\""):
-            return url.replace("\\", "")
-
-        url = f"https:{url}" if url.startswith("//") else urljoin(self.main_url, url)
-        return url.replace("\\", "")
+        return fix_url(url, self.main_url)
 
     async def extract(
         self,
@@ -358,10 +475,10 @@ class PluginBase(ABC):
         Extractor ile video URL'sini çıkarır.
 
         Args:
-            url: Iframe veya video URL'si
-            referer: Referer header (varsayılan: plugin main_url)
-            prefix: İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
-            name_override: İsmi tamamen değiştirecek opsiyonel etiket (Extractor adını ezer)
+            url           : Iframe veya video URL'si
+            referer       : Referer header (varsayılan: plugin main_url)
+            prefix        : İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
+            name_override : İsmi tamamen değiştirecek opsiyonel etiket (Extractor adını ezer)
 
         Returns:
             ExtractResult: Extractor sonucu (name prefix ile birleştirilmiş) veya None
@@ -396,6 +513,9 @@ class PluginBase(ABC):
                 return data
 
             # Tekil öğe ise
+            if data is None:
+                return None
+
             data.extractor = extractor.name
             if not data.user_agent:
                 data.user_agent = extractor.httpx.headers.get("User-Agent")
@@ -418,7 +538,7 @@ class PluginBase(ABC):
         Varsayılan oynatma metodu.
         Tüm pluginlerde ortak kullanılır.
         """
-        extract_result = ExtractResult(**kwargs)
+        extract_result           = ExtractResult(**kwargs)
         self.media_handler.title = kwargs.get("name")
         if self.name not in self.media_handler.title:
             self.media_handler.title = f"{self.name} | {self.media_handler.title}"

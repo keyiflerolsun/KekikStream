@@ -270,6 +270,7 @@ Projeyi geliştirmek için katkılarınızı bekliyoruz!
 - [Phisher98/Extractors](https://github.com/phisher98/cloudstream-extensions-phisher/blob/master/StreamPlay/src/main/kotlin/com/Phisher98/Extractors.kt)
 - [cloudstream3/extractors](https://github.com/recloudstream/cloudstream/tree/master/library/src/commonMain/kotlin/com/lagradost/cloudstream3/extractors)
 - [hexated/cloudstream-extensions-hexated](https://github.com/hexated/cloudstream-extensions-hexated)
+- [smy778/EncDecEndpoint](https://github.com/smy778/EncDecEndpoint)
 
 ## 🌐 Telif Hakkı ve Lisans
 

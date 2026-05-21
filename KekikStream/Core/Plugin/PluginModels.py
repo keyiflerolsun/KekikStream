@@ -43,6 +43,8 @@ class MovieInfo(BaseModel):
     year        : str | None = None
     actors      : str | None = None
     duration    : int | None = None
+    imdb_id     : str | None = None
+    tmdb_id     : str | None = None
 
     @field_validator("tags", "actors", mode="before")
     @classmethod
@@ -92,6 +94,8 @@ class SeriesInfo(BaseModel):
     actors      : str | None           = None
     duration    : int | None           = None
     episodes    : list[Episode] | None = None
+    imdb_id     : str | None           = None
+    tmdb_id     : str | None           = None
 
     @field_validator("tags", "actors", mode="before")
     @classmethod
