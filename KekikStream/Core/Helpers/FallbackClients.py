@@ -39,6 +39,10 @@ def sanitize_url(url: str, main_url: str = None) -> str:
 
 class FallbackHTTPX(FallbackMixin, httpx.AsyncClient):
 
+    # 4xx aralığında (403/429 hariç - bunlar çoğunlukla anti-bot/rate-limit işareti) kesin
+    # istemci hatalarında fallback denemeyelim - boşuna ikinci bir istek atmayalım.
+    _NON_RETRYABLE_STATUS = frozenset(range(400, 500)) - {403, 429}
+
     async def request(self, method, url, **kwargs):
         if isinstance(url, str):
             url = sanitize_url(url, self.main_url)
@@ -47,6 +51,12 @@ class FallbackHTTPX(FallbackMixin, httpx.AsyncClient):
             if not (200 <= resp.status_code < 300):
                 raise httpx.HTTPStatusError("Non-2xx response", request=resp.request, response=resp)
             return resp
+        except httpx.HTTPStatusError as e:
+            if e.response is not None and e.response.status_code in self._NON_RETRYABLE_STATUS:
+                raise
+            if self._fallback:
+                return await self._fallback.request(method, url, **kwargs)
+            raise
         except Exception:
             if self._fallback:
                 return await self._fallback.request(method, url, **kwargs)

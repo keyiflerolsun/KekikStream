@@ -254,16 +254,22 @@ class PluginBase(ABC):
                         main_item_url = url.split("/sezon-")[0].split("/season-")[0]
                         if not main_item_url.endswith("/"):
                             main_item_url += "/"
-                    try:
-                        await self.load_item(main_item_url)
-                    except Exception:
-                        pass
+
+                    async def _safe_load_item():
+                        try:
+                            await self.load_item(main_item_url)
+                        except Exception:
+                            pass
+
+                    # Metadata (for imdb/tmdb id) and the actual links come from independent
+                    # endpoints in most plugins - run them concurrently instead of back-to-back.
+                    _, results = await asyncio.gather(_safe_load_item(), original_load_links(url))
+                else:
+                    results = await original_load_links(url)
 
                 if getattr(self, "_last_loaded_item", None):
                     imdb_id = self._last_loaded_item.imdb_id
                     tmdb_id = self._last_loaded_item.tmdb_id
-
-                results = await original_load_links(url)
 
                 if results:
                     playability_tasks   = [PlayabilityHelper.is_url_playable(r) for r in results]
