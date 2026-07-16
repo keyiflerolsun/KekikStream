@@ -76,6 +76,13 @@ class ExtractorBase(ABC):
         if not original_extract or getattr(original_extract, "__wb_wrapped_extract__", False):
             return
 
+        def _drop_empty_subtitles(item: ExtractResult) -> None:
+            # Bazı extractor'lar boş `url`'li Subtitle üretebiliyor (ör. kaynak
+            # JSON'da subtitle "file" alanı boş) - bu çöp kayıtları tüm
+            # extractor'lar için tek noktadan (bu wrapper) süz.
+            if item.subtitles:
+                item.subtitles = [sub for sub in item.subtitles if sub.url]
+
         async def wrapped_extract(url: str, referer: str | None = None, *args, **kwargs) -> ExtractResult | list[ExtractResult] | None:
             try:
                 res = await original_extract(url, referer, *args, **kwargs)
@@ -100,6 +107,8 @@ class ExtractorBase(ABC):
                         item for item, (is_playable, _) in zip(extract_items, playability_results)
                         if is_playable
                     ]
+                    for item in valid_results:
+                        _drop_empty_subtitles(item)
 
                     return valid_results if valid_results else None
 
@@ -107,6 +116,7 @@ class ExtractorBase(ABC):
                 elif isinstance(res, ExtractResult):
                     is_playable, _ = await PlayabilityHelper.is_url_playable(res)
                     if is_playable:
+                        _drop_empty_subtitles(res)
                         return res
                     else:
                         return None

@@ -207,9 +207,9 @@ class BePlayerExtractor(ExtractorBase):
                     client_data = data.get("schedule", {}).get("client", "")
                     m3u8_url    = HTMLHelper(client_data).regex_first(r'"video_location":"([^"]+)"')
 
-                # Altyazıları çıkar
+                # Altyazıları çıkar (file boşsa atla, boş-url'lü çöp Subtitle üretmesin)
                 for sub in data.get("strSubtitles", []):
-                    if "Forced" not in sub.get("label", ""):
+                    if sub.get("file") and "Forced" not in sub.get("label", ""):
                         subtitles.append(Subtitle(
                             name = sub.get("label", "TR").upper(),
                             url  = self.fix_url(sub.get("file", ""))
