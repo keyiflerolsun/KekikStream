@@ -68,9 +68,15 @@ def _calculate_similarity_score(title: str, query: str) -> int:
 class KekikStream:
     def __init__(self):
         # Kendi paket yolunu bul
-        base_dir      = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
         extractor_dir = os.path.join(base_dir, "Extractors")
-        plugin_dir    = os.path.join(base_dir, "Plugins")
+        if os.path.isdir(os.path.join(os.getcwd(), "Extractors")):
+            extractor_dir = os.path.join(os.getcwd(), "Extractors")
+
+        plugin_dir = os.path.join(base_dir, "Plugins")
+        if os.path.isdir(os.path.join(os.getcwd(), "Plugins")):
+            plugin_dir = os.path.join(os.getcwd(), "Plugins")
 
         self.extractor = ExtractorManager(extractor_dir=extractor_dir)
         self.plugin    = PluginManager(plugin_dir=plugin_dir, ex_manager=self.extractor)
