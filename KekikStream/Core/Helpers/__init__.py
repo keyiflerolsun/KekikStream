@@ -11,3 +11,4 @@ from .FallbackClients   import FallbackMixin, FallbackHTTPX, FallbackCF
 from .MetadataHelper    import MetadataHelper
 from .SubtitleHelper    import SubtitleHelper
 from .PlayabilityHelper import PlayabilityHelper
+from .StreamUtils       import is_direct_stream

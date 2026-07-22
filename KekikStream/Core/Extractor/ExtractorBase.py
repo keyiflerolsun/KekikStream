@@ -127,3 +127,15 @@ class ExtractorBase(ABC):
 
         wrapped_extract.__wb_wrapped_extract__ = True
         self.extract                           = wrapped_extract
+
+    async def extract_recursive(self, url: str, referer: str | None = None, extractor_dir="Extractors"):
+        """Bulunan bağlantıyı başka bir extractor'a devreder"""
+        if not hasattr(self, "_ext_manager"):
+            from .ExtractorManager import ExtractorManager
+            self._ext_manager = ExtractorManager(extractor_dir=extractor_dir)
+
+        extractor = self._ext_manager.find_extractor(url)
+        if not extractor or extractor is self:
+            return None
+
+        return await extractor.extract(url, referer=referer)
