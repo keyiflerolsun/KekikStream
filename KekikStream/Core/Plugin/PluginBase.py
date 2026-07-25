@@ -288,7 +288,10 @@ class PluginBase(ABC):
     async def enrich_metadata(self, info: MovieInfo | SeriesInfo) -> MovieInfo | SeriesInfo:
         """Eksik metadataları TMDB üzerinden tamamlar."""
         try:
-            return await MetadataHelper.enrich_metadata(info)
+            # Dili TMDB formatına çevir (tr -> tr-TR, en -> en-US vb.)
+            lang_map  = {"tr": "tr-TR", "en": "en-US", "fr": "fr-FR", "de": "de-DE", "it": "it-IT", "es": "es-ES", "ru": "ru-RU"}
+            tmdb_lang = lang_map.get(self.language[:2].lower(), "en-US")
+            return await MetadataHelper.enrich_metadata(info, lang=tmdb_lang)
         except Exception as e:
             konsol.log(f"[yellow][!] TMDB Zenginleştirme Hatası ({self.name}): {e}")
             return info

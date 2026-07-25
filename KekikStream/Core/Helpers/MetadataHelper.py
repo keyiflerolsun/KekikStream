@@ -14,7 +14,7 @@ class MetadataHelper:
     SIMILARITY_THRESHOLD = 0.45
 
     @staticmethod
-    async def enrich_metadata(info: "MovieInfo" | "SeriesInfo") -> "MovieInfo" | "SeriesInfo":
+    async def enrich_metadata(info: "MovieInfo" | "SeriesInfo", lang: str = "tr-TR") -> "MovieInfo" | "SeriesInfo":
         """Eksik metadataları TMDB üzerinden tamamlar."""
         from ..Plugin.PluginModels import SeriesInfo
         is_series  = isinstance(info, SeriesInfo)
@@ -36,7 +36,7 @@ class MetadataHelper:
             tmdb_id = info.tmdb_id
             if not tmdb_id and not info.imdb_id and info.title:
                 try:
-                    searched_id = await MetadataHelper._search_tmdb_id(client, search_title, info.year, is_series)
+                    searched_id = await MetadataHelper._search_tmdb_id(client, search_title, info.year, is_series, lang)
                     if searched_id:
                         tmdb_id = searched_id
                 except Exception:
@@ -51,7 +51,7 @@ class MetadataHelper:
 
             # 2. Detayları çek
             try:
-                details = await MetadataHelper._fetch_details(client, tmdb_id, media_type)
+                details = await MetadataHelper._fetch_details(client, tmdb_id, media_type, lang)
                 if not details:
                     return info
 
@@ -90,7 +90,7 @@ class MetadataHelper:
                 # 3. Eğer dizi ise ve TMDB ID'si varsa, bölümlerin isimlerini zenginleştir
                 if is_series and info.episodes:
                     try:
-                        await MetadataHelper.enrich_episodes(client, tmdb_id, info.episodes)
+                        await MetadataHelper.enrich_episodes(client, tmdb_id, info.episodes, lang)
                     except Exception as e:
                         from ...CLI import konsol
                         konsol.log(f"[yellow][!] TMDB Bölüm Zenginleştirme Hatası: {e}[/]")
@@ -118,12 +118,12 @@ class MetadataHelper:
         return None
 
     @staticmethod
-    async def _fetch_details(client: httpx.AsyncClient, tmdb_id: str, media_type: str) -> dict | None:
+    async def _fetch_details(client: httpx.AsyncClient, tmdb_id: str, media_type: str, lang: str = "tr-TR") -> dict | None:
         """TMDB üzerinden detaylı bilgi çeker."""
         url    = f"{MetadataHelper.TMDB_BASE}/{media_type}/{tmdb_id}"
         params = {
             "api_key"            : MetadataHelper.TMDB_API_KEY,
-            "language"           : "tr-TR",
+            "language"           : lang,
             "append_to_response" : "credits,external_ids"
         }
         resp = await client.get(url, params=params)
@@ -132,7 +132,7 @@ class MetadataHelper:
         return None
 
     @staticmethod
-    async def _search_tmdb_id(client: httpx.AsyncClient, title: str, year: str | None, is_series: bool) -> str | None:
+    async def _search_tmdb_id(client: httpx.AsyncClient, title: str, year: str | None, is_series: bool, lang: str = "tr-TR") -> str | None:
         """Başlık ve yıla göre TMDB ID'si arar."""
         media_type = "tv" if is_series else "movie"
         url        = f"{MetadataHelper.TMDB_BASE}/search/{media_type}"
@@ -153,7 +153,7 @@ class MetadataHelper:
         params = {
             "api_key"  : MetadataHelper.TMDB_API_KEY,
             "query"    : clean_title,
-            "language" : "tr-TR"
+            "language" : lang
         }
 
         if year:
@@ -235,7 +235,7 @@ class MetadataHelper:
         return title, None
 
     @staticmethod
-    async def enrich_episodes(client: httpx.AsyncClient, tmdb_id: str, episodes: list):
+    async def enrich_episodes(client: httpx.AsyncClient, tmdb_id: str, episodes: list, lang: str = "tr-TR"):
         """Dizi bölümlerinin isimlerini TMDB üzerinden tamamlar/zenginleştirir."""
         import asyncio
         # Benzersiz sezon numaralarını belirle (Sezon bilgisi yoksa veya None ise 1 varsayabiliriz)
@@ -243,7 +243,7 @@ class MetadataHelper:
 
         # Her sezon için TMDB'den bölüm detaylarını paralel çek
         tasks = {
-            season: MetadataHelper._fetch_season_details(client, tmdb_id, season)
+            season: MetadataHelper._fetch_season_details(client, tmdb_id, season, lang)
             for season in seasons
         }
 
@@ -260,7 +260,7 @@ class MetadataHelper:
         missing_high_seasons = [s for s in seasons if s > 1 and s not in seasons_data]
         if missing_high_seasons and 1 not in seasons_data:
             try:
-                s1_data = await MetadataHelper._fetch_season_details(client, tmdb_id, 1)
+                s1_data = await MetadataHelper._fetch_season_details(client, tmdb_id, 1, lang)
                 if s1_data and "episodes" in s1_data:
                     seasons_data[1] = s1_data["episodes"]
             except Exception:
@@ -319,12 +319,12 @@ class MetadataHelper:
                             ep.title = f"{current_title} - {tmdb_title}"
 
     @staticmethod
-    async def _fetch_season_details(client: httpx.AsyncClient, tmdb_id: str, season: int) -> dict | None:
+    async def _fetch_season_details(client: httpx.AsyncClient, tmdb_id: str, season: int, lang: str = "tr-TR") -> dict | None:
         """TMDB üzerinden belirli bir sezonun detaylarını (bölümleri) çeker."""
         url    = f"{MetadataHelper.TMDB_BASE}/tv/{tmdb_id}/season/{season}"
         params = {
             "api_key"  : MetadataHelper.TMDB_API_KEY,
-            "language" : "tr-TR"
+            "language" : lang
         }
         resp = await client.get(url, params=params)
         if resp.status_code == 200:
