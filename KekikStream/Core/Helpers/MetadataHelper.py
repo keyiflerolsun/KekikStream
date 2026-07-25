@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-import httpx, re, typing
+import httpx, re, typing, difflib
 
 if typing.TYPE_CHECKING:
     from ..Plugin.PluginModels import MovieInfo, SeriesInfo
@@ -161,7 +161,9 @@ class MetadataHelper:
         if resp.status_code == 200:
             results = resp.json().get("results", [])
             if results:
-                return str(results[0].get("id"))
+                best = MetadataHelper._pick_best_result(results, clean_title, year)
+                if best:
+                    return str(best.get("id"))
 
         # Eğer yıl ile sonuç bulunamadıysa, yıl parametresi olmadan tekrar dene
         if year and len(params) > 3:
@@ -170,9 +172,47 @@ class MetadataHelper:
             if resp.status_code == 200:
                 results = resp.json().get("results", [])
                 if results:
-                    return str(results[0].get("id"))
+                    # Yıl olmadan arama daha belirsiz — benzerlik skoru daha kritik
+                    best = MetadataHelper._pick_best_result(results, clean_title, year)
+                    if best:
+                        return str(best.get("id"))
 
         return None
+
+    @staticmethod
+    def _pick_best_result(results: list, title: str, year: str | None) -> dict | None:
+        """
+        TMDB arama sonuçları arasından başlık/yıl benzerliğine göre en iyi eşleşmeyi seçer.
+        Kör `results[0]` yerine kullanılır — remake/çakışan başlık riskini azaltır.
+        """
+        if not results:
+            return None
+
+        title_lower = title.lower().strip()
+        scored      = []
+
+        for r in results[:5]:  # En fazla ilk 5 adaya bak
+            r_title = (r.get("title") or r.get("name") or "").lower().strip()
+            ratio   = difflib.SequenceMatcher(None, title_lower, r_title).ratio()
+
+            # Yıl bonusu: doğru yıl → +0.15, ±1 yıl → +0.05
+            year_bonus = 0.0
+            if year:
+                r_year = (r.get("release_date") or r.get("first_air_date") or "")[:4]
+                if r_year:
+                    try:
+                        diff = abs(int(r_year) - int(str(year)[:4]))
+                        if diff == 0:
+                            year_bonus = 0.15
+                        elif diff == 1:
+                            year_bonus = 0.05
+                    except ValueError:
+                        pass
+
+            scored.append((ratio + year_bonus, r))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return scored[0][1]
 
     @staticmethod
     def extract_season_from_title(title: str) -> tuple[str, int | None]:
