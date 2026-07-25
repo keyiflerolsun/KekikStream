@@ -9,6 +9,9 @@ class MetadataHelper:
     TMDB_API_KEY = "84259f99204eeb7d45c7e3d8e36c6123"
     TMDB_BASE    = "https://api.themoviedb.org/3"
     IMG_BASE     = "https://image.tmdb.org/t/p/w500"
+    # Başlık araması güven eşiği (yıl bonusu dahil toplam skor, maks 1.15).
+    # Bu eşik altındaki eşleşmeler güvensiz kabul edilir ve None döner.
+    SIMILARITY_THRESHOLD = 0.45
 
     @staticmethod
     async def enrich_metadata(info: "MovieInfo" | "SeriesInfo") -> "MovieInfo" | "SeriesInfo":
@@ -184,6 +187,7 @@ class MetadataHelper:
         """
         TMDB arama sonuçları arasından başlık/yıl benzerliğine göre en iyi eşleşmeyi seçer.
         Kör `results[0]` yerine kullanılır — remake/çakışan başlık riskini azaltır.
+        Toplam skor SIMILARITY_THRESHOLD altındaysa None döner (güvensiz eşleşme).
         """
         if not results:
             return None
@@ -212,7 +216,8 @@ class MetadataHelper:
             scored.append((ratio + year_bonus, r))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        return scored[0][1]
+        best_score, best = scored[0]
+        return best if best_score >= MetadataHelper.SIMILARITY_THRESHOLD else None
 
     @staticmethod
     def extract_season_from_title(title: str) -> tuple[str, int | None]:
