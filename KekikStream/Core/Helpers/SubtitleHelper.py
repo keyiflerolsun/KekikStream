@@ -39,14 +39,21 @@ class SubtitleHelper:
                 except Exception:
                     pass
 
-        # Kabul edilen diller ve sınırları (Senin yapına sadık kalındı)
+        # Kabul edilen diller ve sınırları (alfabetik sırayla - dönüş sırasını da belirler)
         languages = {
-            "tr" : {"codes": {"TR", "TUR", "TURKISH"}, "list": []},
+            "ar" : {"codes": {"AR", "ARA", "ARABIC"}, "list": []},
+            "az" : {"codes": {"AZ", "AZE", "AZERBAIJANI"}, "list": []},
+            "de" : {"codes": {"DE", "GER", "DEU", "GERMAN"}, "list": []},
             "en" : {"codes": {"EN", "ENG", "ENGLISH"}, "list": []},
             "fr" : {"codes": {"FR", "FRA", "FRENCH"}, "list": []},
-            "ru" : {"codes": {"RU", "RUS", "RUSSIAN"}, "list": []},
-            "uk" : {"codes": {"UK", "UKR", "UKRAINIAN"}, "list": []},
             "hi" : {"codes": {"HI", "HIN", "HINDI"}, "list": []},
+            "kk" : {"codes": {"KK", "KAZ", "KAZAKH"}, "list": []},
+            "nl" : {"codes": {"NL", "DUT", "NLD", "DUTCH"}, "list": []},
+            "pt" : {"codes": {"PT", "POR", "PORTUGUESE"}, "list": []},
+            "ru" : {"codes": {"RU", "RUS", "RUSSIAN"}, "list": []},
+            "tr" : {"codes": {"TR", "TUR", "TURKISH"}, "list": []},
+            "uk" : {"codes": {"UK", "UKR", "UKRAINIAN"}, "list": []},
+            "ur" : {"codes": {"UR", "URD", "URDU"}, "list": []},
             "zh" : {"codes": {"ZH", "CHI", "CHINESE"}, "list": []}
         }
 
