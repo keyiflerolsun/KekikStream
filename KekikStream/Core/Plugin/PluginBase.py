@@ -9,7 +9,7 @@ from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
 from ..Helpers.MethodCache        import method_cache
 from ..Helpers.FallbackClients    import FallbackHTTPX, FallbackCF
 from ..Helpers                    import MetadataHelper, SubtitleHelper, HTMLHelper, PlayabilityHelper, fix_url
-import asyncio, httpx, curl_cffi
+import asyncio, httpx, curl_cffi, re
 
 class PluginBase(ABC):
     name        = "Plugin"
@@ -420,13 +420,50 @@ class PluginBase(ABC):
         """Hızlı Subtitle nesnesi oluşturur."""
         return Subtitle(name=name, url=url)
 
+    # Dil-grubu tespiti için anahtar kelimeler (kod + serbest metin karışık,
+    # eklenti/extractor'lar altyazı adını tutarlı bir şemayla vermiyor).
+    # Sırayla denenir, ilk eşleşen grup kazanır.
+    _SUBTITLE_LANG_KEYWORDS: dict[str, tuple[str, ...]] = {
+        "tr" : ("tr", "tur", "turkish", "türkçe", "turkce"),
+        "en" : ("en", "eng", "english", "ingilizce", "i̇ngilizce"),
+        "fr" : ("fr", "fra", "fre", "french", "fransızca", "fransizca"),
+        "de" : ("de", "ger", "deu", "german", "almanca"),
+        "es" : ("es", "spa", "spanish", "ispanyolca", "i̇spanyolca"),
+        "ru" : ("ru", "rus", "russian", "rusça", "rusca"),
+        "uk" : ("uk", "ukr", "ukrainian", "ukraynaca"),
+        "ar" : ("ar", "ara", "arabic", "arapça", "arapca"),
+        "hi" : ("hi", "hin", "hindi"),
+        "zh" : ("zh", "chi", "chinese", "çince", "cince"),
+    }
+
+    @classmethod
+    def _subtitle_lang_bucket(cls, name: str) -> str:
+        """Bir altyazı adından kaba bir dil-grubu anahtarı çıkarır.
+
+        Bilinen bir dile eşleşmezse (ör. "Forced", "Altyazı 3") adın kendisi
+        kendi grubu olur - böylece alakasız etiketler birbirine karışıp
+        yanlışlıkla aynı "diğer" havuzunda 2'ye düşürülmez.
+        """
+        lowered = name.lower()
+        # " (2)" gibi sync_subtitles'ın kendi eklediği numaralandırmayı yok say.
+        base   = re.sub(r"\s*\(\d+\)\s*$", "", lowered)
+        tokens = base.replace("|", " ").replace("-", " ").replace("_", " ").split()
+        for lang, keywords in cls._SUBTITLE_LANG_KEYWORDS.items():
+            for token in tokens:
+                if token in keywords:
+                    return lang
+        return f"other:{base.strip()}"
+
     @staticmethod
-    def sync_subtitles(results: list[ExtractResult]) -> list[ExtractResult]:
+    def sync_subtitles(results: list[ExtractResult], max_per_language: int = 2) -> list[ExtractResult]:
         """
         Tüm ExtractResult'lardaki altyazıları birleştirir ve her sonuca dağıtır.
 
         - Aynı URL'ye sahip altyazılar tekrarlanmaz.
         - Aynı isme sahip farklı URL'ler "İsim", "İsim (2)" şeklinde numaralandırılır.
+        - Her dil grubundan en fazla `max_per_language` altyazı tutulur (çok
+          sunuculu eklentilerde onlarca aynı-dilde-farklı-URL altyazı birikmesini
+          önler - bkz. `_subtitle_lang_bucket`).
         - Engine tarafından her load_links çağrısından sonra otomatik uygulanır.
         """
         if not results:
@@ -448,18 +485,30 @@ class PluginBase(ABC):
         for sub in merged:
             name_count[sub.name] = name_count.get(sub.name, 0) + 1
 
-        name_idx   : dict[str, int] = {}
-        final_subs : list[Subtitle] = []
+        name_idx      : dict[str, int] = {}
+        numbered_subs : list[Subtitle] = []
         for sub in merged:
             if name_count[sub.name] > 1:
                 idx              = name_idx.get(sub.name, 0) + 1
                 name_idx[sub.name] = idx
                 label            = sub.name if idx == 1 else f"{sub.name} ({idx})"
-                final_subs.append(Subtitle(name=label, url=sub.url))
+                numbered_subs.append(Subtitle(name=label, url=sub.url))
             else:
-                final_subs.append(sub)
+                numbered_subs.append(sub)
 
-        # 3. Birleşik listeyi tüm sonuçlara ata
+        # 3. Dil grubuna göre en fazla `max_per_language` tanesini tut (giriş
+        #    sırası = sonuçlardaki server önceliği, o yüzden ilk gelenler kazanır).
+        bucket_counts : dict[str, int] = {}
+        final_subs    : list[Subtitle] = []
+        for sub in numbered_subs:
+            bucket = PluginBase._subtitle_lang_bucket(sub.name)
+            count  = bucket_counts.get(bucket, 0)
+            if count >= max_per_language:
+                continue
+            bucket_counts[bucket] = count + 1
+            final_subs.append(sub)
+
+        # 4. Birleşik listeyi tüm sonuçlara ata
         for res in results:
             res.subtitles = list(final_subs)
 
