@@ -312,7 +312,8 @@ class PluginBase(ABC):
         # URL'den ID ve Bölüm bilgilerini tahmin etmeye çalış (id paslanmamışsa)
         if not imdb_id and not tmdb_id and url:
             secici  = HTMLHelper("")
-            imdb_id = secici.regex_first(r"imdb\.com/title/(tt\d+)", url)
+            imdb_id = secici.extract_imdb_id(target_text=url)
+            tmdb_id = secici.extract_tmdb_id(target_text=url)
             season, episode = secici.extract_season_episode(url)
 
         # Eğer hala bulunamadıysa ve referer'lar varsa oradan da tahmin etmeyi deneyelim
@@ -320,9 +321,10 @@ class PluginBase(ABC):
             secici  = HTMLHelper("")
             for res in results:
                 if res.referer:
-                    imdb_id = secici.regex_first(r"imdb\.com/title/(tt\d+)", res.referer)
+                    imdb_id = secici.extract_imdb_id(target_text=res.referer)
+                    tmdb_id = secici.extract_tmdb_id(target_text=res.referer)
                     season, episode = secici.extract_season_episode(res.referer)
-                    if imdb_id:
+                    if imdb_id or tmdb_id:
                         break
 
         if imdb_id or tmdb_id:

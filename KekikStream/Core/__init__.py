@@ -33,4 +33,4 @@ from .Extractor.VideoPlayerExtractor import VideoPlayerExtractor
 from .Media.MediaManager import MediaManager
 from .Media.MediaHandler import MediaHandler
 
-from .Helpers import HTMLHelper, MetadataHelper
+from .Helpers import HTMLHelper, NodeHelper, MetadataHelper
