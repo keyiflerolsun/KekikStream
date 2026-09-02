@@ -71,10 +71,10 @@ class SecuredLinkExtractor(ExtractorBase):
         sel = HTMLHelper(text)
 
         candidates = [
-            sel.regex_first(r'"securedLink"\s*:\s*"([^"]+)"'),
             sel.regex_first(r'"videoSource"\s*:\s*"([^"]+)"'),
-            sel.regex_first(r"['\"]securedLink['\"]\s*:\s*['\"]([^'\"]+)['\"]"),
             sel.regex_first(r"['\"]videoSource['\"]\s*:\s*['\"]([^'\"]+)['\"]"),
+            sel.regex_first(r'"securedLink"\s*:\s*"([^"]+)"'),
+            sel.regex_first(r"['\"]securedLink['\"]\s*:\s*['\"]([^'\"]+)['\"]"),
             sel.regex_first(r'videoUrl":"([^",]+)"'),
             sel.regex_first(FILE_REGEX),
             sel.regex_first(M3U8_FILE_REGEX),
@@ -103,7 +103,7 @@ class SecuredLinkExtractor(ExtractorBase):
         with contextlib.suppress(json.JSONDecodeError, ValueError):
             payload = resp.json()
             if isinstance(payload, dict):
-                m3u8_url = payload.get("securedLink") or payload.get("videoSource")
+                m3u8_url = payload.get("videoSource") or payload.get("securedLink")
 
         if not m3u8_url:
             m3u8_url = self._extract_link_from_text(resp.text)

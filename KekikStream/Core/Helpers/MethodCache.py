@@ -1,7 +1,5 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from __future__ import annotations
-
 from copy            import deepcopy
 from time            import monotonic
 from collections.abc import Awaitable, Callable

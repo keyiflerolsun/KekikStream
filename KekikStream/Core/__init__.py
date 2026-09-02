@@ -33,4 +33,19 @@ from .Extractor.VideoPlayerExtractor import VideoPlayerExtractor
 from .Media.MediaManager import MediaManager
 from .Media.MediaHandler import MediaHandler
 
-from .Helpers import HTMLHelper, NodeHelper, MetadataHelper
+from .Helpers import (
+    HTMLHelper,
+    NodeHelper,
+    MetadataHelper,
+    clean_title,
+    strip_title_episode_marker,
+    clean_episode_title,
+    normalize_empty,
+    normalize_rating,
+    normalize_url,
+    normalize_description,
+    fix_url,
+    is_direct_stream,
+    iso8601_duration_minutes,
+    json_ld_duration_minutes,
+)

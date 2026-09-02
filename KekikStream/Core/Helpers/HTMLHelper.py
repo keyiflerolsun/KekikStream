@@ -1,7 +1,5 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from __future__ import annotations
-
 from selectolax.parser import HTMLParser, Node
 import html as _html
 import re, json
@@ -17,9 +15,97 @@ _RE_PLAYERJS_SUB  = re.compile(r"\[([^\]]+)\](https?://[^\s,\"\']+)")
 _RE_IMDB_URL      = re.compile(r"imdb\.com/title/(tt\d+)", re.I)
 _RE_IMDB_ID       = re.compile(r"\b(tt\d{6,10})\b", re.I)
 _RE_TMDB_URL      = re.compile(r"(?:themoviedb\.org/(?:3/)?(?:movie|tv)/|tmdb(?:id)?[:/=_])(\d+)", re.I)
+_RE_ISO_DURATION  = re.compile(
+    r"^P(?:(?P<days>\d+(?:\.\d+)?)D)?(?:T(?:(?P<hours>\d+(?:\.\d+)?)H)?(?:(?P<minutes>\d+(?:\.\d+)?)M)?(?:(?P<seconds>\d+(?:\.\d+)?)S)?)?$",
+    re.I,
+)
+_POSTER_ATTRS = ("data-src", "data-original", "data-lazy-src", "data-srcset", "src")
 
 
-class NodeHelper:
+def _optional_text(value: str | None) -> str | None:
+    """HTML metnini boş değer üretmeden normalize et."""
+    if not value:
+        return None
+    return _html.unescape(value).strip() or None
+
+
+def iso8601_duration_minutes(value: object) -> int | None:
+    """ISO-8601 süre değerini dakika cinsine çevir (örn. ``PT1H32M`` -> 92)."""
+    if not isinstance(value, str):
+        return None
+    match = _RE_ISO_DURATION.fullmatch(value.strip())
+    if not match:
+        return None
+
+    parts = match.groupdict()
+    if not any(parts.values()):
+        return None
+
+    total_seconds = (
+        float(parts["days"] or 0) * 86_400
+        + float(parts["hours"] or 0) * 3_600
+        + float(parts["minutes"] or 0) * 60
+        + float(parts["seconds"] or 0)
+    )
+    return int((total_seconds + 59) // 60)
+
+
+def json_ld_duration_minutes(schema: object) -> int | None:
+    """JSON-LD medya şemasındaki gerçek ``duration``/``timeRequired`` alanını oku."""
+    if not isinstance(schema, dict):
+        return None
+    return iso8601_duration_minutes(schema.get("duration") or schema.get("timeRequired"))
+
+
+def _poster_attr(attrs: dict) -> str | None:
+    return next((value for attr in _POSTER_ATTRS if (value := _optional_text(attrs.get(attr)))), None)
+
+
+class _SelectorMixin:
+    """``NodeHelper`` ve ``HTMLHelper``ın ortak, boş-değer güvenli seçici API'si."""
+
+    def _raw_first(self, selector: str | None) -> Node | None:
+        raise NotImplementedError
+
+    def _raw_all(self, selector: str) -> list[Node]:
+        raise NotImplementedError
+
+    def select_text(self, selector: str | None = None) -> str | None:
+        """Anlamlı ilk metni; seçici/alan yoksa ``None`` döndür."""
+        node = self._raw_first(selector)
+        return _optional_text(node.text(strip=True)) if node else None
+
+    def require_text(self, selector: str | None = None, field: str = "Metin") -> str:
+        """Zorunlu metni döndür; yoksa seçiciyi içeren açık bir hata üret."""
+        if value := self.select_text(selector):
+            return value
+        raise ValueError(f"{field} bulunamadı: {selector or 'mevcut düğüm'}")
+
+    def select_texts(self, selector: str) -> list[str]:
+        """Anlamlı metni olan tüm eşleşmeleri döndür."""
+        return [text for node in self._raw_all(selector) if (text := _optional_text(node.text(strip=True)))]
+
+    def select_attr(self, selector: str | None, attr: str) -> str | None:
+        """Anlamlı ilk attribute değerini; yoksa ``None`` döndür."""
+        node = self._raw_first(selector)
+        return _optional_text(node.attrs.get(attr)) if node else None
+
+    def select_attrs(self, selector: str, attr: str) -> list[str]:
+        """Anlamlı attribute değerlerini döndür."""
+        return [value for node in self._raw_all(selector) if (value := _optional_text(node.attrs.get(attr)))]
+
+    def select_poster(self, selector: str = "img") -> str | None:
+        """Poster için lazy-load attribute zincirini uygula."""
+        node = self._raw_first(selector)
+        return _poster_attr(node.attrs) if node else None
+
+    def select_direct_text(self, selector: str | None = None) -> str | None:
+        """Child elementleri katmadan anlamlı düz metni döndür."""
+        node = self._raw_first(selector)
+        return _optional_text(node.text(strip=True, deep=False)) if node else None
+
+
+class NodeHelper(_SelectorMixin):
     """
     selectolax.Node wrapper — HTMLHelper'ın seçici metotlarını element seviyesinde kullanım için sağlar.
 
@@ -77,57 +163,18 @@ class NodeHelper:
 
     def select(self, selector: str) -> list[NodeHelper]:
         """CSS selector ile tüm eşleşen child elementleri döndür."""
-        return [NodeHelper(n) for n in self._node.css(selector)]
+        return [NodeHelper(node) for node in self._raw_all(selector)]
 
     def select_first(self, selector: str | None = None) -> NodeHelper | None:
         """CSS selector ile ilk eşleşen child elementi döndür."""
-        if not selector:
-            return self
-        result = self._node.css_first(selector)
-        return NodeHelper(result) if result else None
+        node = self._raw_first(selector)
+        return NodeHelper(node) if node else None
 
-    def select_text(self, selector: str | None = None) -> str:
-        """CSS selector ile element bul ve text içeriğini döndür."""
-        el = self._node.css_first(selector) if selector else self._node
-        if not el:
-            return ""
-        val = el.text(strip=True)
-        return _html.unescape(val) if val else ""
+    def _raw_first(self, selector: str | None) -> Node | None:
+        return self._node.css_first(selector) if selector else self._node
 
-    def select_texts(self, selector: str) -> list[str]:
-        """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
-        return [_html.unescape(t) for el in self._node.css(selector) if (t := el.text(strip=True))]
-
-    def select_attr(self, selector: str | None, attr: str) -> str | None:
-        """CSS selector ile element bul ve attribute değerini döndür."""
-        el = self._node.css_first(selector) if selector else self._node
-        return el.attrs.get(attr) if el else None
-
-    def select_attrs(self, selector: str, attr: str) -> list[str]:
-        """CSS selector ile tüm eşleşen elementlerin attribute değerlerini döndür."""
-        return [v for el in self._node.css(selector) if (v := el.attrs.get(attr))]
-
-    def select_poster(self, selector: str = "img") -> str | None:
-        """Poster URL'sini çıkar. Sırasıyla data-src, data-original, data-lazy-src, data-srcset, src dener."""
-        el = self._node.css_first(selector) if selector else self._node
-        if not el:
-            return None
-        attrs = el.attrs
-        return (
-            attrs.get("data-src")
-            or attrs.get("data-original")
-            or attrs.get("data-lazy-src")
-            or attrs.get("data-srcset")
-            or attrs.get("src")
-        )
-
-    def select_direct_text(self, selector: str | None = None) -> str | None:
-        """Elementin yalnızca kendi düz metnini döndürür."""
-        el = self._node.css_first(selector) if selector else self._node
-        if not el:
-            return None
-        val = el.text(strip=True, deep=False)
-        return val or None
+    def _raw_all(self, selector: str) -> list[Node]:
+        return self._node.css(selector)
 
     def select_json(self, selector: str | None = None) -> dict | list | None:
         """Belirtilen selector altındaki JSON metnini parse eder."""
@@ -140,7 +187,7 @@ class NodeHelper:
             return None
 
 
-class HTMLHelper:
+class HTMLHelper(_SelectorMixin):
     """
     Selectolax ile HTML parsing işlemlerini temiz, kısa ve okunabilir hale getiren yardımcı sınıf.
     """
@@ -155,57 +202,18 @@ class HTMLHelper:
 
     def select(self, selector: str) -> list[NodeHelper]:
         """CSS selector ile tüm eşleşen elementleri döndür."""
-        return [NodeHelper(n) for n in self.parser.css(selector)]
+        return [NodeHelper(node) for node in self._raw_all(selector)]
 
     def select_first(self, selector: str | None) -> NodeHelper | None:
         """CSS selector ile ilk eşleşen elementi döndür."""
-        if not selector:
-            return None
-        result = self.parser.css_first(selector)
-        return NodeHelper(result) if result else None
+        node = self._raw_first(selector)
+        return NodeHelper(node) if node else None
 
-    def select_text(self, selector: str | None = None) -> str:
-        """CSS selector ile element bul ve text içeriğini döndür."""
-        el = self.select_first(selector)
-        if not el:
-            return ""
-        val = el.text(strip=True)
-        return _html.unescape(val) if val else ""
+    def _raw_first(self, selector: str | None) -> Node | None:
+        return self.parser.css_first(selector) if selector else None
 
-    def select_texts(self, selector: str) -> list[str]:
-        """CSS selector ile tüm eşleşen elementlerin text içeriklerini döndür."""
-        return [_html.unescape(t) for el in self.select(selector) if (t := el.text(strip=True))]
-
-    def select_attr(self, selector: str | None, attr: str) -> str | None:
-        """CSS selector ile element bul ve attribute değerini döndür."""
-        el = self.select_first(selector)
-        return el.attrs.get(attr) if el else None
-
-    def select_attrs(self, selector: str, attr: str) -> list[str]:
-        """CSS selector ile tüm eşleşen elementlerin attribute değerlerini döndür."""
-        return [v for el in self.select(selector) if (v := el.attrs.get(attr))]
-
-    def select_poster(self, selector: str = "img") -> str | None:
-        """Poster URL'sini çıkar. Sırasıyla data-src, data-original, data-lazy-src, data-srcset, src dener."""
-        el = self.select_first(selector)
-        if not el:
-            return None
-        attrs = el.attrs
-        return (
-            attrs.get("data-src")
-            or attrs.get("data-original")
-            or attrs.get("data-lazy-src")
-            or attrs.get("data-srcset")
-            or attrs.get("src")
-        )
-
-    def select_direct_text(self, selector: str | None = None) -> str | None:
-        """Elementin yalnızca kendi düz metnini döndürür (child elementlerin text'ini katmadan)."""
-        el = self.select_first(selector)
-        if not el:
-            return None
-        val = el.text(strip=True, deep=False)
-        return val or None
+    def _raw_all(self, selector: str) -> list[Node]:
+        return self.parser.css(selector)
 
     def select_json(self, selector: str | None = None) -> dict | list | None:
         """Belirtilen selector altındaki (örn: script#__NEXT_DATA__) JSON metnini parse eder."""
@@ -403,7 +411,7 @@ class HTMLHelper:
             result["description"] = str(desc).strip()
 
         # Poster / Image
-        img = schema.get("image")
+        img = schema.get("image") or schema.get("thumbnailUrl")
         if isinstance(img, str):
             result["poster"] = img
         elif isinstance(img, dict):
@@ -435,6 +443,9 @@ class HTMLHelper:
             result["tags"] = ", ".join([str(g) for g in genre if g])
         elif isinstance(genre, str):
             result["tags"] = genre
+
+        if (duration := json_ld_duration_minutes(schema)) is not None:
+            result["duration"] = duration
 
         return result
 

@@ -244,32 +244,32 @@ class PluginBase(ABC):
         original_load_links = getattr(self, "load_links", None)
         if original_load_links and not getattr(original_load_links, "__wb_wrapped__", False):
             async def wrapped_load_links(url: str) -> list[ExtractResult]:
-                imdb_id = None
-                tmdb_id = None
-
-                # Check if we need to load metadata to get the ID
-                if not getattr(self, "_last_loaded_item", None):
-                    main_item_url = url
-                    if "/sezon-" in url or "/season-" in url:
-                        main_item_url = url.split("/sezon-")[0].split("/season-")[0]
+                main_item_url = url
+                for marker in ("/sezon-", "/season-"):
+                    if marker in main_item_url:
+                        main_item_url = main_item_url.split(marker, 1)[0]
                         if not main_item_url.endswith("/"):
                             main_item_url += "/"
+                        break
 
+                cached_item = getattr(self, "_last_loaded_item", None)
+                cached_url  = (getattr(cached_item, "url", None) or "").rstrip("/")
+                target_url  = main_item_url.rstrip("/")
+
+                if not cached_item or cached_url != target_url:
                     async def _safe_load_item():
                         try:
                             await self.load_item(main_item_url)
                         except Exception:
                             pass
 
-                    # Metadata (for imdb/tmdb id) and the actual links come from independent
-                    # endpoints in most plugins - run them concurrently instead of back-to-back.
                     _, results = await asyncio.gather(_safe_load_item(), original_load_links(url))
                 else:
                     results = await original_load_links(url)
 
-                if getattr(self, "_last_loaded_item", None):
-                    imdb_id = self._last_loaded_item.imdb_id
-                    tmdb_id = self._last_loaded_item.tmdb_id
+                item    = self._last_loaded_item
+                imdb_id = item.imdb_id if item else None
+                tmdb_id = item.tmdb_id if item else None
 
                 if results:
                     playability_tasks   = [PlayabilityHelper.is_url_playable(r) for r in results]
@@ -287,14 +287,14 @@ class PluginBase(ABC):
 
     async def enrich_metadata(self, info: MovieInfo | SeriesInfo) -> MovieInfo | SeriesInfo:
         """Eksik metadataları TMDB üzerinden tamamlar."""
-        try:
-            # Dili TMDB formatına çevir (tr -> tr-TR, en -> en-US vb.)
-            lang_map  = {"tr": "tr-TR", "en": "en-US", "fr": "fr-FR", "de": "de-DE", "it": "it-IT", "es": "es-ES", "ru": "ru-RU"}
-            tmdb_lang = lang_map.get(self.language[:2].lower(), "en-US")
-            return await MetadataHelper.enrich_metadata(info, lang=tmdb_lang)
-        except Exception as e:
-            konsol.log(f"[yellow][!] TMDB Zenginleştirme Hatası ({self.name}): {e}")
-            return info
+        lang_map  = {
+            "tr" : "tr-TR", "en": "en-US", "fr": "fr-FR", "de": "de-DE", "it": "it-IT",
+            "es" : "es-ES", "ru": "ru-RU", "uk": "uk-UA", "zh": "zh-CN", "ja": "ja-JP",
+            "ko" : "ko-KR", "ar": "ar-SA", "pt": "pt-BR", "pl": "pl-PL", "az": "az-AZ",
+            "ta" : "ta-IN", "ms": "ms-MY", "hi": "hi-IN", "id": "id-ID",
+        }
+        tmdb_lang = lang_map.get((self.language or "en")[:2].lower(), "en-US")
+        return await MetadataHelper.enrich_metadata(info, lang=tmdb_lang)
 
     async def finalize_subtitles(
         self,
@@ -344,7 +344,7 @@ class PluginBase(ABC):
                         for sub in ext_subs:
                             if sub.url not in existing_urls:
                                 res.subtitles.append(sub)
-            except Exception as e:
+            except (httpx.HTTPError, ValueError) as e:
                 konsol.log(f"[yellow][!] Harici Altyazı Arama Hatası ({self.name}): {e}")
 
         return results
