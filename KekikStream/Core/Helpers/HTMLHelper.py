@@ -510,7 +510,7 @@ class HTMLHelper(_SelectorMixin):
         if container_selector:
             targets = self.select(container_selector)
         else:
-            body = self.parser.body
+            body    = self.parser.body
             targets = [NodeHelper(body)] if body else []
 
         for root in targets:
@@ -656,8 +656,8 @@ class HTMLHelper(_SelectorMixin):
     def extract_playerjs_subtitles(text: str) -> list[dict[str, str]]:
         """
         PlayerJS formatındaki altyazı dizgesini ayıklar.
-        Örnek: "[Türkçe]https://site.com/tr.vtt,[English]https://site.com/en.vtt"
-        Dönüş: [{"name" : "Türkçe", "url" : "https://..."}, ...]
+        Örnek : "[Türkçe]https://site.com/tr.vtt,[English]https://site.com/en.vtt"
+        Dönüş : [{"name" : "Türkçe", "url" : "https://..."}, ...]
         """
         if not text:
             return []

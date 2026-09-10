@@ -430,8 +430,8 @@ class NonceDecryptExtractor(ExtractorBase):
                 secret   = key_resp.json().get(self.key_name)
                 if secret:
                     dec_resp = await self.httpx.get(
-                        url      = self._decode_api,
-                        params   = {
+                        url    = self._decode_api,
+                        params = {
                             "encrypted_data" : enc_file,
                             "nonce"          : nonce,
                             "secret"         : secret

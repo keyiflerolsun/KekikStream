@@ -169,7 +169,7 @@ class MetadataHelper:
             # ad olduğundan `original_*` ile de kıyasla, en iyi ORAN'ı temel al.
             title_ratio = max(
                 (difflib.SequenceMatcher(None, title_key, cand).ratio() for cand in candidates if cand),
-                default=0.0,
+                default = 0.0,
             )
             result_year = (result.get("release_date") or result.get("first_air_date") or "")[:4]
             year_bonus  = 0.0
@@ -211,7 +211,7 @@ class MetadataHelper:
         real_seasons = sorted(
             ((s.get("season_number"), s.get("episode_count") or 0)
              for s in (details or {}).get("seasons", []) if (s.get("season_number") or 0) > 0),
-            key=lambda x: x[0] or 0,
+            key = lambda x: x[0] or 0,
         )
         abs_cache: dict[int, list] = {}
 

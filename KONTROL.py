@@ -126,7 +126,7 @@ class MainUrlGuncelleyici:
                 "User-Agent"                         : "Dalvik/2.1.0 (Linux; U; Android 15)",
                 "X-Goog-Firebase-Installations-Auth" : _id,
             },
-            json    = {
+            json = {
                 "appInstanceIdToken" : _id,
                 "appBuild"           : "108",
                 "appInstanceId"      : "cIESHPfPQTGW9bsKUpmTjv",

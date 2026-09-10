@@ -93,17 +93,17 @@ class PluginBase(ABC):
         self._setup_method_cache(
             "search",
             self._cache_key_search,
-            should_cache=self._should_cache_search,
+            should_cache = self._should_cache_search,
         )
         self._setup_method_cache(
             "get_main_page",
             self._cache_key_get_main_page,
-            should_cache=self._should_cache_get_main_page,
+            should_cache = self._should_cache_get_main_page,
         )
         self._setup_method_cache(
             "load_item",
             self._cache_key_load_item,
-            should_cache=self._should_cache_load_item,
+            should_cache = self._should_cache_load_item,
         )
 
     def _setup_method_cache(self, method_name: str, key_builder, should_cache=None):

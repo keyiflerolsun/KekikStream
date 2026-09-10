@@ -142,7 +142,7 @@ class KekikStream:
         results = await self.current_plugin.search(query)
         results = sorted(
             results,
-            key=lambda item: (
+            key = lambda item: (
                 -calculate_similarity_score(getattr(item, "title", ""), query),
                 normalize_search_text(getattr(item, "title", "")),
             )
@@ -196,7 +196,7 @@ class KekikStream:
             all_results.extend(task.result())
 
         all_results.sort(
-            key=lambda item: (
+            key = lambda item: (
                 -calculate_similarity_score(item.get("title", ""), query),
                 normalize_search_text(item.get("title", "")),
                 normalize_search_text(item.get("plugin", "")),

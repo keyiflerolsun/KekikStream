@@ -97,7 +97,7 @@ class PluginAuditor:
         konsol.print(Panel.fit(
             "[bold green]KekikStream Eklenti Denetçisi[/]\n"
             "[dim]Tüm eklentilerdeki kategoriler Sayfa 1 ve 2 için paralel taranıyor...[/]",
-            border_style="cyan"
+            border_style = "cyan"
         ))
 
         # Plugin ve Extractor dizinlerini ayarla (KekikStream paketi içinden)
