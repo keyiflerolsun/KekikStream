@@ -79,7 +79,7 @@ class MediaHandler:
             return True
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]VLC oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
             return False
         except FileNotFoundError:
             konsol.print("[red]VLC bulunamadı! VLC kurulu olduğundan emin olun.[/red]")
@@ -109,11 +109,11 @@ class MediaHandler:
             return True
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]mpv oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
             return False
         except FileNotFoundError:
             konsol.print("[red]mpv bulunamadı! mpv kurulu olduğundan emin olun.[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
             return False
 
     def play_with_ytdlp(self, extract_data: ExtractResult):
@@ -145,11 +145,11 @@ class MediaHandler:
             return True
         except subprocess.CalledProcessError as hata:
             konsol.print(f"[red]Oynatma hatası: {hata}[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
             return False
         except FileNotFoundError:
             konsol.print("[red]yt-dlp veya mpv bulunamadı! Kurulumlarından emin olun.[/red]")
-            konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+            konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
             return False
 
     def play_with_android_mxplayer(self, extract_data: ExtractResult):
@@ -178,9 +178,9 @@ class MediaHandler:
                 return True
             except subprocess.CalledProcessError as hata:
                 konsol.print(f"[red]{paket} oynatma hatası: {hata}[/red]")
-                konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+                konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
                 return False
             except FileNotFoundError:
                 konsol.print(f"Paket: {paket}, Hata: MX Player kurulu değil")
-                konsol.print({"title": self.title, "url": extract_data.url, "headers": self.headers})
+                konsol.print({"title" : self.title, "url" : extract_data.url, "headers" : self.headers})
                 return False

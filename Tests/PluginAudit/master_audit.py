@@ -51,8 +51,8 @@ class MasterAuditor:
         async with self.semaphore:
             self.active.add(name)
             report = {
-                "categories" : {"total": 0, "working": 0, "broken": 0},
-                "lifecycle"  : {"main_page": "⏳", "search": "⏳", "load_item": "⏳", "load_links": "⏳"},
+                "categories" : {"total" : 0, "working" : 0, "broken" : 0},
+                "lifecycle"  : {"main_page" : "⏳", "search" : "⏳", "load_item" : "⏳", "load_links" : "⏳"},
                 "item_count" : 0
             }
             self.results[name] = report
@@ -158,7 +158,7 @@ class MasterAuditor:
         else:
             def sort_key(n):
                 r    = self.results.get(n, {})
-                cats = r.get("categories", {"working":0})
+                cats = r.get("categories", {"working" : 0})
                 lc   = r.get("lifecycle", {})
                 return cats["working"] + sum(2 for v in lc.values() if v == "✅")
             names_to_show = sorted(self.results.keys(), key=sort_key, reverse=True)
@@ -167,7 +167,7 @@ class MasterAuditor:
             r = self.results.get(name)
             if not r:
                 continue
-            cats    = r.get("categories", {"working":0, "total":0})
+            cats    = r.get("categories", {"working" : 0, "total" : 0})
             lc      = r.get("lifecycle", {})
             cat_str = f"{cats['working']}/{cats['total']}"
             if cats.get('broken', 0) > 0:

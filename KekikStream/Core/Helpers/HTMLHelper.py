@@ -657,12 +657,12 @@ class HTMLHelper(_SelectorMixin):
         """
         PlayerJS formatındaki altyazı dizgesini ayıklar.
         Örnek: "[Türkçe]https://site.com/tr.vtt,[English]https://site.com/en.vtt"
-        Dönüş: [{"name": "Türkçe", "url": "https://..."}, ...]
+        Dönüş: [{"name" : "Türkçe", "url" : "https://..."}, ...]
         """
         if not text:
             return []
         matches = _RE_PLAYERJS_SUB.findall(text)
-        return [{"name": name.strip(), "url": url.strip()} for name, url in matches if url]
+        return [{"name" : name.strip(), "url" : url.strip()} for name, url in matches if url]
 
     def extract_imdb_id(self, *selectors: str, target_text: str | None = None) -> str | None:
         """

@@ -49,7 +49,7 @@ class VideoPlayerExtractor(ExtractorBase):
         return "Bilinmiyor"
 
     async def extract(self, url: str, referer: str = None) -> ExtractResult:
-        self.httpx.headers.update({"Referer": referer or url})
+        self.httpx.headers.update({"Referer" : referer or url})
 
         request_url = url.split("?")[0] if self.strip_query else url
         resp        = await self.httpx.get(request_url)

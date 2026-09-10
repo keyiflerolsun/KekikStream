@@ -41,20 +41,20 @@ class SubtitleHelper:
 
         # Kabul edilen diller ve sınırları (alfabetik sırayla - dönüş sırasını da belirler)
         languages = {
-            "ar" : {"codes": {"AR", "ARA", "ARABIC"}, "list": []},
-            "az" : {"codes": {"AZ", "AZE", "AZERBAIJANI"}, "list": []},
-            "de" : {"codes": {"DE", "GER", "DEU", "GERMAN"}, "list": []},
-            "en" : {"codes": {"EN", "ENG", "ENGLISH"}, "list": []},
-            "fr" : {"codes": {"FR", "FRA", "FRENCH"}, "list": []},
-            "hi" : {"codes": {"HI", "HIN", "HINDI"}, "list": []},
-            "kk" : {"codes": {"KK", "KAZ", "KAZAKH"}, "list": []},
-            "nl" : {"codes": {"NL", "DUT", "NLD", "DUTCH"}, "list": []},
-            "pt" : {"codes": {"PT", "POR", "PORTUGUESE"}, "list": []},
-            "ru" : {"codes": {"RU", "RUS", "RUSSIAN"}, "list": []},
-            "tr" : {"codes": {"TR", "TUR", "TURKISH"}, "list": []},
-            "uk" : {"codes": {"UK", "UKR", "UKRAINIAN"}, "list": []},
-            "ur" : {"codes": {"UR", "URD", "URDU"}, "list": []},
-            "zh" : {"codes": {"ZH", "CHI", "CHINESE"}, "list": []}
+            "ar" : {"codes" : {"AR", "ARA", "ARABIC"}, "list" : []},
+            "az" : {"codes" : {"AZ", "AZE", "AZERBAIJANI"}, "list" : []},
+            "de" : {"codes" : {"DE", "GER", "DEU", "GERMAN"}, "list" : []},
+            "en" : {"codes" : {"EN", "ENG", "ENGLISH"}, "list" : []},
+            "fr" : {"codes" : {"FR", "FRA", "FRENCH"}, "list" : []},
+            "hi" : {"codes" : {"HI", "HIN", "HINDI"}, "list" : []},
+            "kk" : {"codes" : {"KK", "KAZ", "KAZAKH"}, "list" : []},
+            "nl" : {"codes" : {"NL", "DUT", "NLD", "DUTCH"}, "list" : []},
+            "pt" : {"codes" : {"PT", "POR", "PORTUGUESE"}, "list" : []},
+            "ru" : {"codes" : {"RU", "RUS", "RUSSIAN"}, "list" : []},
+            "tr" : {"codes" : {"TR", "TUR", "TURKISH"}, "list" : []},
+            "uk" : {"codes" : {"UK", "UKR", "UKRAINIAN"}, "list" : []},
+            "ur" : {"codes" : {"UR", "URD", "URDU"}, "list" : []},
+            "zh" : {"codes" : {"ZH", "CHI", "CHINESE"}, "list" : []}
         }
 
         # TEK BİR DÖNGÜ: Her altyazıyı sırayla işle ve ait olduğu dile ekle

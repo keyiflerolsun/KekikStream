@@ -73,11 +73,11 @@ class PluginValidator:
             if not obj.url:
                 issues.append("url boş")
 
-        return {"fields": fields, "issues": issues}
+        return {"fields" : fields, "issues" : issues}
 
     async def test_get_main_page(self, plugin) -> dict:
         """get_main_page metodu test eder."""
-        result = {"status": "❌", "message": "", "data": None}
+        result = {"status" : "❌", "message" : "", "data" : None}
 
         try:
             if not plugin.main_page:
@@ -126,7 +126,7 @@ class PluginValidator:
 
     async def test_search(self, plugin, query: str = "art") -> dict:
         """search metodu test eder."""
-        result = {"status": "❌", "message": "", "data": None}
+        result = {"status" : "❌", "message" : "", "data" : None}
 
         try:
             if not hasattr(plugin, 'search') or not callable(getattr(plugin, 'search', None)):
@@ -169,7 +169,7 @@ class PluginValidator:
 
     async def test_load_item(self, plugin, test_url: str) -> dict:
         """load_item metodu test eder."""
-        result = {"status": "❌", "message": "", "data": None}
+        result = {"status" : "❌", "message" : "", "data" : None}
 
         try:
             item = await plugin.load_item(test_url)
@@ -217,7 +217,7 @@ class PluginValidator:
 
     async def test_load_links(self, plugin, test_url: str) -> dict:
         """load_links metodu test eder."""
-        result = {"status": "❌", "message": "", "data": None}
+        result = {"status" : "❌", "message" : "", "data" : None}
 
         try:
             links = await plugin.load_links(test_url)
@@ -341,7 +341,7 @@ class PluginValidator:
         table.add_column("load_links", justify="center", width=12)
         table.add_column("Durum", justify="center", width=8)
 
-        stats = {"✅": 0, "⚠️": 0, "❌": 0}
+        stats = {"✅" : 0, "⚠️" : 0, "❌" : 0}
 
         for plugin_name, results in self.results.items():
             status = results["overall_status"]
@@ -383,7 +383,7 @@ async def main():
             validator.results[plugin_name] = {
                 "plugin_name"    : plugin_name,
                 "overall_status" : "❌",
-                "get_main_page"  : {"status": "❌", "message": str(e)},
+                "get_main_page"  : {"status" : "❌", "message" : str(e)},
                 "search"         : None,
                 "load_item"      : None,
                 "load_links"     : None

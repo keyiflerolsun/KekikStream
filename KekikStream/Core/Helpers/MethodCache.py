@@ -76,7 +76,7 @@ class MethodCache:
         if isinstance(payload, list):
             return [MethodCache._clone_payload(item) for item in payload]
         if isinstance(payload, dict):
-            return {key: MethodCache._clone_payload(value) for key, value in payload.items()}
+            return {key : MethodCache._clone_payload(value) for key, value in payload.items()}
         if hasattr(payload, "model_copy"):
             return payload.model_copy(deep=True)
         return deepcopy(payload)

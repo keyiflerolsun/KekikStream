@@ -141,12 +141,12 @@ class MetadataHelper:
                 query = query[:match.start()] + query[match.end():]
 
         query  = re.sub(r"\s{2,}", " ", query).strip(" -–—:|") or title
-        params = {"api_key": MetadataHelper.TMDB_API_KEY, "query": query, "language": lang}
+        params = {"api_key" : MetadataHelper.TMDB_API_KEY, "query" : query, "language" : lang}
         if year:
             params["first_air_date_year" if is_series else "primary_release_year"] = str(year)[:4]
 
         for include_year in (True, False) if year else (True,):
-            request_params = params if include_year else {key: value for key, value in params.items() if not key.endswith("_year")}
+            request_params = params if include_year else {key : value for key, value in params.items() if not key.endswith("_year")}
             data           = await MetadataHelper._request_json(client, f"{MetadataHelper.TMDB_BASE}/search/{'tv' if is_series else 'movie'}", request_params)
             if data and (best := MetadataHelper._pick_best_result(data.get("results", []), query, year)):
                 return str(best["id"])
@@ -202,7 +202,7 @@ class MetadataHelper:
     async def enrich_episodes(client: httpx.AsyncClient, tmdb_id: str, episodes: list, lang: str, details: dict | None = None) -> None:
         seasons   = sorted({episode.season or 1 for episode in episodes})
         data      = await asyncio.gather(*(MetadataHelper._fetch_season_details(client, tmdb_id, season, lang) for season in seasons))
-        by_season = {season: value.get("episodes", []) for season, value in zip(seasons, data) if value and value.get("episodes")}
+        by_season = {season : value.get("episodes", []) for season, value in zip(seasons, data) if value and value.get("episodes")}
 
         # Gerçek sezonların (season_number > 0) kümülatif bölüm sayısı — plugin
         # MUTLAK bölüm no'su ("Episode 1000") kazıdıysa bunu gerçek S×E'ye çevirmek

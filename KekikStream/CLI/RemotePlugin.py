@@ -27,7 +27,7 @@ class RemotePlugin(PluginBase):
         category = urllib.parse.unquote_plus(category)
         req      = await self.httpx.get(
             f"{self.base_api_url}/get_main_page",
-            params  = {"plugin": self.name, "page": page, "encoded_url": url, "encoded_category": category},
+            params  = {"plugin" : self.name, "page" : page, "encoded_url" : url, "encoded_category" : category},
             timeout = 5
         )
         req.raise_for_status()
@@ -38,7 +38,7 @@ class RemotePlugin(PluginBase):
         query = urllib.parse.unquote_plus(query)
         req   = await self.httpx.get(
             f"{self.base_api_url}/search",
-            params  = {"plugin": self.name, "query": query},
+            params  = {"plugin" : self.name, "query" : query},
             timeout = 5
         )
         req.raise_for_status()
@@ -49,7 +49,7 @@ class RemotePlugin(PluginBase):
         url = urllib.parse.unquote_plus(url)
         req = await self.httpx.get(
             f"{self.base_api_url}/load_item",
-            params  = {"plugin": self.name, "encoded_url": url},
+            params  = {"plugin" : self.name, "encoded_url" : url},
             timeout = 5
         )
         req.raise_for_status()
@@ -65,7 +65,7 @@ class RemotePlugin(PluginBase):
         url = urllib.parse.unquote_plus(url)
         req = await self.httpx.get(
             f"{self.base_api_url}/load_links",
-            params  = {"plugin": self.name, "encoded_url": url},
+            params  = {"plugin" : self.name, "encoded_url" : url},
             timeout = 5
         )
         req.raise_for_status()

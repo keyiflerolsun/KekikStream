@@ -75,12 +75,12 @@ class KekikStream:
                             data   = res.json()
                             p_name = data.get("provider_name", srv)
                             p_desc = data.get("description", "")
-                            server_options.append({"name": f"{p_name} | {p_desc}".strip(" |"), "value": srv})
+                            server_options.append({"name" : f"{p_name} | {p_desc}".strip(" |"), "value" : srv})
                     except:
                         pass
 
-            server_options.append({"name": "Özel Sunucu Adresi Gir...", "value": "custom"})
-            server_options.append({"name": "Çıkış", "value": "exit"})
+            server_options.append({"name" : "Özel Sunucu Adresi Gir...", "value" : "custom"})
+            server_options.append({"name" : "Çıkış", "value" : "exit"})
 
             cevap = await self.ui.select_from_list(
                 message = "Lütfen bir Uzak KekikStream API sunucusu seçin:",
@@ -154,11 +154,11 @@ class KekikStream:
 
         choice = await self.ui.select_from_fuzzy(
             message = "Sonuç seçin:",
-            choices = [{"name": r.title, "value": r.url} for r in results]
+            choices = [{"name" : r.title, "value" : r.url} for r in results]
         )
 
         if choice:
-            await self.show_media_details({"plugin": self.current_plugin.name, "url": choice})
+            await self.show_media_details({"plugin" : self.current_plugin.name, "url" : choice})
 
     async def search_all_plugins(self):
         """Tüm eklentilerde ara"""
@@ -178,7 +178,7 @@ class KekikStream:
                     results = await plugin.search(query)
                     if results:
                         return [
-                            {"plugin": name, "title": r.title, "url": r.url, "poster": r.poster}
+                            {"plugin" : name, "title" : r.title, "url" : r.url, "poster" : r.poster}
                             for r in results
                         ]
                 except Exception as e:
@@ -209,7 +209,7 @@ class KekikStream:
         choice = await self.ui.select_from_fuzzy(
             message = "Sonuç seçin:",
             choices = [
-                {"name": f"[{r['plugin']}]".ljust(21) + f" » {r['title']}", "value": r}
+                {"name" : f"[{r['plugin']}]".ljust(21) + f" » {r['title']}", "value" : r}
                     for r in all_results
             ]
         )
@@ -324,7 +324,7 @@ class KekikStream:
         """Plugin'in kendi metoduyla oynat"""
         selected = await self.ui.select_from_list(
             message = "Bağlantı seçin:",
-            choices = [{"name": link.name or "Bilinmiyor", "value": link} for link in links]
+            choices = [{"name" : link.name or "Bilinmiyor", "value" : link} for link in links]
         )
 
         if not selected:
@@ -346,7 +346,7 @@ class KekikStream:
     async def play_with_extractor(self, links: list[ExtractResult], mapping: dict):
         """Extractor ile oynat"""
         options = [
-            {"name": link.name or mapping.get(link.url, "Bilinmiyor"), "value": link}
+            {"name" : link.name or mapping.get(link.url, "Bilinmiyor"), "value" : link}
                 for link in links if link.url in mapping
         ]
 
@@ -376,7 +376,7 @@ class KekikStream:
         if isinstance(extract_data, list):
             extract_data = await self.ui.select_from_list(
                 message = "Bağlantı seçin:",
-                choices = [{"name": d.name, "value": d} for d in extract_data]
+                choices = [{"name" : d.name, "value" : d} for d in extract_data]
             )
 
         if not extract_data:

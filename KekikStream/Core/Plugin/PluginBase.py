@@ -25,7 +25,7 @@ class PluginBase(ABC):
 
     async def url_update(self, new_url: str):
         self.favicon   = self.favicon.replace(self.main_url, new_url)
-        self.main_page = {url.replace(self.main_url, new_url): category for url, category in self.main_page.items()}
+        self.main_page = {url.replace(self.main_url, new_url) : category for url, category in self.main_page.items()}
         self.main_url  = new_url
         if hasattr(self, "_cf_session"):
             self._cf_session.main_url = new_url
@@ -43,7 +43,7 @@ class PluginBase(ABC):
 
         if proxy:
             proxy_str                = proxy if isinstance(proxy, str) else (proxy.get("https") or proxy.get("http"))
-            self._cf_session.proxies = {"http": proxy_str, "https": proxy_str}
+            self._cf_session.proxies = {"http" : proxy_str, "https" : proxy_str}
 
             cf_fallback = curl_cffi.AsyncSession(impersonate="firefox", timeout=3)
             cf_fallback.headers.update(self._cf_session.headers)
@@ -551,7 +551,7 @@ class PluginBase(ABC):
         extractor = self.ex_manager.find_extractor(url)
         if not extractor:
             konsol.log(f"[magenta][?] {self.name} » Extractor bulunamadı: {url}")
-            self.failed_extractions.append({"url": url, "extractor": "", "name": name_override or prefix or "", "error": "Extractor bulunamadı"})
+            self.failed_extractions.append({"url" : url, "extractor" : "", "name" : name_override or prefix or "", "error" : "Extractor bulunamadı"})
             return None
 
         try:
@@ -590,7 +590,7 @@ class PluginBase(ABC):
             return data
         except Exception as hata:
             konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
-            self.failed_extractions.append({"url": url, "extractor": extractor.name, "name": name_override or prefix or "", "error": str(hata)})
+            self.failed_extractions.append({"url" : url, "extractor" : extractor.name, "name" : name_override or prefix or "", "error" : str(hata)})
             return None
 
     async def play(self, **kwargs):
