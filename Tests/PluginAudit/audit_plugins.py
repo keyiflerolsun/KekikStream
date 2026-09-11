@@ -15,8 +15,8 @@ import json
 from KekikStream.CLI  import konsol
 from KekikStream.Core import PluginManager, ExtractorManager, PluginBase
 from rich.progress    import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TaskID
-from rich.live        import Live
 from rich.panel       import Panel
+from rich.table       import Table
 
 class PluginAuditor:
     def __init__(self, output_file="audit_results.json", concurrency=10):
@@ -135,7 +135,6 @@ class PluginAuditor:
         konsol.print(f"\n[bold yellow][*][/][green] Detaylı sonuçlar [bold cyan]{self.output_file}[/] dosyasına kaydedildi.[/green]")
 
     def print_summary(self):
-        from rich.table import Table
         table = Table(show_header=True, header_style="bold magenta")
         table.add_column("Eklenti", style="cyan")
         table.add_column("Toplam Kategori", justify="center")

@@ -15,7 +15,7 @@ os.chdir(root_dir)
 sys.path.insert(0, root_dir)
 
 from KekikStream.CLI  import konsol
-from KekikStream.Core import PluginManager, ExtractorManager, PluginBase, MainPageResult, SearchResult
+from KekikStream.Core import PluginManager, ExtractorManager
 from rich.progress    import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
 from rich.live        import Live
 from rich.table       import Table
@@ -216,7 +216,7 @@ class MasterAuditor:
         konsol.print("\n[bold green]─ Denetim Tamamlandı ─[/]\n", self.generate_table(limit_view=False))
         with open("master_audit_results.json", "w", encoding="utf-8") as f:
             json.dump(self.results, f, ensure_ascii=False, indent=2)
-        konsol.print(f"\n[*] Detaylı rapor [bold cyan]master_audit_results.json[/] dosyasına kaydedildi.")
+        konsol.print("\n[*] Detaylı rapor [bold cyan]master_audit_results.json[/] dosyasına kaydedildi.")
 
 if __name__ == "__main__":
     auditor = MasterAuditor()

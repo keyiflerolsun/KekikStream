@@ -28,7 +28,7 @@ class MetadataHelper:
     @staticmethod
     async def enrich_metadata(info, lang: str = "tr-TR"):
         """Eksik alanları tamamla; belirsiz eşleşmede öğeyi değiştirme."""
-        from ..Plugin.PluginModels import SeriesInfo
+        from ..Plugin.PluginModels import SeriesInfo  # noqa: lazy — Helpers → MetadataHelper → PluginModels → Helpers (circular dependency)
 
         is_series    = isinstance(info, SeriesInfo)
         try:

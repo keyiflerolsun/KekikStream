@@ -142,12 +142,12 @@ class NodeHelper(_SelectorMixin):
         return self._node.tag
 
     @property
-    def parent(self) -> NodeHelper | None:
+    def parent(self) -> "NodeHelper | None":
         p = self._node.parent
         return NodeHelper(p) if p else None
 
     @property
-    def next(self) -> NodeHelper | None:
+    def next(self) -> "NodeHelper | None":
         n = self._node.next
         return NodeHelper(n) if n else None
 
@@ -161,11 +161,11 @@ class NodeHelper(_SelectorMixin):
 
     # -- CSS seçici metotları (HTMLHelper-uyumlu) --
 
-    def select(self, selector: str) -> list[NodeHelper]:
+    def select(self, selector: str) -> "list[NodeHelper]":
         """CSS selector ile tüm eşleşen child elementleri döndür."""
         return [NodeHelper(node) for node in self._raw_all(selector)]
 
-    def select_first(self, selector: str | None = None) -> NodeHelper | None:
+    def select_first(self, selector: str | None = None) -> "NodeHelper | None":
         """CSS selector ile ilk eşleşen child elementi döndür."""
         node = self._raw_first(selector)
         return NodeHelper(node) if node else None

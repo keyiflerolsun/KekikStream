@@ -2,6 +2,7 @@
 
 from Kekik.cli    import konsol
 from cloudscraper import CloudScraper
+import tomllib
 import os, re
 
 class MainUrlGuncelleyici:
@@ -44,11 +45,6 @@ class MainUrlGuncelleyici:
 
     def _setup_surum_guncelle(self):
         """pyproject.toml içindeki sürüm numarasını artırır."""
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib
-
         pyproject_dosyasi = os.path.join(self.ana_dizin, "pyproject.toml")
 
         with open(pyproject_dosyasi, "rb") as dosya:

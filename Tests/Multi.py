@@ -11,12 +11,11 @@ sys.path.append(root_dir)
 
 from KekikStream.CLI  import konsol
 from asyncio          import run
-from KekikStream.Core import PluginManager, ExtractorManager, MediaManager, MovieInfo, SeriesInfo
+from KekikStream.Core import PluginManager, ExtractorManager, MovieInfo, SeriesInfo
 
 async def main():
     ext     = ExtractorManager()
     plugins = PluginManager(ex_manager=ext)
-    media   = MediaManager()
 
     for eklenti_adi in plugins.get_plugin_names():
         konsol.log(f"[red]Eklenti     » [purple]{eklenti_adi}")

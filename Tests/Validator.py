@@ -14,8 +14,6 @@ from asyncio          import run
 from KekikStream.Core import PluginManager, ExtractorManager, MainPageResult, SearchResult, MovieInfo, SeriesInfo, Episode, ExtractResult
 from random           import choice
 from rich.table       import Table
-from rich.panel       import Panel
-from rich.text        import Text
 from copy             import copy
 import csv
 

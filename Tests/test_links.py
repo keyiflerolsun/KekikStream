@@ -3,6 +3,7 @@
 import asyncio
 import os
 import sys
+import traceback
 
 # Proje dizinini path'e ekle
 sys.path.append(os.getcwd())
@@ -39,7 +40,6 @@ async def main():
 
     except Exception as e:
         console.print(f"[bold red]❌ Hata:[/bold red] {str(e)}")
-        import traceback
         traceback.print_exc()
     finally:
         await plugin.close()

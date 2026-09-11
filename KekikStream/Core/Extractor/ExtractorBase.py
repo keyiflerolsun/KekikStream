@@ -131,7 +131,7 @@ class ExtractorBase(ABC):
     async def extract_recursive(self, url: str, referer: str | None = None, extractor_dir="Extractors"):
         """Bulunan bağlantıyı başka bir extractor'a devreder"""
         if not hasattr(self, "_ext_manager"):
-            from .ExtractorManager import ExtractorManager
+            from .ExtractorManager import ExtractorManager  # noqa: lazy — ExtractorManager, ExtractorBase'i import eder (circular dependency)
             self._ext_manager = ExtractorManager(extractor_dir=extractor_dir)
 
         extractor = self._ext_manager.find_extractor(url)

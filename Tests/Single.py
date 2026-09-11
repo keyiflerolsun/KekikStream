@@ -11,14 +11,12 @@ sys.path.append(root_dir)
 
 from KekikStream.CLI  import konsol
 from asyncio          import run
-from KekikStream.Core import ExtractorManager, MediaManager, MovieInfo, SeriesInfo
+from KekikStream.Core import MovieInfo, SeriesInfo
 
 from KekikStream.Plugins.FilmMakinesi import FilmMakinesi
 
 async def main():
     plugin = FilmMakinesi()
-    ext    = ExtractorManager()
-    media  = MediaManager()
 
     konsol.log(f"[red]main_url    » [purple]{plugin.main_url}")
     konsol.log(f"[red]favicon     » [purple]{plugin.favicon}")

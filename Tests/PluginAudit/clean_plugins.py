@@ -1,8 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
 import json
-import os
-import re
 from pathlib         import Path
 from KekikStream.CLI import konsol
 

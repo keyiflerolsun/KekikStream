@@ -15,7 +15,7 @@ from .ExtractorBase   import ExtractorBase
 from .ExtractorModels import ExtractResult, Subtitle
 from ..Helpers        import HTMLHelper
 from Kekik.Sifreleme  import Packer, AESManager
-from urllib.parse     import quote, urlparse
+from urllib.parse     import urlparse
 import json, contextlib, re
 
 
