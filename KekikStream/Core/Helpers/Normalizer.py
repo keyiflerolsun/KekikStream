@@ -35,6 +35,8 @@ def normalize_rating(value: str | None) -> str | None:
 def normalize_year(value: str | int | None) -> str | None:
     """Gerçekçi olmayan veya belirsiz yıl değerlerini ``None`` yap."""
     value = normalize_empty(str(value) if value is not None else None)
+    if value and value.casefold() == "live":
+        return "LIVE"
     if not value or not _YEAR.fullmatch(value):
         return None
     year = int(value)
