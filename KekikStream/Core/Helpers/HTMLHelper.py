@@ -1,6 +1,6 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from selectolax.parser import HTMLParser, Node
+from selectolax.lexbor import LexborHTMLParser, LexborNode
 import html as _html
 import re, json
 
@@ -64,10 +64,10 @@ def _poster_attr(attrs: dict) -> str | None:
 class _SelectorMixin:
     """``NodeHelper`` ve ``HTMLHelper``ın ortak, boş-değer güvenli seçici API'si."""
 
-    def _raw_first(self, selector: str | None) -> Node | None:
+    def _raw_first(self, selector: str | None) -> LexborNode | None:
         raise NotImplementedError
 
-    def _raw_all(self, selector: str) -> list[Node]:
+    def _raw_all(self, selector: str) -> list[LexborNode]:
         raise NotImplementedError
 
     def select_text(self, selector: str | None = None) -> str | None:
@@ -107,7 +107,7 @@ class _SelectorMixin:
 
 class NodeHelper(_SelectorMixin):
     """
-    selectolax.Node wrapper — HTMLHelper'ın seçici metotlarını element seviyesinde kullanım için sağlar.
+    selectolax.lexbor.LexborNode wrapper — HTMLHelper'ın seçici metotlarını element seviyesinde kullanım için sağlar.
 
     Kullanım:
         for veri in secici.select("li.film"):
@@ -118,7 +118,7 @@ class NodeHelper(_SelectorMixin):
 
     __slots__ = ("_node",)
 
-    def __init__(self, node: Node):
+    def __init__(self, node: LexborNode):
         self._node = node
 
     def __getattr__(self, name):
@@ -170,10 +170,10 @@ class NodeHelper(_SelectorMixin):
         node = self._raw_first(selector)
         return NodeHelper(node) if node else None
 
-    def _raw_first(self, selector: str | None) -> Node | None:
+    def _raw_first(self, selector: str | None) -> LexborNode | None:
         return self._node.css_first(selector) if selector else self._node
 
-    def _raw_all(self, selector: str) -> list[Node]:
+    def _raw_all(self, selector: str) -> list[LexborNode]:
         return self._node.css(selector)
 
     def select_json(self, selector: str | None = None) -> dict | list | None:
@@ -189,12 +189,12 @@ class NodeHelper(_SelectorMixin):
 
 class HTMLHelper(_SelectorMixin):
     """
-    Selectolax ile HTML parsing işlemlerini temiz, kısa ve okunabilir hale getiren yardımcı sınıf.
+    Selectolax (Lexbor) ile HTML parsing işlemlerini temiz, kısa ve okunabilir hale getiren yardımcı sınıf.
     """
 
     def __init__(self, html: str):
         self.html   = html or ""
-        self.parser = HTMLParser(self.html)
+        self.parser = LexborHTMLParser(self.html)
 
     # ========================
     # SELECTOR (CSS) İŞLEMLERİ
@@ -209,10 +209,10 @@ class HTMLHelper(_SelectorMixin):
         node = self._raw_first(selector)
         return NodeHelper(node) if node else None
 
-    def _raw_first(self, selector: str | None) -> Node | None:
+    def _raw_first(self, selector: str | None) -> LexborNode | None:
         return self.parser.css_first(selector) if selector else None
 
-    def _raw_all(self, selector: str) -> list[Node]:
+    def _raw_all(self, selector: str) -> list[LexborNode]:
         return self.parser.css(selector)
 
     def select_json(self, selector: str | None = None) -> dict | list | None:
