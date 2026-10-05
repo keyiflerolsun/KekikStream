@@ -33,15 +33,21 @@ class ExtractorBase(ABC):
         self._wrap_extract_method()
 
     def can_handle_url(self, url: str) -> bool:
-        # URL'nin bu çıkarıcı tarafından işlenip işlenemeyeceğini kontrol et
-        if self.main_url and self.main_url in url:
-            return True
-
-        if hasattr(self, "supported_domains"):
-            for domain in self.supported_domains:
-                if domain in url:
+        if not isinstance(url, str) or not url:
+            return False
+        try:
+            parsed = urlparse(url)
+            host   = (parsed.hostname or "").lower().rstrip(".")
+            if parsed.scheme not in ("http", "https") or not host:
+                return False
+            domains = [self.main_url, *getattr(self, "supported_domains", [])]
+            for domain in filter(None, domains):
+                candidate = urlparse(domain if "://" in domain else f"https://{domain}")
+                hostname  = (candidate.hostname or "").lower().rstrip(".")
+                if hostname and (host == hostname or host.endswith(f".{hostname}")):
                     return True
-
+        except ValueError:
+            return False
         return False
 
     def get_base_url(self, url: str) -> str:
