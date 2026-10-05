@@ -7,6 +7,20 @@ from .Nodes import NodeHelper
 
 
 class HTMLLabelsMixin:
+    @staticmethod
+    def _label_value_nodes(label_el):
+        """Etiket satırını sonraki etikete, hücreye veya satır sonuna kadar okur."""
+        curr = label_el.next
+        while curr and curr.tag != "br":
+            text = curr.select_text() or ""
+            if curr.tag in ("dt", "th") or (curr.tag in ("span", "strong", "b", "label") and text.endswith(":")):
+                break
+            if curr.tag != "-comment":
+                yield curr
+            if curr.tag in ("div", "p", "ul", "ol") or (label_el.tag in ("td", "th", "dt") and curr.tag in ("td", "dd")):
+                break
+            curr = curr.next
+
     def meta_value(self, label: str, container_selector: str | None = None) -> str | None:
         """
         Herhangi bir container içinde: LABEL metnini içeren bir elementten SONRA gelen metni döndürür.
@@ -40,20 +54,10 @@ class HTMLLabelsMixin:
                     if val:
                         return val
 
-                # 2) Label sonrası gelen ilk text node'u veya element'i al
-                curr = label_el.next
-                while curr:
-                    if curr.tag == "-text":
-                        val = (curr.select_text() or "").strip(" :")
-                        if val:
-                            return val
-                    elif curr.tag != "br":
-                        val = (curr.select_text() or "").strip(" :")
-                        if val:
-                            return val
-                    else:  # <br> gördüysek satır bitmiştir
-                        break
-                    curr = curr.next
+                # İç içe metni kaybetmeden yalnız etiketin kendi satırını birleştir.
+                parts = [text for node in self._label_value_nodes(label_el) if (text := node.select_text())]
+                if value := " ".join(parts).strip(" :"):
+                    return value
 
         return None
 
@@ -72,9 +76,14 @@ class HTMLLabelsMixin:
                 continue
             for label_el in root.select("span, strong, b, label, dt, td, div.f-info-label, div.fi-label"):
                 if needle in (label_el.select_text() or "").casefold():
-                    # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
-                    parent = label_el.parent
-                    links  = parent.select_texts("a") if parent else []
+                    # Aynı ebeveyndeki diğer metadata satırlarının linklerini alma.
+                    links = label_el.select_texts("a")
+                    for node in self._label_value_nodes(label_el):
+                        if node.tag == "a":
+                            if text := node.select_text():
+                                links.append(text)
+                        else:
+                            links.extend(node.select_texts("a"))
                     if links:
                         return links
 

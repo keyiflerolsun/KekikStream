@@ -48,7 +48,7 @@ _QUALITY_TAIL = re.compile(
     r"DVD-?Scr|DVD-?Rip|HD-?Rip|HD-?CAM|CAM-?Rip|HD-?TS|HD-?TC|Pre-?DVD"
     r"|WEB-?DL|WEB-?Rip|Blu-?Ray|BR-?Rip|BD-?Rip|HDTV"
     r"|\d{3,4}p|2160p|4K|x264|x265|H\.?264|H\.?265|HEVC|AVC|10\s?bit|HDR|SDR|DDP?\d"
-    r"|E-?Subs?|Multi\s+Audio|Dual\s+Audio"
+    r"|E-?Subs?|Multi[-\s]+Audio|Dual[-\s]+Audio"
     r")\b.*$",
     re.I,
 )
@@ -62,6 +62,9 @@ _DASH_SEASON_TAIL = re.compile(
 _TRAILING_EPISODE_MARKER = re.compile(
     r"\s*[-–—:|]?\s*"
     r"(?:"
+    r"\{s\d{1,2}\s*e\d{1,3}(?:\s*[-–]\s*\d{1,3})?\s+added\}"
+    r"(?:\s+(?:JioHotstar|Netflix|Prime\s+Video|Disney\+?))?"
+    r"|"
     r"s\d{1,2}\s*e\d{1,3}"                                  # S01E02
     r"|\d{1,2}\s*x\s*\d{1,3}"                               # 1x02
     r"|(?:season\s*\d+\s*[,\-–]?\s*)?episode\s*\d+"         # [Season N, ]Episode M

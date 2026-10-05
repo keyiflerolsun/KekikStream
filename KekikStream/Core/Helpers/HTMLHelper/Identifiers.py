@@ -8,6 +8,7 @@ import re
 _RE_IMDB_URL = re.compile(r"imdb\.com/title/(tt\d+)", re.I)
 _RE_IMDB_ID  = re.compile(r"\b(tt\d{6,10})\b", re.I)
 _RE_TMDB_URL = re.compile(r"(?:themoviedb\.org/(?:3/)?(?:movie|tv)/|tmdb(?:id)?[:/=_])(\d+)", re.I)
+_RE_TMDB_ID  = re.compile(r'''\b(?:tmdb(?:_id|id)?|tmdb:id)["']?\s*[:=]\s*["']?(\d+)\b''', re.I)
 
 
 def extract_imdb_id_text(text):
@@ -16,7 +17,7 @@ def extract_imdb_id_text(text):
 
 
 def extract_tmdb_id_text(text):
-    match = _RE_TMDB_URL.search(text or "")
+    match = _RE_TMDB_URL.search(text or "") or _RE_TMDB_ID.search(text or "")
     return match.group(1) if match else None
 
 
@@ -62,10 +63,7 @@ class HTMLIdentifiersMixin:
                     return m.group(1)
 
         # Fallback 3: Düz HTML regex araması
-        if m := _RE_IMDB_URL.search(self.html):
-            return m.group(1)
-
-        return None
+        return extract_imdb_id_text(self.html)
 
     @property
     def imdb_id(self) -> str | None:
@@ -78,8 +76,8 @@ class HTMLIdentifiersMixin:
         Örnekler: "https://www.themoviedb.org/movie/550", "tmdb/1399" -> "550", "1399"
         """
         if target_text:
-            if m := _RE_TMDB_URL.search(target_text):
-                return m.group(1)
+            if value := extract_tmdb_id_text(target_text):
+                return value
 
         for sel in selectors:
             el = self.select_first(sel)
@@ -87,22 +85,26 @@ class HTMLIdentifiersMixin:
                 continue
             for attr in ("href", "data-tmdb", "data-id", "data-tmdb-id", "content"):
                 if val := el.attrs.get(attr):
-                    if m := _RE_TMDB_URL.search(val):
-                        return m.group(1)
+                    if value := extract_tmdb_id_text(val):
+                        return value
+                    if val.isdigit():
+                        return val
             txt = el.text(strip=True)
-            if m := _RE_TMDB_URL.search(txt):
-                return m.group(1)
+            if value := extract_tmdb_id_text(txt):
+                return value
 
         # Fallback 1: Sayfadaki linkler
         if href := self.select_attr("a[href*='themoviedb.org/']", "href"):
             if m := _RE_TMDB_URL.search(href):
                 return m.group(1)
 
-        # Fallback 2: Düz HTML regex araması
-        if m := _RE_TMDB_URL.search(self.html):
-            return m.group(1)
+        # Meta etiketlerinde kimlik tek başına bulunabilir.
+        for meta_name in ("tmdb:id", "tmdb", "tmdb_id"):
+            if value := self.meta_tag(meta_name):
+                if value.isdigit():
+                    return value
 
-        return None
+        return extract_tmdb_id_text(self.html)
 
     @property
     def tmdb_id(self) -> str | None:
