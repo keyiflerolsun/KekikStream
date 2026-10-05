@@ -4,8 +4,7 @@
 """HTML metadata işlemleri."""
 
 from .Duration import json_ld_duration_minutes
-import html as _html
-import re, json
+import html, re, json
 
 _RE_YEAR_SIMPLE   = re.compile(r"\b(19\d{2}|20\d{2})\b")
 
@@ -39,7 +38,7 @@ class HTMLMetadataMixin:
             f"meta[name=\"{name_or_prop}\"]",
         ):
             if val := self.select_attr(sel, attr):
-                return _html.unescape(val.strip())
+                return html.unescape(val.strip())
         return None
 
     @property

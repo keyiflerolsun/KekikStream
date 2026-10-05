@@ -4,21 +4,25 @@
 """HTML nodes işlemleri."""
 
 from selectolax.lexbor import LexborNode
-import html as _html
-import json
+import html, json
 
-_POSTER_ATTRS = ("data-src", "data-original", "data-lazy-src", "data-srcset", "src")
+_POSTER_ATTRS = ("data-src", "data-original", "data-lazy-src", "data-srcset", "srcset", "src")
 
 
 def _optional_text(value: str | None) -> str | None:
     """HTML metnini boş değer üretmeden normalize et."""
     if not value:
         return None
-    return _html.unescape(value).strip() or None
+    return html.unescape(value).strip() or None
 
 
 def _poster_attr(attrs: dict) -> str | None:
-    return next((value for attr in _POSTER_ATTRS if (value := _optional_text(attrs.get(attr)))), None)
+    for attr in _POSTER_ATTRS:
+        if value := _optional_text(attrs.get(attr)):
+            if attr in ("data-srcset", "srcset"):
+                value = value.split(",", 1)[0].split()[0]
+            return value
+    return None
 
 
 class _SelectorMixin:
