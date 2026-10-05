@@ -1,7 +1,7 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ..Helpers import clean_title, strip_title_episode_marker, clean_episode_title, EPISODE_DISPLAY_PREFIX, GENERIC_EPISODE_TITLE, normalize_description, normalize_empty, normalize_rating, normalize_year
 from pydantic  import BaseModel, field_validator, model_validator
+from ..Helpers import clean_title, strip_title_episode_marker, clean_episode_title, EPISODE_DISPLAY_PREFIX, GENERIC_EPISODE_TITLE, normalize_description, normalize_empty, normalize_rating, normalize_year
 
 
 class MainPageResult(BaseModel):

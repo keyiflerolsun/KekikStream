@@ -2,8 +2,8 @@
 
 from ...CLI                       import konsol, cikis_yap
 from .PluginBase                  import PluginBase
-from pathlib                      import Path
 from ..Extractor.ExtractorManager import ExtractorManager
+from pathlib                      import Path
 import os, importlib.util, traceback
 
 class PluginLoader:

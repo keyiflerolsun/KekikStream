@@ -5,10 +5,16 @@ from .PluginBase                  import PluginBase
 from ..Extractor.ExtractorManager import ExtractorManager
 
 class PluginManager:
-    def __init__(self, plugin_dir="Plugins", ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None):
+    def __init__(self, plugin_dir="Plugins", ex_manager: str | ExtractorManager = "Extractors", proxy: str | dict | None = None, subtitle_processor=None, result_processor=None):
         # Eklenti yükleyiciyi başlat ve tüm eklentileri yükle
         self.plugin_loader = PluginLoader(plugin_dir, ex_manager=ex_manager, proxy=proxy)
         self.plugins       = self.plugin_loader.load_all()
+        if subtitle_processor is not None:
+            for plugin in self.plugins.values():
+                plugin.subtitle_processor = subtitle_processor
+        if result_processor is not None:
+            for plugin in self.plugins.values():
+                plugin.result_processor = result_processor
 
     def get_plugin_names(self):
         # Dizindeki tüm eklenti adlarını listeler ve sıralar

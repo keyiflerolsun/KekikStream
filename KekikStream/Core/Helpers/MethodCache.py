@@ -9,10 +9,15 @@ import asyncio
 class MethodCache:
     """Plugin metodları için RAM tabanlı TTL cache (singleton kullanımı için)."""
 
-    def __init__(self):
+    def __init__(self, backend=None):
+        self.backend                                                            = backend
         self._cache    : dict[tuple[str, str], dict[str, tuple[float, object]]] = {}
         self._inflight : dict[tuple[str, str], dict[str, asyncio.Task]]         = {}
         self._lock                                                              = asyncio.Lock()
+
+    def configure_backend(self, backend):
+        """İsteğe bağlı kalıcı önbelleği yapılandır; RAM ve tekilleştirme korunur."""
+        self.backend = backend
 
     async def run(
         self,
@@ -29,6 +34,11 @@ class MethodCache:
         if ttl <= 0:
             return self._clone_payload(await producer())
 
+        async def cached_producer():
+            if self.backend is None:
+                return await producer()
+            return await self.backend.run(namespace=namespace, method_name=method_name, key=key, producer=producer, should_cache=should_cache, ttl=ttl)
+
         bucket_key = (namespace, method_name)
         now        = monotonic()
 
@@ -41,7 +51,7 @@ class MethodCache:
             inflight_bucket = self._inflight.setdefault(bucket_key, {})
             inflight        = inflight_bucket.get(key)
             if inflight is None:
-                inflight = asyncio.create_task(producer())
+                inflight = asyncio.create_task(cached_producer())
                 inflight_bucket[key] = inflight
                 is_owner = True
             else:

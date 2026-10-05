@@ -1,17 +1,20 @@
 # Bu araç @keyiflerolsun tarafından | @KekikAkademi için yazılmıştır.
 
-from ...CLI                       import konsol
-from abc                          import ABC, abstractmethod
 from .PluginModels                import MainPageResult, SearchResult, MovieInfo, SeriesInfo
+from .PluginCache                 import PluginCacheMixin
+from .PluginEnrichment            import PluginEnrichmentMixin
+from .PluginResults               import PluginResultsMixin
+from .PluginExtraction            import PluginExtractionMixin
 from ..Media.MediaHandler         import MediaHandler
 from ..Extractor.ExtractorManager import ExtractorManager
-from ..Extractor.ExtractorModels  import ExtractResult, Subtitle
-from ..Helpers.MethodCache        import method_cache
+from ..Extractor.ExtractorModels  import ExtractResult
 from ..Helpers.FallbackClients    import FallbackHTTPX, FallbackCF
-from ..Helpers                    import MetadataHelper, SubtitleHelper, HTMLHelper, PlayabilityHelper, fix_url
-import asyncio, httpx, curl_cffi, re
+from ..Helpers                    import fix_url
+from abc                          import ABC, abstractmethod
+import httpx, curl_cffi
 
-class PluginBase(ABC):
+
+class PluginBase(PluginCacheMixin, PluginEnrichmentMixin, PluginResultsMixin, PluginExtractionMixin, ABC):
     name        = "Plugin"
     language    = "tr"
     main_url    = "https://example.com"
@@ -22,6 +25,9 @@ class PluginBase(ABC):
     method_cache_ttl         = 3600
     method_cache_max_entries = 512
     cached_methods           = ("search", "get_main_page", "load_item")
+
+    subtitle_processor = None
+    result_processor   = None
 
     async def url_update(self, new_url: str):
         self.favicon   = self.favicon.replace(self.main_url, new_url)
@@ -89,97 +95,6 @@ class PluginBase(ABC):
         self._cache_namespace = f"{self.__class__.__module__}.{self.__class__.__name__}"
         self._setup_default_method_caches()
 
-    def _setup_default_method_caches(self):
-        self._setup_method_cache(
-            "search",
-            self._cache_key_search,
-            should_cache = self._should_cache_search,
-        )
-        self._setup_method_cache(
-            "get_main_page",
-            self._cache_key_get_main_page,
-            should_cache = self._should_cache_get_main_page,
-        )
-        self._setup_method_cache(
-            "load_item",
-            self._cache_key_load_item,
-            should_cache = self._should_cache_load_item,
-        )
-
-    def _setup_method_cache(self, method_name: str, key_builder, should_cache=None):
-        base_method  = getattr(PluginBase, method_name, None)
-        class_method = getattr(self.__class__, method_name, None)
-        if class_method is base_method:
-            return
-
-        original_method = getattr(self, method_name, None)
-        if not callable(original_method):
-            return
-        if getattr(original_method, "__wb_cached_method__", False):
-            return
-
-        async def cached_method(*args, **kwargs):
-            key = key_builder(*args, **kwargs)
-            return await method_cache.run(
-                namespace    = self._cache_namespace,
-                method_name  = method_name,
-                key          = key,
-                producer     = lambda: original_method(*args, **kwargs),
-                should_cache = should_cache,
-                ttl          = self.method_cache_ttl,
-                max_entries  = self.method_cache_max_entries
-            )
-
-        cached_method.__wb_cached_method__      = True
-        cached_method.__wb_cached_method_name__ = method_name
-        setattr(self, method_name, cached_method)
-
-    @staticmethod
-    def _normalize_cache_key_part(value: object, *, casefold: bool = False) -> str:
-        part = " ".join(str(value or "").split()).strip()
-        return part.casefold() if casefold else part
-
-    @staticmethod
-    def _pick_arg(args: tuple, kwargs: dict, pos: int, names: tuple[str, ...], default: object = "") -> object:
-        for name in names:
-            if name in kwargs:
-                return kwargs[name]
-        return args[pos] if len(args) > pos else default
-
-    def _cache_key_search(self, *args, **kwargs) -> str:
-        query = self._pick_arg(args, kwargs, 0, ("query",))
-        return self._normalize_cache_key_part(query, casefold=True)
-
-    def _cache_key_get_main_page(self, *args, **kwargs) -> str:
-        page     = self._pick_arg(args, kwargs, 0, ("page",), 1)
-        url      = self._pick_arg(args, kwargs, 1, ("url", "encoded_url"))
-        category = self._pick_arg(args, kwargs, 2, ("category", "encoded_category"))
-        return (
-            f"page={self._normalize_cache_key_part(page)}"
-            f"|url={self._normalize_cache_key_part(url)}"
-            f"|category={self._normalize_cache_key_part(category)}"
-        )
-
-    def _cache_key_load_item(self, *args, **kwargs) -> str:
-        url = self._pick_arg(args, kwargs, 0, ("url", "encoded_url"))
-        return self._normalize_cache_key_part(url)
-
-    @staticmethod
-    def _should_cache_search(payload) -> bool:
-        return isinstance(payload, list) and len(payload) > 0
-
-    @staticmethod
-    def _should_cache_get_main_page(payload) -> bool:
-        return isinstance(payload, list) and len(payload) > 0
-
-    @staticmethod
-    def _should_cache_load_item(payload) -> bool:
-        if payload is None:
-            return False
-        if isinstance(payload, dict):
-            return bool(payload)
-        return True
-
     @abstractmethod
     async def get_main_page(self, page: int, url: str, category: str) -> list[MainPageResult]:
         """Ana sayfadaki popüler içerikleri döndürür."""
@@ -220,189 +135,6 @@ class PluginBase(ABC):
         """
         pass
 
-    # ========================
-    # YARDIMCI METOTLAR
-    # ========================
-
-    def _wrap_plugin_methods(self):
-        """Plugin subclass metotlarını otomatik olarak zenginleştirici sarmallarla sarar."""
-        # 1. load_item sarmalı
-        original_load_item = getattr(self, "load_item", None)
-        if original_load_item and not getattr(original_load_item, "__wb_wrapped__", False):
-            async def wrapped_load_item(url: str) -> MovieInfo | SeriesInfo:
-                item = await original_load_item(url)
-                if item:
-                    item                   = await self.enrich_metadata(item)
-                    self._last_loaded_item = item
-                return item
-
-            wrapped_load_item.__wb_wrapped__ = True
-            wrapped_load_item.__doc__        = getattr(original_load_item, "__doc__", None)
-            self.load_item                   = wrapped_load_item
-
-        # 2. load_links sarmalı
-        original_load_links = getattr(self, "load_links", None)
-        if original_load_links and not getattr(original_load_links, "__wb_wrapped__", False):
-            async def wrapped_load_links(url: str) -> list[ExtractResult]:
-                main_item_url = url
-                for marker in ("/sezon-", "/season-"):
-                    if marker in main_item_url:
-                        main_item_url = main_item_url.split(marker, 1)[0]
-                        if not main_item_url.endswith("/"):
-                            main_item_url += "/"
-                        break
-
-                cached_item = getattr(self, "_last_loaded_item", None)
-                cached_url  = (getattr(cached_item, "url", None) or "").rstrip("/")
-                target_url  = main_item_url.rstrip("/")
-
-                if not cached_item or cached_url != target_url:
-                    async def _safe_load_item():
-                        try:
-                            await self.load_item(main_item_url)
-                        except Exception:
-                            pass
-
-                    _, results = await asyncio.gather(_safe_load_item(), original_load_links(url))
-                else:
-                    results = await original_load_links(url)
-
-                item    = self._last_loaded_item
-                imdb_id = item.imdb_id if item else None
-                tmdb_id = item.tmdb_id if item else None
-
-                if results:
-                    playability_tasks   = [PlayabilityHelper.is_url_playable(r) for r in results]
-                    playability_results = await asyncio.gather(*playability_tasks)
-
-                    results = [item for item, (is_playable, _) in zip(results, playability_results) if is_playable]
-                results = await self.finalize_subtitles(results, url=url, imdb_id=imdb_id, tmdb_id=tmdb_id)
-                results = self.deduplicate(results)
-                results = self.sync_subtitles(results)
-                return results
-
-            wrapped_load_links.__wb_wrapped__ = True
-            wrapped_load_links.__doc__        = getattr(original_load_links, "__doc__", None)
-            self.load_links                   = wrapped_load_links
-
-    async def enrich_metadata(self, info: MovieInfo | SeriesInfo) -> MovieInfo | SeriesInfo:
-        """Eksik metadataları TMDB üzerinden tamamlar."""
-        lang_map  = {
-            "tr" : "tr-TR", "en": "en-US", "fr": "fr-FR", "de": "de-DE", "it": "it-IT",
-            "es" : "es-ES", "ru": "ru-RU", "uk": "uk-UA", "zh": "zh-CN", "ja": "ja-JP",
-            "ko" : "ko-KR", "ar": "ar-SA", "pt": "pt-BR", "pl": "pl-PL", "az": "az-AZ",
-            "ta" : "ta-IN", "ms": "ms-MY", "hi": "hi-IN", "id": "id-ID",
-        }
-        tmdb_lang = lang_map.get((self.language or "en")[:2].lower(), "en-US")
-        return await MetadataHelper.enrich_metadata(info, lang=tmdb_lang)
-
-    async def finalize_subtitles(
-        self,
-        results: list[ExtractResult],
-        url: str | None = None,
-        imdb_id: str | None = None,
-        tmdb_id: str | None = None,
-        season: int | None = None,
-        episode: int | None = None
-    ) -> list[ExtractResult]:
-        """Harici altyazıları çekip sonuçlara ekler."""
-        if not results or self.name == "SolarMovies":
-            return results
-
-        # URL'den ID ve Bölüm bilgilerini tahmin etmeye çalış (id paslanmamışsa)
-        if not imdb_id and not tmdb_id and url:
-            secici  = HTMLHelper("")
-            imdb_id = secici.extract_imdb_id(target_text=url)
-            tmdb_id = secici.extract_tmdb_id(target_text=url)
-            season, episode = secici.extract_season_episode(url)
-
-        # Eğer hala bulunamadıysa ve referer'lar varsa oradan da tahmin etmeyi deneyelim
-        if not imdb_id and not tmdb_id:
-            secici  = HTMLHelper("")
-            for res in results:
-                if res.referer:
-                    imdb_id = secici.extract_imdb_id(target_text=res.referer)
-                    tmdb_id = secici.extract_tmdb_id(target_text=res.referer)
-                    season, episode = secici.extract_season_episode(res.referer)
-                    if imdb_id or tmdb_id:
-                        break
-
-        if imdb_id or tmdb_id:
-            try:
-                ext_subs = await SubtitleHelper.fetch_external_subtitles(
-                    imdb_id = imdb_id,
-                    tmdb_id = tmdb_id,
-                    season  = season,
-                    episode = episode
-                )
-                if ext_subs:
-                    for res in results:
-                        if res.subtitles is None:
-                            res.subtitles = []
-                        # Tekrar eden altyazıları eklemeyelim
-                        existing_urls = {sub.url for sub in res.subtitles}
-                        for sub in ext_subs:
-                            if sub.url not in existing_urls:
-                                res.subtitles.append(sub)
-            except (httpx.HTTPError, ValueError) as e:
-                konsol.log(f"[yellow][!] Harici Altyazı Arama Hatası ({self.name}): {e}")
-
-        return results
-
-    def collect_results(self, results: list[ExtractResult], data: ExtractResult | list[ExtractResult] | None):
-        """
-        extract() dönüşünü (tekil, liste veya None) sonuç listesine ekler.
-        28+ plugin'de tekrar eden pattern'i ortadan kaldırır.
-
-        Kullanım:
-            data = await self.extract(url)
-            self.collect_results(results, data)
-        """
-        if data:
-            results.extend(data if isinstance(data, list) else [data])
-
-    @staticmethod
-    def deduplicate(results: list[ExtractResult], key: str = "url") -> list[ExtractResult]:
-        """
-        Sonuç listesinden tekrar eden URL'leri kaldırır.
-
-        Args:
-            results : ExtractResult listesi
-            key     : Deduplicate anahtarı ("url" veya "url+name")
-        """
-        seen    = set()
-        uniques = []
-        for res in results:
-            k = (res.url, res.name) if key == "url+name" else res.url
-            if k and k not in seen:
-                uniques.append(res)
-                seen.add(k)
-        return uniques
-
-    @staticmethod
-    async def gather_with_limit(tasks: list, limit: int = 5):
-        """
-        Semaphore ile rate-limited paralel çalıştırma.
-
-        Kullanım:
-            tasks   = [self.extract(url) for url in urls]
-            results = await self.gather_with_limit(tasks, limit=5)
-        """
-        sem = asyncio.Semaphore(limit)
-
-        async def limited(coro):
-            entered = False
-            try:
-                async with sem:
-                    entered = True
-                    return await coro
-            except asyncio.CancelledError:
-                if not entered and asyncio.iscoroutine(coro):
-                    coro.close()
-                raise
-
-        return await asyncio.gather(*(limited(t) for t in tasks))
-
     async def async_cf_get(self, url: str, **kwargs):
         """
         curl_cffi.AsyncSession ile Cloudflare bypasslı GET isteği.
@@ -417,105 +149,6 @@ class PluginBase(ABC):
         """
         return await self._cf_session.post(url, **kwargs)
 
-    @staticmethod
-    def new_subtitle(url: str, name: str = "Altyazı") -> Subtitle:
-        """Hızlı Subtitle nesnesi oluşturur."""
-        return Subtitle(name=name, url=url)
-
-    # Dil-grubu tespiti için anahtar kelimeler (kod + serbest metin karışık,
-    # eklenti/extractor'lar altyazı adını tutarlı bir şemayla vermiyor).
-    # Sırayla denenir, ilk eşleşen grup kazanır.
-    _SUBTITLE_LANG_KEYWORDS: dict[str, tuple[str, ...]] = {
-        "tr" : ("tr", "tur", "turkish", "türkçe", "turkce"),
-        "en" : ("en", "eng", "english", "ingilizce", "i̇ngilizce"),
-        "fr" : ("fr", "fra", "fre", "french", "fransızca", "fransizca"),
-        "de" : ("de", "ger", "deu", "german", "almanca"),
-        "es" : ("es", "spa", "spanish", "ispanyolca", "i̇spanyolca"),
-        "ru" : ("ru", "rus", "russian", "rusça", "rusca"),
-        "uk" : ("uk", "ukr", "ukrainian", "ukraynaca"),
-        "ar" : ("ar", "ara", "arabic", "arapça", "arapca"),
-        "hi" : ("hi", "hin", "hindi"),
-        "zh" : ("zh", "chi", "chinese", "çince", "cince"),
-    }
-
-    @classmethod
-    def _subtitle_lang_bucket(cls, name: str) -> str:
-        """Bir altyazı adından kaba bir dil-grubu anahtarı çıkarır.
-
-        Bilinen bir dile eşleşmezse (ör. "Forced", "Altyazı 3") adın kendisi
-        kendi grubu olur - böylece alakasız etiketler birbirine karışıp
-        yanlışlıkla aynı "diğer" havuzunda 2'ye düşürülmez.
-        """
-        lowered = name.lower()
-        # " (2)" gibi sync_subtitles'ın kendi eklediği numaralandırmayı yok say.
-        base   = re.sub(r"\s*\(\d+\)\s*$", "", lowered)
-        tokens = base.replace("|", " ").replace("-", " ").replace("_", " ").split()
-        for lang, keywords in cls._SUBTITLE_LANG_KEYWORDS.items():
-            for token in tokens:
-                if token in keywords:
-                    return lang
-        return f"other:{base.strip()}"
-
-    @staticmethod
-    def sync_subtitles(results: list[ExtractResult], max_per_language: int = 2) -> list[ExtractResult]:
-        """
-        Tüm ExtractResult'lardaki altyazıları birleştirir ve her sonuca dağıtır.
-
-        - Aynı URL'ye sahip altyazılar tekrarlanmaz.
-        - Aynı isme sahip farklı URL'ler "İsim", "İsim (2)" şeklinde numaralandırılır.
-        - Her dil grubundan en fazla `max_per_language` altyazı tutulur (çok
-          sunuculu eklentilerde onlarca aynı-dilde-farklı-URL altyazı birikmesini
-          önler - bkz. `_subtitle_lang_bucket`).
-        - Engine tarafından her load_links çağrısından sonra otomatik uygulanır.
-        """
-        if not results:
-            return results
-
-        # 1. Tüm altyazıları URL'ye göre topla (dedup)
-        seen_urls: dict[str, Subtitle] = {}
-        for res in results:
-            for sub in res.subtitles:
-                if sub.url not in seen_urls:
-                    seen_urls[sub.url] = sub
-
-        if not seen_urls:
-            return results
-
-        # 2. Aynı isimli farklı URL'leri numaralandır
-        merged                      = list(seen_urls.values())
-        name_count : dict[str, int] = {}
-        for sub in merged:
-            name_count[sub.name] = name_count.get(sub.name, 0) + 1
-
-        name_idx      : dict[str, int] = {}
-        numbered_subs : list[Subtitle] = []
-        for sub in merged:
-            if name_count[sub.name] > 1:
-                idx              = name_idx.get(sub.name, 0) + 1
-                name_idx[sub.name] = idx
-                label            = sub.name if idx == 1 else f"{sub.name} ({idx})"
-                numbered_subs.append(Subtitle(name=label, url=sub.url))
-            else:
-                numbered_subs.append(sub)
-
-        # 3. Dil grubuna göre en fazla `max_per_language` tanesini tut (giriş
-        #    sırası = sonuçlardaki server önceliği, o yüzden ilk gelenler kazanır).
-        bucket_counts : dict[str, int] = {}
-        final_subs    : list[Subtitle] = []
-        for sub in numbered_subs:
-            bucket = PluginBase._subtitle_lang_bucket(sub.name)
-            count  = bucket_counts.get(bucket, 0)
-            if count >= max_per_language:
-                continue
-            bucket_counts[bucket] = count + 1
-            final_subs.append(sub)
-
-        # 4. Birleşik listeyi tüm sonuçlara ata
-        for res in results:
-            res.subtitles = list(final_subs)
-
-        return results
-
     async def close(self):
         """Close HTTP client."""
         await self.httpx.aclose()
@@ -523,75 +156,6 @@ class PluginBase(ABC):
 
     def fix_url(self, url: str) -> str:
         return fix_url(url, self.main_url)
-
-    async def extract(
-        self,
-        url: str,
-        referer: str = None,
-        prefix: str | None = None,
-        name_override: str | None = None
-    ) -> ExtractResult | list[ExtractResult] | None:
-        """
-        Extractor ile video URL'sini çıkarır.
-
-        Args:
-            url           : Iframe veya video URL'si
-            referer       : Referer header (varsayılan: plugin main_url)
-            prefix        : İsmin başına eklenecek opsiyonel etiket (örn: "Türkçe Dublaj")
-            name_override : İsmi tamamen değiştirecek opsiyonel etiket (Extractor adını ezer)
-
-        Returns:
-            ExtractResult: Extractor sonucu (name prefix ile birleştirilmiş) veya None
-
-        Extractor bulunamadığında veya hata oluştuğunda uyarı verir.
-        """
-        if referer is None:
-            referer = f"{self.main_url}/"
-
-        extractor = self.ex_manager.find_extractor(url)
-        if not extractor:
-            konsol.log(f"[magenta][?] {self.name} » Extractor bulunamadı: {url}")
-            self.failed_extractions.append({"url" : url, "extractor" : "", "name" : name_override or prefix or "", "error" : "Extractor bulunamadı"})
-            return None
-
-        try:
-            data = await extractor.extract(url, referer=referer)
-
-            # Liste ise her bir öğe için prefix/override ekle
-            if isinstance(data, list):
-                for item in data:
-                    item.extractor = extractor.name
-                    if not item.user_agent:
-                        item.user_agent = extractor.httpx.headers.get("User-Agent")
-                    if name_override:
-                        item.name = name_override
-                    elif prefix and item.name:
-                        if item.name.lower() in prefix.lower():
-                            item.name = prefix
-                        else:
-                            item.name = f"{prefix} | {item.name}"
-                return data
-
-            # Tekil öğe ise
-            if data is None:
-                return None
-
-            data.extractor = extractor.name
-            if not data.user_agent:
-                data.user_agent = extractor.httpx.headers.get("User-Agent")
-            if name_override:
-                data.name = name_override
-            elif prefix and data.name:
-                if data.name.lower() in prefix.lower():
-                    data.name = prefix
-                else:
-                    data.name = f"{prefix} | {data.name}"
-
-            return data
-        except Exception as hata:
-            konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
-            self.failed_extractions.append({"url" : url, "extractor" : extractor.name, "name" : name_override or prefix or "", "error" : str(hata)})
-            return None
 
     async def play(self, **kwargs):
         """
