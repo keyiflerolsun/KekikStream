@@ -28,7 +28,7 @@ class HTMLLabelsMixin:
             # Label belirtebilecek elementleri tara
             for label_el in root.select("span, strong, b, label, dt, td, div.f-info-label, div.fi-label"):
                 # tek .text() çağrısı + tek casefold — raw_txt orijinali, txt normalized
-                raw_txt = label_el.text(strip=True) or ""
+                raw_txt = label_el.select_text() or ""
                 txt     = raw_txt.casefold()
                 if needle not in txt:
                     continue
@@ -44,11 +44,11 @@ class HTMLLabelsMixin:
                 curr = label_el.next
                 while curr:
                     if curr.tag == "-text":
-                        val = curr.text(strip=True).strip(" :")
+                        val = (curr.select_text() or "").strip(" :")
                         if val:
                             return val
                     elif curr.tag != "br":
-                        val = curr.text(strip=True).strip(" :")
+                        val = (curr.select_text() or "").strip(" :")
                         if val:
                             return val
                     else:  # <br> gördüysek satır bitmiştir
@@ -71,7 +71,7 @@ class HTMLLabelsMixin:
             if not root:
                 continue
             for label_el in root.select("span, strong, b, label, dt, td, div.f-info-label, div.fi-label"):
-                if needle in (label_el.text(strip=True) or "").casefold():
+                if needle in (label_el.select_text() or "").casefold():
                     # Eğer elementin ebeveyninde linkler varsa (Kutucuklu yapı), onları al
                     parent = label_el.parent
                     links  = parent.select_texts("a") if parent else []
