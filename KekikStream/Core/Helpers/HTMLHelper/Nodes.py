@@ -20,7 +20,10 @@ def _poster_attr(attrs: dict) -> str | None:
     for attr in _POSTER_ATTRS:
         if value := _optional_text(attrs.get(attr)):
             if attr in ("data-srcset", "srcset"):
-                value = value.split(",", 1)[0].split()[0]
+                parts = value.split(",", 1)[0].split()
+                if not parts:
+                    continue
+                value = parts[0]
             return value
     return None
 
