@@ -58,11 +58,11 @@ class _MetadataInfo(BaseModel):
 
     @model_validator(mode="after")
     def normalize_metadata(self):
-        self.title = strip_title_episode_marker(clean_title(self.title))
+        self.year  = normalize_year(self.year)
+        self.title = strip_title_episode_marker(clean_title(self.title, year=self.year))
         for field in ("actors", "tags"):
             setattr(self, field, normalize_empty(getattr(self, field)))
         self.description = normalize_description(self.description, self.title)
-        self.year        = normalize_year(self.year)
         self.rating      = normalize_rating(self.rating)
         if self.duration == 0:
             self.duration = None
@@ -86,7 +86,7 @@ class Episode(BaseModel):
         if not self.season:
             self.season = 1
 
-        self.title = normalize_empty(self.title)
+        self.title = normalize_empty(clean_title(self.title))
         if self.title:
             self.title = " ".join(self.title.split())
             if match := EPISODE_DISPLAY_PREFIX.fullmatch(self.title):

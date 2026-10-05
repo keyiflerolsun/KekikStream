@@ -107,7 +107,7 @@ GENERIC_EPISODE_TITLE = re.compile(
 )
 
 
-def clean_title(title: str | None) -> str | None:
+def clean_title(title: str | None, year=None) -> str | None:
     """Başlıktan SEO / kalite / dil suffix'lerini ve dash-ayraçlı sezon ekini temizler."""
     if not title or not isinstance(title, str):
         return title
@@ -129,6 +129,10 @@ def clean_title(title: str | None) -> str | None:
     cleaned = _DASH_SEASON_TAIL.sub("", cleaned)
     cleaned = _QUALITY_TAIL.sub("", cleaned)
     cleaned = cleaned.strip(" -–—|:")
+    # Parantez/köşeli parantezdeki yıl katalog metadata'sıdır; gerçek adlardaki çıplak sayılar korunur.
+    cleaned = " ".join(re.sub(r"(?:\((?:18|19|20)\d{2}\)|\[(?:18|19|20)\d{2}\])", " ", cleaned).split())
+    if year:
+        cleaned = re.sub(rf"\s+[-–—|]?\s*{re.escape(str(year))}$", "", cleaned).strip()
 
     # Aşırı temizlik koruması: elde anlamlı bir şey kalmadıysa orijinali bırak.
     return cleaned if len(cleaned) >= 2 else (original or None)
@@ -155,7 +159,9 @@ def clean_episode_title(series_title: str | None, title: str | None) -> str | No
     """
     if not title:
         return None
-    cleaned = " ".join(title.split())
+    cleaned = clean_title(title)
+    if not cleaned:
+        return None
 
     if series_title:
         st = " ".join(series_title.split())
@@ -180,18 +186,18 @@ if __name__ == "__main__":
     assert clean_title("Sword Art Online: Progressive Movie") == "Sword Art Online: Progressive Movie"
     assert clean_title("La Gioia - Süchtig nach Dir") == "La Gioia - Süchtig nach Dir"
     assert clean_title("Heir-Conditioned") == "Heir-Conditioned"
-    assert clean_title("Harry Potter and the Deathly Hallows: Part 2 (2011)") == "Harry Potter and the Deathly Hallows: Part 2 (2011)"
+    assert clean_title("Harry Potter and the Deathly Hallows: Part 2 (2011)") == "Harry Potter and the Deathly Hallows: Part 2"
     assert clean_title("Grand Blue Season 3") == "Grand Blue Season 3"
-    assert clean_title("Bigg Boss (Season 1) (2026)") == "Bigg Boss (Season 1) (2026)"
+    assert clean_title("Bigg Boss (Season 1) (2026)") == "Bigg Boss (Season 1)"
 
     # SEO / kalite / dash-sezon suffix'leri silinmeli
     assert clean_title("Öngörü Full HD") == "Öngörü", clean_title("Öngörü Full HD")
     assert clean_title("The Odyssey Watch Movie Online Free") == "The Odyssey", clean_title("The Odyssey Watch Movie Online Free")
     assert clean_title("Lanterns - 1 Staffel") == "Lanterns", clean_title("Lanterns - 1 Staffel")
-    assert clean_title("Hi (2026) Telugu Dubbed DVDScr") == "Hi (2026) Telugu Dubbed", clean_title("Hi (2026) Telugu Dubbed DVDScr")
+    assert clean_title("Hi (2026) Telugu Dubbed DVDScr") == "Hi Telugu Dubbed", clean_title("Hi (2026) Telugu Dubbed DVDScr")
     assert clean_title("Money Heist All Episodes HDRip ESub") == "Money Heist All Episodes", clean_title("Money Heist All Episodes HDRip ESub")
     assert clean_title("Maniac Cop izle") == "Maniac Cop"
-    assert clean_title("Download The Orphans (2025) 1080p x264") == "The Orphans (2025)", clean_title("Download The Orphans (2025) 1080p x264")
+    assert clean_title("Download The Orphans (2025) 1080p x264") == "The Orphans", clean_title("Download The Orphans (2025) 1080p x264")
     assert clean_title("Дюна смотреть онлайн") == "Дюна", clean_title("Дюна смотреть онлайн")
     assert clean_title("Superman | Full Movie") == "Superman", clean_title("Superman | Full Movie")
     assert clean_title("Watchmen") == "Watchmen"  # baştaki "Watch" tek kelime, dokunma
