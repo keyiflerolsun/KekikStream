@@ -40,7 +40,7 @@ class _SelectorMixin:
     def select_text(self, selector: str | None = None) -> str | None:
         """Anlamlı ilk metni; seçici/alan yoksa ``None`` döndür."""
         node = self._raw_first(selector)
-        return _optional_text(node.text(strip=True)) if node else None
+        return _optional_text(node.text(separator=" ", strip=True)) if node else None
 
     def require_text(self, selector: str | None = None, field: str = "Metin") -> str:
         """Zorunlu metni döndür; yoksa seçiciyi içeren açık bir hata üret."""
@@ -50,7 +50,7 @@ class _SelectorMixin:
 
     def select_texts(self, selector: str) -> list[str]:
         """Anlamlı metni olan tüm eşleşmeleri döndür."""
-        return [text for node in self._raw_all(selector) if (text := _optional_text(node.text(strip=True)))]
+        return [text for node in self._raw_all(selector) if (text := _optional_text(node.text(separator=" ", strip=True)))]
 
     def select_attr(self, selector: str | None, attr: str) -> str | None:
         """Anlamlı ilk attribute değerini; yoksa ``None`` döndür."""
@@ -69,7 +69,7 @@ class _SelectorMixin:
     def select_direct_text(self, selector: str | None = None) -> str | None:
         """Child elementleri katmadan anlamlı düz metni döndür."""
         node = self._raw_first(selector)
-        return _optional_text(node.text(strip=True, deep=False)) if node else None
+        return _optional_text(node.text(separator=" ", strip=True, deep=False)) if node else None
 
 
 class NodeHelper(_SelectorMixin):
