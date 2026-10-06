@@ -5,6 +5,16 @@ from ..Extractor.ExtractorModels import ExtractResult
 
 
 class PluginExtractionMixin:
+    failed_extractions_max_entries = 1000
+
+    def _record_failed_extraction(self, failure):
+        # Uzun ömürlü API nesnelerinde hata geçmişi tüm trafik boyunca büyümemeli.
+        self.failed_extractions.append(failure)
+        limit    = max(0, self.failed_extractions_max_entries)
+        overflow = len(self.failed_extractions) - limit
+        if overflow > 0:
+            del self.failed_extractions[:overflow]
+
     async def extract(
         self,
         url: str,
@@ -32,7 +42,7 @@ class PluginExtractionMixin:
         extractor = self.ex_manager.find_extractor(url)
         if not extractor:
             konsol.log(f"[magenta][?] {self.name} » Extractor bulunamadı: {url}")
-            self.failed_extractions.append({"url" : url, "extractor" : "", "name" : name_override or prefix or "", "error" : "Extractor bulunamadı"})
+            self._record_failed_extraction({"url" : url, "extractor" : "", "name" : name_override or prefix or "", "error" : "Extractor bulunamadı"})
             return None
 
         try:
@@ -71,5 +81,5 @@ class PluginExtractionMixin:
             return data
         except Exception as hata:
             konsol.log(f"[red][!] {self.name} » Extractor hatası ({extractor.name}): {hata}")
-            self.failed_extractions.append({"url" : url, "extractor" : extractor.name, "name" : name_override or prefix or "", "error" : str(hata)})
+            self._record_failed_extraction({"url" : url, "extractor" : extractor.name, "name" : name_override or prefix or "", "error" : str(hata)})
             return None

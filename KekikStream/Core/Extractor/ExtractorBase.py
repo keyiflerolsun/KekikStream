@@ -5,8 +5,13 @@ from httpx              import AsyncClient
 from .ExtractorModels   import ExtractResult
 from ..Helpers          import PlayabilityHelper, fix_url
 from abc                import ABC, abstractmethod
+from contextvars        import ContextVar
 from urllib.parse       import urlparse
 import asyncio
+
+
+_recursive_chain = ContextVar("extractor_recursive_chain", default=())
+
 
 class ExtractorBase(ABC):
     # Çıkarıcının temel özellikleri
@@ -141,7 +146,16 @@ class ExtractorBase(ABC):
             self._ext_manager = ExtractorManager(extractor_dir=extractor_dir)
 
         extractor = self._ext_manager.find_extractor(url)
-        if not extractor or extractor is self:
+        if not extractor or extractor is self or type(extractor) is type(self):
             return None
 
-        return await extractor.extract(url, referer=referer)
+        # Aynı hedefe geri dönen yönlendirmeler ortak havuzda sonsuz çağrı üretmemeli.
+        target = (id(extractor), url)
+        chain  = _recursive_chain.get()
+        if target in chain:
+            return None
+        token = _recursive_chain.set((*chain, target))
+        try:
+            return await extractor.extract(url, referer=referer)
+        finally:
+            _recursive_chain.reset(token)

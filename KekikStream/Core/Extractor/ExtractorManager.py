@@ -33,6 +33,8 @@ class ExtractorManager:
         # TÜM extractorları instance'la
         for extractor_cls in self.extractors:
             instance = extractor_cls()
+            # İç içe çözümleme aynı havuzu kullanmalı; yeni havuz tüm istemcileri çoğaltır.
+            instance._ext_manager = self
 
             # YTDLP'yi ayrı tut
             if instance.name == "yt-dlp":
